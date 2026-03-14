@@ -13,7 +13,7 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 import urllib.request
 import os
 
-BACKEND         = "http://localhost:8001"
+BACKEND = "https://workeye-bitrix-integration.onrender.com"
 
 # ── Path to WorkEye screenshots folder ──────────────────
 SCREENSHOTS_DIR = r"C:\Users\hr\Downloads\WorkEye-Project-Backend-main (1)\WorkEye-Project-Backend-main\screenshots"

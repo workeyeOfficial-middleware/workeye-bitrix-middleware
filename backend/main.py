@@ -1,10 +1,12 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import Response, FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional
 import workeye_service as ws
 import bitrix_service as bs
+import os
 
 app = FastAPI()
 
@@ -15,6 +17,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ── Serve frontend ────────────────────────────────────────
+@app.get("/")
+@app.post("/")
+async def serve_index():
+    index_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "index.html")
+    if os.path.exists(index_path):
+        with open(index_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return HTMLResponse(content=content)
+    return HTMLResponse(content="<h1>WorkEye Monitor</h1>")
+
+@app.get("/index.html")
+@app.post("/index.html")
+async def serve_index_html():
+    return await serve_index()
+
+# ── Auth ─────────────────────────────────────────────────
 class Creds(BaseModel):
     email: str
     password: str
@@ -28,6 +47,7 @@ async def login(creds: Creds):
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
 
+# ── Stats ────────────────────────────────────────────────
 @app.get("/get-stats")
 async def get_stats(workeye_url: str, token: str):
     try:
@@ -36,6 +56,7 @@ async def get_stats(workeye_url: str, token: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# ── Attendance ───────────────────────────────────────────
 @app.get("/get-attendance")
 async def get_attendance(workeye_url: str, token: str):
     try:
@@ -44,6 +65,7 @@ async def get_attendance(workeye_url: str, token: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# ── Screenshots ──────────────────────────────────────────
 @app.get("/get-screenshots")
 async def get_screenshots(workeye_url: str, token: str, date: str = None):
     try:
@@ -52,14 +74,13 @@ async def get_screenshots(workeye_url: str, token: str, date: str = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ── Proxy image from WorkEye server ──────────────────────
+# ── Proxy image ──────────────────────────────────────────
 @app.get("/proxy-image")
 async def proxy_image(workeye_url: str, token: str, screenshot_id: int, email: str = None, password: str = None):
     try:
         try:
             image_bytes = ws.get_screenshot_image(workeye_url, token, screenshot_id)
         except Exception as e:
-            # Retry with fresh token if auth error
             if ("401" in str(e) or "404" in str(e) or "403" in str(e)) and email and password:
                 new_token = ws.get_token(workeye_url, email, password)
                 image_bytes = ws.get_screenshot_image(workeye_url, new_token, screenshot_id)
@@ -69,6 +90,7 @@ async def proxy_image(workeye_url: str, token: str, screenshot_id: int, email: s
     except Exception as e:
         raise HTTPException(status_code=404, detail=str(e))
 
+# ── Sync ─────────────────────────────────────────────────
 @app.post("/sync-dashboard")
 async def sync_dashboard(workeye_url: str, token: str):
     try:
@@ -100,7 +122,7 @@ async def sync_attendance(workeye_url: str, token: str):
 @app.post("/sync-screenshots")
 async def sync_screenshots(workeye_url: str, token: str):
     try:
-        data = ws.get_screenshots(workeye_url, token, date)
+        data = ws.get_screenshots(workeye_url, token)
         result = bs.sync_screenshots(data)
         return {"success": True, "result": result}
     except Exception as e:
