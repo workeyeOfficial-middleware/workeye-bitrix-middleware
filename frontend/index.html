@@ -1104,7 +1104,15 @@ async function syncAll() {
 }
 
 async function loadAll() {
+  if (!SESSION.token || !SESSION.workeye_url) return;
   await Promise.all([loadStats(), loadScreenshotCount()]);
+  // Also reload current active page
+  const activePage = document.querySelector(".nav-item.active");
+  if (activePage) {
+    const text = activePage.textContent.trim().toLowerCase();
+    if (text.includes("attendance")) loadAttendance();
+    if (text.includes("screenshot")) loadScreenshots();
+  }
   document.getElementById("lastSync").textContent = "Refreshed: " + new Date().toLocaleTimeString();
 }
 
