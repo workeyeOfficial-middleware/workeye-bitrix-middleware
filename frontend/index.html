@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>WorkEye → Bitrix24</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:        #e8ecf3;
+      --surface:   #ffffff;
+      --border:    #e2e8f0;
+      --sidebar:   #ffffff;
+      --accent:    #6366f1;
+      --accent2:   #4f46e5;
+      --green:     #22c55e;
+      --red:       #ef4444;
+      --amber:     #f59e0b;
+      --teal:      #14b8a6;
+      --purple:    #a855f7;
+      --orange:    #f97316;
+      --text:      #1e293b;
+      --text2:     #64748b;
+      --muted:     #94a3b8;
+      --shadow:    0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+      --shadow2:   0 8px 32px rgba(0,0,0,.10);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 13px;
+    }
+
+    /* ── Layout ── */
+    .layout { display: flex; min-height: 100vh; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 200px; min-height: 100vh;
+      background: var(--sidebar);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      padding: 20px 0; flex-shrink: 0;
+      box-shadow: 2px 0 8px rgba(0,0,0,.04);
+    }
+    .sidebar-brand {
+      display: flex; align-items: center; gap: 10px;
+      padding: 0 18px 24px; border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .brand-logo {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; color: white;
+    }
+    .brand-name { font-size: 15px; font-weight: 700; color: var(--text); }
+    .sidebar-user {
+      padding: 0 18px 16px; border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .sidebar-user .uname { font-size: 12px; font-weight: 600; color: var(--text); }
+    .sidebar-user .urole { font-size: 11px; color: var(--muted); }
+    .sidebar-user .ulink { font-size: 11px; color: var(--accent); cursor: pointer; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 18px; cursor: pointer;
+      font-size: 13px; font-weight: 500; color: var(--text2);
+      transition: all .15s; border-radius: 0;
+      position: relative;
+    }
+    .nav-item:hover { background: #f1f5f9; color: var(--text); }
+    .nav-item.active {
+      background: #eef2ff; color: var(--accent); font-weight: 600;
+    }
+    .nav-item.active::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+      width: 3px; background: var(--accent); border-radius: 0 2px 2px 0;
+    }
+    .nav-icon { font-size: 15px; width: 18px; text-align: center; }
+    .sidebar-footer {
+      position: sticky; bottom: 0; background: white;
+      margin-top: auto; padding: 16px 18px 0;
+      border-top: 1px solid var(--border);
+    }
+    .logout-btn {
+      display: flex; align-items: center; gap: 8px;
+      color: var(--text2); font-size: 13px; font-weight: 500;
+      cursor: pointer; padding: 8px 0;
+    }
+    .logout-btn:hover { color: var(--red); }
+
+    /* ── Main ── */
+    .main { flex: 1; overflow-y: auto; }
+    .main-inner { padding: 24px 28px; max-width: 1100px; }
+
+    /* ── Page Title ── */
+    .page-title { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 20px; }
+
+    /* ── Top Stat Cards (big 3) ── */
+    .top-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
+    .top-stat {
+      background: var(--surface); border-radius: 14px;
+      padding: 20px 22px; box-shadow: var(--shadow);
+      position: relative; overflow: hidden;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .top-stat-lbl { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; }
+    .top-stat-val { font-size: 40px; font-weight: 700; line-height: 1; color: var(--text); }
+    .top-stat-change { font-size: 11px; color: var(--green); font-weight: 500; }
+    .top-stat-icon {
+      position: absolute; right: 18px; top: 18px;
+      width: 42px; height: 42px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+    .tsi-blue   { background: #dbeafe; }
+    .tsi-teal   { background: #ccfbf1; }
+    .tsi-purple { background: #ede9fe; }
+
+    /* ── Small stat cards ── */
+    .small-stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin-bottom: 20px; }
+    @media(max-width:900px){ .small-stats { grid-template-columns: repeat(3,1fr); } }
+    .small-stat {
+      background: var(--surface); border-radius: 12px;
+      padding: 14px 16px; box-shadow: var(--shadow);
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .ss-icon { font-size: 18px; margin-bottom: 4px; }
+    .ss-val { font-size: 22px; font-weight: 700; color: var(--text); }
+    .ss-lbl { font-size: 11px; color: var(--muted); font-weight: 500; }
+
+    /* ── Mid row ── */
+    .mid-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    .card {
+      background: var(--surface); border-radius: 14px;
+      padding: 20px 22px; box-shadow: var(--shadow);
+    }
+    .card-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 16px; }
+
+    /* Donut chart */
+    .donut-wrap { display: flex; align-items: center; justify-content: center; margin: 10px 0 16px; }
+    .donut-svg { width: 120px; height: 120px; }
+    .donut-legend { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+    .legend-item { display: flex; align-items: center; justify-content: space-between; gap: 20px; font-size: 12px; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .legend-label { display: flex; align-items: center; gap: 6px; color: var(--text2); }
+    .legend-val { font-weight: 600; color: var(--text); }
+
+    /* ── Tabs ── */
+    .tabs-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .tabs {
+      display: flex; gap: 2px;
+      background: #f1f5f9; border-radius: 10px; padding: 3px;
+    }
+    .tab {
+      padding: 7px 16px; border: none; border-radius: 7px;
+      background: transparent; color: var(--muted);
+      font-family: inherit; font-size: 12px; font-weight: 500;
+      cursor: pointer; transition: all .15s;
+    }
+    .tab.on { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+    .sync-all-btn {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: white; border: none; border-radius: 8px;
+      padding: 8px 16px; font-family: inherit; font-size: 12px;
+      font-weight: 600; cursor: pointer; transition: opacity .2s;
+      box-shadow: 0 2px 8px rgba(99,102,241,.3);
+    }
+    .sync-all-btn:hover { opacity: .9; }
+    .sync-all-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── Table Card ── */
+    .table-card {
+      background: var(--surface); border-radius: 14px;
+      box-shadow: var(--shadow); overflow: hidden;
+    }
+    .table-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid var(--border);
+    }
+    .table-title { font-size: 14px; font-weight: 700; color: var(--text); }
+    .table-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .tbl-actions { display: flex; align-items: center; gap: 10px; }
+    .badge {
+      background: #eef2ff; color: var(--accent);
+      border-radius: 20px; padding: 3px 10px;
+      font-size: 11px; font-weight: 500;
+    }
+    .sync-btn {
+      background: var(--accent); color: white; border: none;
+      border-radius: 7px; padding: 7px 14px;
+      font-family: inherit; font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: all .15s;
+    }
+    .sync-btn:hover { background: var(--accent2); }
+    .sync-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .tbl-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    th {
+      background: #f8fafc; color: var(--muted);
+      font-weight: 600; text-transform: uppercase;
+      font-size: 10px; letter-spacing: .6px;
+      padding: 10px 16px; text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    td { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; color: var(--text2); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafbff; }
+    .name-cell { font-weight: 600; color: var(--text); font-size: 13px; }
+    .email-cell { color: var(--muted); font-size: 11px; margin-top: 1px; }
+
+    /* ── Avatar ── */
+    .avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; color: white; flex-shrink: 0;
+    }
+    .name-with-avatar { display: flex; align-items: center; gap: 10px; }
+
+    /* ── Status Badge ── */
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;
+    }
+    .status-active  { background: #dcfce7; color: #16a34a; }
+    .status-idle    { background: #fef9c3; color: #b45309; }
+    .status-offline { background: #fee2e2; color: #dc2626; }
+
+    /* ── Productivity Bar ── */
+    .bar-wrap { display: flex; align-items: center; gap: 8px; min-width: 100px; }
+    .bar { height: 6px; border-radius: 3px; background: #e2e8f0; flex: 1; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #6366f1, #8b5cf6); transition: width .4s; }
+    .bar-pct { font-size: 11px; color: var(--muted); min-width: 30px; font-weight: 500; }
+
+    /* ── Screenshot Grid ── */
+    .ss-grid {
+      padding: 16px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+    }
+    .ss-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; overflow: hidden;
+      transition: box-shadow .2s, transform .2s; cursor: pointer;
+    }
+    .ss-card:hover { box-shadow: var(--shadow2); transform: translateY(-2px); }
+    .ss-img-wrap { width: 100%; height: 110px; background: #f1f5f9; overflow: hidden; }
+    .ss-img-wrap img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s; }
+    .ss-card:hover .ss-img-wrap img { transform: scale(1.05); }
+    .ss-no-img {
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      color: var(--muted); font-size: 11px; gap: 6px;
+    }
+    .ss-info { padding: 10px 12px; }
+    .ss-name { font-weight: 600; font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ss-time { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Modal ── */
+    #ssModal {
+      display: none; position: fixed; inset: 0; z-index: 9999;
+      background: rgba(0,0,0,.85); align-items: center; justify-content: center;
+    }
+    #ssModal.show { display: flex; }
+    #ssModalContent { position: relative; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    #ssModalImg { max-width: 90vw; max-height: 82vh; border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+    #ssModalCaption { color: white; font-size: 13px; background: rgba(255,255,255,.12); padding: 6px 16px; border-radius: 20px; }
+    #ssModalClose {
+      position: absolute; top: -14px; right: -14px;
+      background: white; border: none; border-radius: 50%;
+      width: 32px; height: 32px; font-size: 15px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,.3);
+    }
+
+    .panel { display: none; }
+    .panel.on { display: block; }
+    .empty { padding: 40px; text-align: center; color: var(--muted); }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: white; border-radius: 10px; padding: 12px 18px;
+      font-size: 13px; font-weight: 500; z-index: 9998;
+      box-shadow: var(--shadow2); border: 1px solid var(--border);
+      transform: translateY(60px); opacity: 0;
+      transition: all .3s; pointer-events: none;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.ok  { border-left: 3px solid var(--green); color: #16a34a; }
+    #toast.err { border-left: 3px solid var(--red);   color: var(--red); }
+
+    /* refresh btn */
+    .refresh-btn {
+      background: #f1f5f9; border: 1px solid var(--border);
+      color: var(--text2); padding: 6px 12px; border-radius: 8px;
+      font-family: inherit; font-size: 12px; font-weight: 500;
+      cursor: pointer; transition: all .2s;
+    }
+    .refresh-btn:hover { background: var(--accent); color: white; border-color: var(--accent); }
+    #lastSync { font-size: 11px; color: var(--muted); }
+
+    /* ── Login Page ── */
+    .login-page {
+      min-height: 100vh; background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .login-card {
+      background: white; border-radius: 16px;
+      padding: 40px; width: 100%; max-width: 420px;
+      box-shadow: 0 8px 40px rgba(0,0,0,.12);
+    }
+    .login-logo {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 28px; justify-content: center;
+    }
+    .login-logo-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+    }
+    .login-logo-text { font-size: 22px; font-weight: 700; color: var(--text); }
+    .login-logo-text em { font-style: normal; color: var(--accent); }
+    .login-title { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 6px; text-align: center; }
+    .login-sub { font-size: 12px; color: var(--muted); text-align: center; margin-bottom: 28px; }
+    .form-group { margin-bottom: 16px; }
+    .form-label { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 6px; display: block; }
+    .form-input {
+      width: 100%; padding: 10px 14px; border: 1.5px solid var(--border);
+      border-radius: 8px; font-family: inherit; font-size: 13px;
+      color: var(--text); outline: none; transition: border .2s; background: #fafbfd;
+    }
+    .form-input:focus { border-color: var(--accent); background: white; }
+    .login-btn {
+      width: 100%; padding: 12px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: white; border: none; border-radius: 8px;
+      font-family: inherit; font-size: 14px; font-weight: 600;
+      cursor: pointer; transition: opacity .2s; margin-top: 8px;
+      box-shadow: 0 4px 12px rgba(99,102,241,.3);
+    }
+    .login-btn:hover { opacity: .9; }
+    .login-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .login-error {
+      background: #fee2e2; color: #dc2626; border-radius: 8px;
+      padding: 10px 14px; font-size: 12px; margin-top: 12px; display: none;
+    }
+    .login-error.show { display: block; }
+  </style>
+</head>
+<body>
+
+<!-- ── Login Page ── -->
+<div id="loginPage" class="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-icon">👁</div>
+      <div class="login-logo-text">Work<em>Eye</em></div>
+    </div>
+    <div class="login-title">Welcome to WorkEye Monitor</div>
+    <div class="login-sub">Enter your WorkEye admin credentials to continue</div>
+
+    <div class="form-group">
+      <label class="form-label">Admin Email</label>
+      <input class="form-input" id="loginEmail" type="email"
+        placeholder="admin@company.com"/>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input class="form-input" id="loginPassword" type="password"
+        placeholder="••••••••"/>
+    </div>
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">
+      Login to WorkEye
+    </button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<!-- ── Main Dashboard ── -->
+<div id="mainApp" style="display:none">
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">👁</div>
+      <span class="brand-name">WorkEye</span>
+    </div>
+    <div class="sidebar-user">
+      <div class="uname" id="sidebarName">—</div>
+      <div class="urole">Admin</div>
+      <div class="ulink" onclick="showProfile()">View profile</div>
+    </div>
+    <nav>
+      <div class="nav-item active" onclick="showPage('dashboard', this)">
+        <span class="nav-icon">📊</span> Dashboard
+      </div>
+      <div class="nav-item" onclick="showPage('attendance', this)">
+        <span class="nav-icon">🕐</span> Attendance
+      </div>
+      <div class="nav-item" onclick="showPage('screenshots', this)">
+        <span class="nav-icon">🖥</span> Screenshots
+      </div>
+      <div class="nav-item" onclick="doLogout()" style="margin-top:8px;color:var(--red);border-top:1px solid var(--border);padding-top:12px">
+        <span class="nav-icon">↩</span> Logout
+      </div>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="main">
+    <div class="main-inner">
+
+      <!-- Header row -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div class="page-title" id="pageTitle">Dashboard</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span id="lastSync"></span>
+          <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button>
+        </div>
+      </div>
+
+      <!-- Dashboard Page -->
+      <div id="page-dashboard" class="page on" style="display:block">
+
+        <!-- Top 3 stats -->
+        <div class="top-stats">
+          <div class="top-stat">
+            <div class="top-stat-lbl">Total Employees</div>
+            <div class="top-stat-val" id="vTotal">—</div>
+            <div class="top-stat-change" id="vChange">↑ Loading...</div>
+            <div class="top-stat-icon tsi-blue">👥</div>
+          </div>
+          <div class="top-stat">
+            <div class="top-stat-lbl">Active Rate</div>
+            <div class="top-stat-val" id="vActiveRate">—</div>
+            <div class="top-stat-change" id="vActiveChange">↑ Loading...</div>
+            <div class="top-stat-icon tsi-teal">📈</div>
+          </div>
+          <div class="top-stat">
+            <div class="top-stat-lbl">Avg Productivity</div>
+            <div class="top-stat-val" id="vProd">—</div>
+            <div class="top-stat-change" id="vProdChange">↑ Loading...</div>
+            <div class="top-stat-icon tsi-purple">⚙️</div>
+          </div>
+        </div>
+
+        <!-- Small stats -->
+        <div class="small-stats">
+          <div class="small-stat">
+            <div class="ss-icon">👤</div>
+            <div class="ss-val" id="vActive">—</div>
+            <div class="ss-lbl">Active users</div>
+          </div>
+          <div class="small-stat">
+            <div class="ss-icon">🕐</div>
+            <div class="ss-val" id="vScreenTime">—</div>
+            <div class="ss-lbl">Avg screen time</div>
+          </div>
+          <div class="small-stat">
+            <div class="ss-icon">👥</div>
+            <div class="ss-val" id="vTeamSize">—</div>
+            <div class="ss-lbl">Team size</div>
+          </div>
+          <div class="small-stat">
+            <div class="ss-icon">💤</div>
+            <div class="ss-val" id="vIdle">—</div>
+            <div class="ss-lbl">Idle</div>
+          </div>
+          <div class="small-stat">
+            <div class="ss-icon">📸</div>
+            <div class="ss-val" id="vScreenshots">—</div>
+            <div class="ss-lbl">Screenshots</div>
+          </div>
+          <div class="small-stat">
+            <div class="ss-icon">⚫</div>
+            <div class="ss-val" id="vOffline">—</div>
+            <div class="ss-lbl">Offline</div>
+          </div>
+        </div>
+
+        <!-- Mid row: Employee Status + Productivity Coverage -->
+        <div class="mid-row">
+          <div class="card">
+            <div class="card-title">Employee Status</div>
+            <div class="donut-wrap">
+              <svg class="donut-svg" viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="46" fill="none" stroke="#e2e8f0" stroke-width="16"/>
+                <circle id="donutActive" cx="60" cy="60" r="46" fill="none" stroke="#22c55e" stroke-width="16"
+                  stroke-dasharray="289" stroke-dashoffset="289" stroke-linecap="round"
+                  transform="rotate(-90 60 60)" style="transition:stroke-dashoffset .6s"/>
+                <text x="60" y="55" text-anchor="middle" font-size="22" font-weight="700" fill="#1e293b" id="donutNum">—</text>
+                <text x="60" y="70" text-anchor="middle" font-size="10" fill="#94a3b8">Total</text>
+              </svg>
+            </div>
+            <div class="donut-legend">
+              <div class="legend-item">
+                <div class="legend-label"><span class="legend-dot" style="background:#22c55e"></span>Active</div>
+                <div class="legend-val" id="legendActive">—</div>
+              </div>
+              <div class="legend-item">
+                <div class="legend-label"><span class="legend-dot" style="background:#ef4444"></span>Inactive</div>
+                <div class="legend-val" id="legendInactive">—</div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Productivity Coverage</div>
+            <div class="donut-wrap">
+              <svg class="donut-svg" viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="46" fill="none" stroke="#e2e8f0" stroke-width="16"/>
+                <circle id="donutProd" cx="60" cy="60" r="46" fill="none"
+                  stroke="url(#prodGrad)" stroke-width="16"
+                  stroke-dasharray="289" stroke-dashoffset="289" stroke-linecap="round"
+                  transform="rotate(-90 60 60)" style="transition:stroke-dashoffset .6s"/>
+                <defs>
+                  <linearGradient id="prodGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#14b8a6"/>
+                    <stop offset="100%" stop-color="#6366f1"/>
+                  </linearGradient>
+                </defs>
+                <text x="60" y="55" text-anchor="middle" font-size="18" font-weight="700" fill="#1e293b" id="donutProdNum">—</text>
+                <text x="60" y="70" text-anchor="middle" font-size="10" fill="#94a3b8">Avg</text>
+              </svg>
+            </div>
+            <div class="donut-legend">
+              <div class="legend-item">
+                <div class="legend-label"><span class="legend-dot" style="background:#14b8a6"></span>Productive</div>
+                <div class="legend-val" id="legendProd">—</div>
+              </div>
+              <div class="legend-item">
+                <div class="legend-label"><span class="legend-dot" style="background:#ef4444"></span>Below target</div>
+                <div class="legend-val" id="legendBelow">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Team Members table -->
+        <div class="table-card">
+          <div class="table-head">
+            <div>
+              <div class="table-title">Team Members</div>
+              <div class="table-sub" id="empCount">— employees</div>
+            </div>
+            <div class="tbl-actions">
+              <span class="badge" id="empBadge">—</span>
+              <button class="sync-btn" id="empSyncBtn" onclick="syncOne('employees')">⬆ Sync</button>
+              <button class="sync-all-btn" onclick="syncAll()">⬆ Sync All</button>
+            </div>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr>
+                <th>Employee</th><th>Status</th><th>Screen Time</th>
+                <th>Active Time</th><th>Idle Time</th>
+                <th>Productivity</th><th>Last Activity</th>
+              </tr></thead>
+              <tbody id="empBody"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Attendance Page -->
+      <div id="page-attendance" style="display:none">
+        <div class="table-card">
+          <div class="table-head">
+            <div>
+              <div class="table-title">Today's Attendance</div>
+              <div class="table-sub" id="attCount">— records</div>
+            </div>
+            <div class="tbl-actions">
+              <span class="badge" id="attBadge">—</span>
+              <button class="sync-btn" id="attSyncBtn" onclick="syncOne('attendance')">⬆ Sync</button>
+            </div>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr>
+                <th>#</th><th>Employee</th><th>Position</th>
+                <th>Punch In</th><th>Punch Out</th><th>Hours</th><th>Status</th>
+              </tr></thead>
+              <tbody id="attBody"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Screenshots Page -->
+      <div id="page-screenshots" style="display:none">
+        <div class="table-card">
+          <div class="table-head">
+            <div>
+              <div class="table-title">Screenshots</div>
+              <div class="table-sub" id="ssCount">— records</div>
+            </div>
+            <div class="tbl-actions">
+              <span class="badge" id="ssBadge">—</span>
+              <button class="sync-btn" id="ssSyncBtn" onclick="syncOne('screenshots')">⬆ Sync</button>
+            </div>
+          </div>
+          <div class="ss-grid" id="ssGrid">
+            <p style="color:var(--muted);text-align:center;padding:40px;grid-column:1/-1">Loading…</p>
+          </div>
+        </div>
+      </div>
+
+
+
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div id="ssModal" onclick="if(event.target===this)closeModal()">
+  <div id="ssModalContent">
+    <button id="ssModalClose" onclick="closeModal()">✕</button>
+    <img id="ssModalImg" src="" alt="Screenshot"/>
+    <div id="ssModalCaption"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+</div><!-- /mainApp -->
+
+<!-- Profile Modal -->
+<div id="profileModal" onclick="if(event.target===this)closeProfile()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:16px;padding:32px;min-width:320px;box-shadow:0 20px 60px rgba(0,0,0,.2);position:relative;">
+    <button onclick="closeProfile()" style="position:absolute;top:14px;right:14px;background:#f1f5f9;border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:14px;">✕</button>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
+      <div id="profileAvatar" style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:white;">—</div>
+      <div>
+        <div id="profileName" style="font-size:15px;font-weight:700;color:#1e293b;">—</div>
+        <div style="font-size:12px;color:#94a3b8;">Admin</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div style="display:flex;justify-content:space-between;padding:10px 14px;background:#f8fafc;border-radius:8px;">
+        <span style="font-size:12px;color:#64748b;font-weight:500;">Email</span>
+        <span id="profileEmail" style="font-size:12px;color:#1e293b;font-weight:600;">—</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:10px 14px;background:#f8fafc;border-radius:8px;">
+        <span style="font-size:12px;color:#64748b;font-weight:500;">Role</span>
+        <span style="font-size:12px;color:#1e293b;font-weight:600;">Admin</span>
+      </div>
+    </div>
+    <button onclick="doLogout()" style="width:100%;margin-top:20px;padding:10px;background:#fee2e2;color:#dc2626;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">↩ Logout</button>
+  </div>
+</div>
+
+<script>
+const API = window.location.origin;
+const HEADERS = { "ngrok-skip-browser-warning": "1" };
+
+// ── Session ─────────────────────────────────────────────
+let SESSION = { token: null, workeye_url: null };
+
+function saveSession(token, workeye_url, email, password) {
+  SESSION = { token, workeye_url, email, password };
+  localStorage.setItem("we_session", JSON.stringify(SESSION));
+}
+
+function loadSession() {
+  try {
+    const s = localStorage.getItem("we_session");
+    if (s) SESSION = JSON.parse(s);
+  } catch(e) {}
+}
+
+function clearSession() {
+  SESSION = { token: null, workeye_url: null };
+  localStorage.removeItem("we_session");
+}
+
+// ── Login / Logout ───────────────────────────────────────
+async function doLogin() {
+  const url = "https://backend-35m2.onrender.com";
+  const email = document.getElementById("loginEmail").value.trim();
+  const password = document.getElementById("loginPassword").value.trim();
+  const btn = document.getElementById("loginBtn");
+  const err = document.getElementById("loginError");
+
+  if (!email || !password) {
+    err.textContent = "Please fill in all fields.";
+    err.classList.add("show"); return;
+  }
+
+  btn.disabled = true; btn.textContent = "Logging in…";
+  err.classList.remove("show");
+
+  try {
+    const r = await fetch(API + "/login", {
+      method: "POST",
+      headers: { ...HEADERS, "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, workeye_url: url })
+    });
+    const data = await r.json();
+    if (!r.ok || !data.success) throw new Error(data.detail || "Login failed");
+
+    saveSession(data.token, url, email, password);
+    showDashboard();
+  } catch(e) {
+    err.textContent = e.message || "Login failed. Check your credentials.";
+    err.classList.add("show");
+  } finally {
+    btn.disabled = false; btn.textContent = "Login to WorkEye";
+  }
+}
+
+function showProfile() {
+  const name = SESSION.email ? SESSION.email.split("@")[0] : "Admin";
+  const el = (id) => document.getElementById(id);
+  if (el("profileName")) el("profileName").textContent = name;
+  if (el("profileEmail")) el("profileEmail").textContent = SESSION.email || "—";
+  if (el("profileAvatar")) el("profileAvatar").textContent = (SESSION.email || "?")[0].toUpperCase();
+  const modal = el("profileModal");
+  if (modal) modal.style.display = "flex";
+}
+
+function closeProfile() {
+  document.getElementById("profileModal").style.display = "none";
+}
+
+function doLogout() {
+  clearSession();
+  document.getElementById("mainApp").style.display = "none";
+  document.getElementById("loginPage").style.display = "flex";
+  document.getElementById("loginPassword").value = "";
+}
+
+function showDashboard() {
+  document.getElementById("loginPage").style.display = "none";
+  document.getElementById("mainApp").style.display = "block";
+  // Set sidebar name from email
+  const name = SESSION.email ? SESSION.email.split("@")[0] : "Admin";
+  document.getElementById("sidebarName").textContent = name;
+  loadAll();
+}
+
+// Allow Enter key on login form
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && document.getElementById("loginPage").style.display !== "none") {
+    doLogin();
+  }
+});
+
+// ── Pages ───────────────────────────────────────────────
+const pages = ["dashboard","attendance","screenshots"];
+function showPage(name, el) {
+  pages.forEach(p => {
+    const pg = document.getElementById("page-" + p);
+    if (pg) pg.style.display = p === name ? "block" : "none";
+  });
+  document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+  if (el) el.classList.add("active");
+  document.getElementById("pageTitle").textContent =
+    name.charAt(0).toUpperCase() + name.slice(1);
+  if (name === "attendance") loadAttendance();
+  if (name === "screenshots") loadScreenshots();
+}
+
+// ── Toast ───────────────────────────────────────────────
+let _tt;
+function toast(msg, type="ok") {
+  const el = document.getElementById("toast");
+  el.textContent = msg; el.className = "show " + type;
+  clearTimeout(_tt); _tt = setTimeout(() => el.className = "", 3800);
+}
+
+// ── Helpers ─────────────────────────────────────────────
+const avatarColors = ["#6366f1","#14b8a6","#f59e0b","#ef4444","#8b5cf6","#10b981","#f97316","#3b82f6"];
+function avatarColor(i) { return avatarColors[i % avatarColors.length]; }
+
+function statusBadge(s) {
+  s = (s||"").toLowerCase();
+  const cls = s==="active"?"status-active":s==="idle"?"status-idle":"status-offline";
+  return `<span class="status-badge ${cls}">${s||"—"}</span>`;
+}
+function fmtTime(iso) { return iso ? iso.substring(11,16) : "—"; }
+function fmtSec(sec) {
+  sec = parseInt(sec)||0;
+  const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60);
+  return h>0 ? `${h}h ${m}m` : `${m}m`;
+}
+function prodBar(pct) {
+  pct = parseInt(pct)||0;
+  return `<div class="bar-wrap">
+    <div class="bar"><div class="bar-fill" style="width:${pct}%"></div></div>
+    <span class="bar-pct">${pct}%</span>
+  </div>`;
+}
+
+async function refreshToken() {
+  if (!SESSION.email || !SESSION.password || !SESSION.workeye_url) {
+    doLogout(); return false;
+  }
+  try {
+    const r = await fetch(API + "/login", {
+      method: "POST",
+      headers: { ...HEADERS, "Content-Type": "application/json" },
+      body: JSON.stringify({ email: SESSION.email, password: SESSION.password, workeye_url: SESSION.workeye_url })
+    });
+    const data = await r.json();
+    if (r.ok && data.success) {
+      saveSession(data.token, SESSION.workeye_url, SESSION.email, SESSION.password);
+      return true;
+    }
+  } catch(e) {}
+  doLogout(); return false;
+}
+
+function sessionParams() {
+  return `?workeye_url=${encodeURIComponent(SESSION.workeye_url)}&token=${encodeURIComponent(SESSION.token)}`;
+}
+
+async function apiFetch(p) {
+  let r = await fetch(API + p + sessionParams(), {headers: HEADERS});
+  if (r.status === 401) {
+    const refreshed = await refreshToken();
+    if (refreshed) r = await fetch(API + p + sessionParams(), {headers: HEADERS});
+    else throw new Error("Session expired");
+  }
+  if (!r.ok) throw new Error("HTTP "+r.status);
+  return r.json();
+}
+
+async function apiPost(p) {
+  let r = await fetch(API + p + sessionParams(), {method:"POST", headers: HEADERS});
+  if (r.status === 401) {
+    const refreshed = await refreshToken();
+    if (refreshed) r = await fetch(API + p + sessionParams(), {method:"POST", headers: HEADERS});
+    else throw new Error("Session expired");
+  }
+  if (!r.ok) throw new Error("HTTP "+r.status);
+  return r.json();
+}
+
+// ── Donut update ────────────────────────────────────────
+function updateDonut(id, pct) {
+  const circ = 2 * Math.PI * 46;
+  const offset = circ - (pct/100)*circ;
+  const el = document.getElementById(id);
+  if (el) el.style.strokeDashoffset = offset;
+}
+
+// ── Load Stats ──────────────────────────────────────────
+async function loadStats() {
+  try {
+    const res = await apiFetch("/get-stats");
+    const pl = res.data || res;
+    const s = pl.stats || pl;
+    const members = pl.members || [];
+    const total = s.total_members || members.length || 0;
+    const active = s.active_now || 0;
+    const idle = s.idle_now || 0;
+    const offline = s.offline || 0;
+    const prod = s.average_productivity || 0;
+    const activeRate = total > 0 ? Math.round((active/total)*100) : 0;
+
+    document.getElementById("vTotal").textContent = total;
+    document.getElementById("vActiveRate").textContent = activeRate + "%";
+    document.getElementById("vProd").textContent = prod + "%";
+    document.getElementById("vChange").textContent = "↑ " + active + " active now";
+    document.getElementById("vActiveChange").textContent = "↑ " + activeRate + "% of team";
+    document.getElementById("vProdChange").textContent = "↑ " + prod + "% average";
+    document.getElementById("vActive").textContent = active;
+    document.getElementById("vIdle").textContent = idle;
+    document.getElementById("vOffline").textContent = offline;
+    document.getElementById("vTeamSize").textContent = total;
+
+    // Screen time from members average
+    const totalScreenSec = members.reduce((sum, m) => sum + (parseInt(m.screen_time)||0), 0);
+    const avgScreenSec = members.length ? Math.round(totalScreenSec / members.length) : 0;
+    const avgH = Math.floor(avgScreenSec / 3600);
+    const avgM = Math.floor((avgScreenSec % 3600) / 60);
+    document.getElementById("vScreenTime").textContent = avgH > 0 ? `${avgH}.${Math.round(avgM/6)}h` : `${avgM}m`;
+
+    // Screenshots count from members
+    const totalScreenshots = members.reduce((sum, m) => sum + (parseInt(m.screenshots_count)||0), 0);
+    document.getElementById("vScreenshots").textContent = totalScreenshots;
+
+    // Donuts
+    document.getElementById("donutNum").textContent = total;
+    document.getElementById("donutProdNum").textContent = prod + "%";
+    document.getElementById("legendActive").textContent = active;
+    document.getElementById("legendInactive").textContent = (idle + offline);
+    document.getElementById("legendProd").textContent = prod + "%";
+    document.getElementById("legendBelow").textContent = (100-prod) + "%";
+    updateDonut("donutActive", total>0 ? Math.round((active/total)*100) : 0);
+    updateDonut("donutProd", prod);
+
+    if (members.length) renderEmployees(members);
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+// ── Employees ───────────────────────────────────────────
+function renderEmployees(members) {
+  document.getElementById("empBadge").textContent = members.length;
+  document.getElementById("empCount").textContent = members.length + " employees";
+  document.getElementById("empBody").innerHTML = members.map((m,i) => `
+    <tr>
+      <td>
+        <div class="name-with-avatar">
+          <div class="avatar" style="background:${avatarColor(i)}">${(m.name||"?")[0].toUpperCase()}</div>
+          <div>
+            <div class="name-cell">${m.name||"—"}</div>
+            <div class="email-cell">${m.email||""}</div>
+          </div>
+        </div>
+      </td>
+      <td>${statusBadge(m.status)}</td>
+      <td style="font-weight:500">${fmtSec(m.screen_time)}</td>
+      <td>${fmtSec(m.active_time||0)}</td>
+      <td>${fmtSec(m.idle_time||0)}</td>
+      <td style="min-width:110px">${prodBar(m.productivity)}</td>
+      <td style="color:var(--muted)">${m.last_activity||"—"}</td>
+    </tr>`).join("");
+}
+
+// ── Attendance ──────────────────────────────────────────
+async function loadAttendance() {
+  const tbody = document.getElementById("attBody");
+  try {
+    const res = await apiFetch("/get-attendance");
+    const list = res.data || [];
+    document.getElementById("attBadge").textContent = list.length;
+    document.getElementById("attCount").textContent = list.length + " records";
+    tbody.innerHTML = list.map((a,i) => `
+      <tr>
+        <td style="color:var(--muted)">${i+1}</td>
+        <td>
+          <div class="name-with-avatar">
+            <div class="avatar" style="background:${avatarColor(i)}">${(a.name||"?")[0].toUpperCase()}</div>
+            <div>
+              <div class="name-cell">${a.name||"—"}</div>
+              <div class="email-cell">${a.email||""}</div>
+            </div>
+          </div>
+        </td>
+        <td>${a.position||"—"}</td>
+        <td style="font-weight:500">${fmtTime(a.punch_in_time)}</td>
+        <td style="font-weight:500">${fmtTime(a.punch_out_time)}</td>
+        <td><strong>${a.today_hours!=null?a.today_hours+"h":"—"}</strong></td>
+        <td>${statusBadge(a.status)}</td>
+      </tr>`).join("") || '<tr><td colspan="7" class="empty">No records</td></tr>';
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="7" class="empty" style="color:var(--red)">Error: ${e.message}</td></tr>`;
+  }
+}
+
+// ── Screenshots ─────────────────────────────────────────
+async function loadScreenshots() {
+  const grid = document.getElementById("ssGrid");
+  grid.innerHTML = '<p style="color:var(--muted);text-align:center;padding:40px;grid-column:1/-1">Loading…</p>';
+  try {
+    const res = await apiFetch("/get-screenshots");
+    const list = res.data || [];
+    document.getElementById("ssBadge").textContent = list.length;
+    document.getElementById("ssCount").textContent = list.length + " records";
+    if (!list.length) { grid.innerHTML = '<p style="color:var(--muted);text-align:center;padding:40px;grid-column:1/-1">No screenshots found.</p>'; return; }
+    grid.innerHTML = list.map((s, i) => {
+      const name = s.member_name||s.name||"Unknown";
+      const ts = s.timestamp||"";
+      const date = ts.substring(0,10)||"—";
+      const time = ts.substring(11,19)||"—";
+      const imgUrl = s.image_url ? API+s.image_url : null;
+      return `<div class="ss-card" id="sscard-${i}" onclick="openModal('${imgUrl||""}','${name}','${date} ${time}')">
+        <div class="ss-img-wrap" id="ssimg-${i}">
+          <div class="ss-no-img"><span style="font-size:26px">🖥</span><span>Loading…</span></div>
+        </div>
+        <div class="ss-info">
+          <div class="ss-name">${name}</div>
+          <div class="ss-time">${date} ${time}</div>
+        </div>
+      </div>`;
+    }).join("");
+
+    // Load images as blobs to bypass ngrok warning (with retry)
+    async function loadImage(s, i, retries = 3) {
+      if (!s.id) return;
+      // Always build fresh URL with current session token
+      const imgUrl = `${API}/proxy-image?workeye_url=${encodeURIComponent(SESSION.workeye_url)}&token=${encodeURIComponent(SESSION.token)}&screenshot_id=${s.id}&email=${encodeURIComponent(SESSION.email||"")}&password=${encodeURIComponent(SESSION.password||"")}`;
+      for (let attempt = 0; attempt < retries; attempt++) {
+        try {
+          const r = await fetch(imgUrl, { headers: { "ngrok-skip-browser-warning": "1" } });
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          const blob = await r.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          const wrap = document.getElementById("ssimg-" + i);
+          if (wrap) wrap.innerHTML = `<img src="${blobUrl}" style="width:100%;height:100%;object-fit:cover;transition:transform .3s">`;
+          const card = document.getElementById("sscard-" + i);
+          const name = s.member_name||s.name||"Unknown";
+          const ts = s.timestamp||"";
+          if (card) card.onclick = () => openModal(blobUrl, name, ts.substring(0,10)+" "+ts.substring(11,19));
+          return;
+        } catch(e) {
+          if (attempt < retries - 1) {
+            await new Promise(res => setTimeout(res, 500 * (attempt + 1))); // wait before retry
+          } else {
+            const wrap = document.getElementById("ssimg-" + i);
+            if (wrap) wrap.innerHTML = `<div class="ss-no-img"><span style="font-size:26px">🖥</span><span>No Preview</span></div>`;
+          }
+        }
+      }
+    }
+
+    // Load 5 images at a time to avoid overwhelming ngrok
+    async function loadAllImages() {
+      const batchSize = 5;
+      for (let i = 0; i < list.length; i += batchSize) {
+        const batch = list.slice(i, i + batchSize);
+        await Promise.all(batch.map((s, j) => loadImage(s, i + j)));
+      }
+    }
+    loadAllImages();
+  } catch(e) {
+    grid.innerHTML = `<p style="color:var(--red);text-align:center;padding:40px;grid-column:1/-1">Error: ${e.message}</p>`;
+  }
+}
+
+// ── Modal ───────────────────────────────────────────────
+function openModal(src, name, time) {
+  if (!src) return;
+  document.getElementById("ssModalImg").src = src;
+  document.getElementById("ssModalCaption").textContent = name + "  •  " + time;
+  document.getElementById("ssModal").classList.add("show");
+}
+function closeModal() {
+  document.getElementById("ssModal").classList.remove("show");
+  document.getElementById("ssModalImg").src = "";
+}
+
+// ── Sync ────────────────────────────────────────────────
+async function syncOne(type) {
+  const paths = { employees:"/sync-employees", attendance:"/sync-attendance", screenshots:"/sync-screenshots" };
+  const btns  = { employees:"empSyncBtn", attendance:"attSyncBtn", screenshots:"ssSyncBtn" };
+  const btn = document.getElementById(btns[type]);
+  btn.disabled = true; btn.textContent = "Syncing…";
+  try {
+    const res = await apiPost(paths[type]);
+    res.success ? toast("✓ "+type+" synced!", "ok") : toast("Failed: "+(res.detail||"unknown"), "err");
+  } catch(e) { toast("Error: "+e.message, "err"); }
+  finally { btn.disabled = false; btn.textContent = "⬆ Sync"; }
+}
+
+async function syncAll() {
+  const btn = document.querySelector(".sync-all-btn");
+  btn.disabled = true; btn.textContent = "Syncing…";
+  try {
+    const r = await Promise.allSettled([
+      apiPost("/sync-dashboard"), apiPost("/sync-employees"),
+      apiPost("/sync-attendance"), apiPost("/sync-screenshots")
+    ]);
+    const failed = r.filter(x => x.status==="rejected").length;
+    toast(failed===0 ? "✓ All synced to Bitrix24!" : `⚠ ${4-failed}/4 syncs done`, failed===0?"ok":"err");
+  } catch(e) { toast("Error: "+e.message, "err"); }
+  finally { btn.disabled=false; btn.textContent="⬆ Sync All"; }
+}
+
+async function loadAll() {
+  await Promise.all([loadStats(), loadScreenshotCount()]);
+  document.getElementById("lastSync").textContent = "Refreshed: " + new Date().toLocaleTimeString();
+}
+
+async function loadScreenshotCount() {
+  try {
+    const res = await apiFetch("/get-screenshots");
+    const list = res.data || [];
+    document.getElementById("vScreenshots").textContent = list.length;
+  } catch(e) { /* silent */ }
+}
+
+// ── Init ─────────────────────────────────────────────────
+loadSession();
+if (SESSION.token && SESSION.workeye_url) {
+  showDashboard();
+} else {
+  document.getElementById("loginPage").style.display = "flex";
+  document.getElementById("mainApp").style.display = "none";
+}
+</script>
+</body>
+</html>
