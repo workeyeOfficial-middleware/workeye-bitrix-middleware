@@ -637,26 +637,53 @@
 
 <!-- Profile Modal -->
 <div id="profileModal" onclick="if(event.target===this)closeProfile()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);align-items:center;justify-content:center;">
-  <div style="background:white;border-radius:16px;padding:32px;min-width:320px;box-shadow:0 20px 60px rgba(0,0,0,.2);position:relative;">
+  <div style="background:white;border-radius:16px;padding:32px;min-width:360px;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.2);position:relative;">
     <button onclick="closeProfile()" style="position:absolute;top:14px;right:14px;background:#f1f5f9;border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:14px;">✕</button>
-    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
+
+    <!-- Avatar + Name -->
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;">
       <div id="profileAvatar" style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:white;">—</div>
       <div>
         <div id="profileName" style="font-size:15px;font-weight:700;color:#1e293b;">—</div>
         <div style="font-size:12px;color:#94a3b8;">Admin</div>
       </div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:12px;">
-      <div style="display:flex;justify-content:space-between;padding:10px 14px;background:#f8fafc;border-radius:8px;">
-        <span style="font-size:12px;color:#64748b;font-weight:500;">Email</span>
-        <span id="profileEmail" style="font-size:12px;color:#1e293b;font-weight:600;">—</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;padding:10px 14px;background:#f8fafc;border-radius:8px;">
-        <span style="font-size:12px;color:#64748b;font-weight:500;">Role</span>
-        <span style="font-size:12px;color:#1e293b;font-weight:600;">Admin</span>
+
+    <!-- Company Information -->
+    <div style="margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;">Company Information</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;justify-content:space-between;padding:10px 14px;background:#f8fafc;border-radius:8px;">
+          <span style="font-size:12px;color:#64748b;font-weight:500;">Company Name</span>
+          <span id="profileCompanyName" style="font-size:12px;color:#1e293b;font-weight:600;">—</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 14px;background:#f8fafc;border-radius:8px;">
+          <span style="font-size:12px;color:#64748b;font-weight:500;">Company Username</span>
+          <span id="profileCompanyUser" style="font-size:12px;color:#1e293b;font-weight:600;">—</span>
+        </div>
       </div>
     </div>
-    <button onclick="doLogout()" style="width:100%;margin-top:20px;padding:10px;background:#fee2e2;color:#dc2626;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">↩ Logout</button>
+
+    <!-- Personal Information -->
+    <div style="margin-bottom:20px;">
+      <div style="font-size:11px;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;">Personal Information</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;justify-content:space-between;padding:10px 14px;background:#f8fafc;border-radius:8px;">
+          <span style="font-size:12px;color:#64748b;font-weight:500;">Full Name</span>
+          <span id="profileFullName" style="font-size:12px;color:#1e293b;font-weight:600;">—</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 14px;background:#f8fafc;border-radius:8px;">
+          <span style="font-size:12px;color:#64748b;font-weight:500;">Email Address</span>
+          <span id="profileEmail" style="font-size:12px;color:#1e293b;font-weight:600;">—</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 14px;background:#f8fafc;border-radius:8px;">
+          <span style="font-size:12px;color:#64748b;font-weight:500;">Position</span>
+          <span style="font-size:12px;color:#1e293b;font-weight:600;">Admin</span>
+        </div>
+      </div>
+    </div>
+
+    <button onclick="doLogout()" style="width:100%;padding:10px;background:#fee2e2;color:#dc2626;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">↩ Logout</button>
   </div>
 </div>
 
@@ -720,11 +747,16 @@ async function doLogin() {
 }
 
 function showProfile() {
-  const name = SESSION.email ? SESSION.email.split("@")[0] : "Admin";
+  const email = SESSION.email || "—";
+  const name = email.split("@")[0];
+  const company = email.split("@")[0]; // use email prefix as company name
   const el = (id) => document.getElementById(id);
   if (el("profileName")) el("profileName").textContent = name;
-  if (el("profileEmail")) el("profileEmail").textContent = SESSION.email || "—";
-  if (el("profileAvatar")) el("profileAvatar").textContent = (SESSION.email || "?")[0].toUpperCase();
+  if (el("profileAvatar")) el("profileAvatar").textContent = (email || "?")[0].toUpperCase();
+  if (el("profileEmail")) el("profileEmail").textContent = email;
+  if (el("profileFullName")) el("profileFullName").textContent = name;
+  if (el("profileCompanyName")) el("profileCompanyName").textContent = name;
+  if (el("profileCompanyUser")) el("profileCompanyUser").textContent = name;
   const modal = el("profileModal");
   if (modal) modal.style.display = "flex";
 }
