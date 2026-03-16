@@ -426,6 +426,9 @@
         <div class="page-title" id="pageTitle">Dashboard</div>
         <div style="display:flex;align-items:center;gap:10px">
           <span id="lastSync"></span>
+          <span id="serverStatus" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#22c55e;font-weight:500;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;"></span>Connected
+          </span>
           <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button>
         </div>
       </div>
@@ -488,6 +491,9 @@
             <div class="ss-lbl">Offline</div>
           </div>
         </div>
+
+        <!-- Alert Cards -->
+        <div id="alertCards" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;"></div>
 
         <!-- Mid row: Employee Status + Productivity Coverage -->
         <div class="mid-row">
@@ -567,6 +573,7 @@
             </div>
             <div class="tbl-actions">
               <span class="badge" id="empBadge">—</span>
+              <button onclick="exportEmployeesCSV()" style="background:#10b981;color:white;border:none;border-radius:7px;padding:7px 14px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;">📥 Export CSV</button>
               
               
             </div>
@@ -601,10 +608,13 @@
         <div class="table-card">
           <div class="table-head">
             <div>
-              <div class="table-title">Today's Attendance</div>
+              <div class="table-title">Attendance</div>
               <div class="table-sub" id="attCount">— records</div>
             </div>
             <div class="tbl-actions">
+              <input type="date" id="attDate" onchange="loadAttendance()"
+                style="padding:6px 10px;border:1.5px solid var(--border);border-radius:7px;font-family:inherit;font-size:12px;outline:none;cursor:pointer;"
+                value="">
               <span class="badge" id="attBadge">—</span>
               <button onclick="exportAttendanceCSV()" style="background:#10b981;color:white;border:none;border-radius:7px;padding:7px 14px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;">📥 Export CSV</button>
               
@@ -1017,12 +1027,15 @@ async function loadStats() {
 
     if (members.length) {
       renderEmployees(members);
+      updateAlertCards(s, members);
+      setServerStatus(true);
       // Draw 7-day trend chart
       const trendData = generateTrendFromMembers(members);
       drawTrendChart(trendData);
     }
   } catch(e) {
     console.error(e);
+    setServerStatus(false);
   }
 }
 
@@ -1196,7 +1209,72 @@ async function loadScreenshotCount() {
   } catch(e) { /* silent */ }
 }
 
-// ── Export Attendance CSV ────────────────────────────────
+// ── Alert Cards ──────────────────────────────────────────
+function updateAlertCards(stats, members) {
+  const container = document.getElementById("alertCards");
+  if (!container) return;
+  const alerts = [];
+  const total = stats.total_members || 0;
+  const active = stats.active_now || 0;
+  const offline = stats.offline || 0;
+  const prod = stats.average_productivity || 0;
+  const idle = stats.idle_now || 0;
+
+  if (active === 0 && total > 0)
+    alerts.push({ color: "#fee2e2", border: "#ef4444", icon: "⚠️", text: `All ${total} employees are currently offline`, textColor: "#dc2626" });
+  if (idle > 0)
+    alerts.push({ color: "#fef9c3", border: "#f59e0b", icon: "💤", text: `${idle} employee${idle>1?"s are":" is"} idle right now`, textColor: "#b45309" });
+  if (prod < 30 && total > 0)
+    alerts.push({ color: "#fee2e2", border: "#ef4444", icon: "📉", text: `Low productivity alert — team average is ${prod}%`, textColor: "#dc2626" });
+  if (active > 0)
+    alerts.push({ color: "#dcfce7", border: "#22c55e", icon: "✅", text: `${active} employee${active>1?"s are":" is"} actively working`, textColor: "#16a34a" });
+
+  container.innerHTML = alerts.map(a => `
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:${a.color};border-left:3px solid ${a.border};border-radius:8px;">
+      <span style="font-size:16px;">${a.icon}</span>
+      <span style="font-size:12px;font-weight:500;color:${a.textColor};">${a.text}</span>
+    </div>`).join("");
+}
+
+// ── Export Employees CSV ─────────────────────────────────
+function exportEmployeesCSV() {
+  if (!allMembers.length) { toast("No employee data to export!", "err"); return; }
+  const today = new Date().toISOString().substring(0, 10);
+  const headers = ["#", "Name", "Email", "Position", "Department", "Status", "Screen Time", "Productivity", "Last Activity"];
+  const rows = allMembers.map((m, i) => [
+    i + 1,
+    m.name || "—",
+    m.email || "—",
+    m.position || "—",
+    m.department || "—",
+    m.status || "—",
+    fmtSec(m.screen_time),
+    (m.productivity || 0) + "%",
+    m.last_activity || "—"
+  ]);
+  const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `Employees_Report_${today}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+  toast("✓ Employees exported!", "ok");
+}
+
+// ── Server Status Indicator ──────────────────────────────
+function setServerStatus(online) {
+  const el = document.getElementById("serverStatus");
+  if (!el) return;
+  if (online) {
+    el.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;"></span> Connected`;
+    el.style.color = "#22c55e";
+  } else {
+    el.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:#ef4444;display:inline-block;"></span> Offline`;
+    el.style.color = "#ef4444";
+  }
+}
 let attendanceData = [];
 
 function exportAttendanceCSV() {
@@ -1422,6 +1500,11 @@ setInterval(() => {
     loadAll();
   }
 }, 5 * 60 * 1000);
+// Set today's date in attendance date picker
+const todayDate = new Date().toISOString().substring(0, 10);
+const attDateEl = document.getElementById("attDate");
+if (attDateEl) attDateEl.value = todayDate;
+
 loadSession();
 if (SESSION.token && SESSION.workeye_url) {
   showDashboard();
