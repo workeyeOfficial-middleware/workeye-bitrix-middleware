@@ -383,7 +383,7 @@
               <input type="date" id="attDate" onchange="loadAttendance()" class="filter-select" style="cursor:pointer">
               <span class="badge" id="attBadge">0</span>
               <button class="action-btn btn-green" onclick="exportAttendanceCSV()">📥 Export CSV</button>
-              <button class="sync-btn" id="attSyncBtn" onclick="syncOne('attendance')">⬆ Sync</button>
+              
             </div>
           </div>
           <div id="attSummary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:1px solid var(--border)">
@@ -411,7 +411,7 @@
             <div><div class="table-title">Screenshots</div><div class="table-sub" id="ssCount">— records</div></div>
             <div class="tbl-actions">
               <span class="badge" id="ssBadge">0</span>
-              <button class="sync-btn" id="ssSyncBtn" onclick="syncOne('screenshots')">⬆ Sync</button>
+              
             </div>
           </div>
           <div class="ss-filters">
@@ -519,7 +519,7 @@ function clearSession(){SESSION={token:null,workeye_url:null};try{localStorage.r
 function toggleTheme(){const h=document.documentElement,d=h.getAttribute("data-theme")==="dark";h.setAttribute("data-theme",d?"light":"dark");try{localStorage.setItem("we_theme",d?"light":"dark")}catch(x){}}
 (function(){try{const t=localStorage.getItem("we_theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(x){}})();
 async function doLogin(){const url="https://backend-35m2.onrender.com",email=document.getElementById("loginEmail").value.trim(),password=document.getElementById("loginPassword").value.trim(),btn=document.getElementById("loginBtn"),err=document.getElementById("loginError");if(!email||!password){err.textContent="Please fill in all fields.";err.classList.add("show");return}btn.disabled=true;btn.textContent="Logging in…";err.classList.remove("show");try{const r=await fetch(API+"/login",{method:"POST",headers:{...HEADERS,"Content-Type":"application/json"},body:JSON.stringify({email,password,workeye_url:url})}),data=await r.json();if(!r.ok||!data.success)throw new Error(data.detail||"Login failed");saveSession(data.token,url,email,password);showDashboard()}catch(e){err.textContent=e.message||"Login failed.";err.classList.add("show")}finally{btn.disabled=false;btn.textContent="Login to WorkEye →"}}
-function showProfile(){const email=SESSION.email||"—",name=email.split("@")[0];document.getElementById("profileName").textContent=name;document.getElementById("profileAvatar").textContent=(email||"?")[0].toUpperCase();document.getElementById("profileEmail").textContent=email;document.getElementById("profileUrl").textContent=SESSION.workeye_url||"—";document.getElementById("profileModal").style.display="flex"}
+function showProfile(){const email=SESSION.email||"—",name=email.split("@")[0];document.getElementById("profileName").textContent=name;document.getElementById("profileAvatar").textContent=(email||"?")[0].toUpperCase();document.getElementById("profileEmail").textContent=email;document.getElementById("profileModal").style.display="flex"}
 function closeProfile(){document.getElementById("profileModal").style.display="none"}
 function doLogout(){clearSession();document.getElementById("mainApp").style.display="none";document.getElementById("loginPage").style.display="flex";document.getElementById("loginPassword").value="";if(autoRefreshTimer)clearInterval(autoRefreshTimer)}
 function showDashboard(){document.getElementById("loginPage").style.display="none";document.getElementById("mainApp").style.display="block";const name=SESSION.email?SESSION.email.split("@")[0]:"Admin";document.getElementById("sidebarName").textContent=name;document.getElementById("sidebarAvatar").textContent=(name||"A")[0].toUpperCase();loadAll();startAutoRefresh()}
