@@ -15,17 +15,86 @@ def get_token(base_url: str, email: str, password: str) -> str:
         raise Exception("Token not found in response")
     return token
 
+
+def get_member_live(base_url: str, token: str, member_id: int) -> dict:
+    """
+    Fetch live counters for a single member.
+    Returns accurate real-time productivity, screen time, active time, idle time.
+    Falls back to empty dict if the call fails.
+    """
+    try:
+        headers = {"Authorization": f"Bearer {token}"}
+        url = f"{base_url}/api/dashboard/member/{member_id}/live"
+        r = requests.get(url, headers=headers, timeout=10)
+        if r.status_code == 200:
+            data = r.json()
+            counters = data.get("live_counters") or {}
+            member_info = data.get("member") or {}
+            return {
+                "screen_time":   counters.get("screen_time_seconds", 0),
+                "active_time":   counters.get("active_time_seconds", 0),
+                "idle_time":     counters.get("idle_time_seconds", 0),
+                "productivity":  counters.get("productivity_percentage", 0),
+                "status":        member_info.get("status"),
+                "is_punched_in": member_info.get("is_punched_in", False),
+            }
+    except Exception as e:
+        print(f"[live] Failed for member {member_id}: {e}")
+    return {}
+
+
 def get_stats(base_url: str, token: str) -> dict:
+    """
+    Fetch dashboard stats and enrich each member with live productivity data.
+    Uses /api/dashboard/stats for the member list, then calls
+    /api/dashboard/member/:id/live for accurate per-member figures.
+    """
     headers = {"Authorization": f"Bearer {token}"}
     url = f"{base_url}/api/dashboard/stats"
     r = requests.get(url, headers=headers, timeout=15)
     if r.status_code != 200:
         raise Exception(f"Failed to fetch stats: {r.status_code}")
+
     data = r.json()
-    payload = data.get("data") or data
-    stats = payload.get("stats") or payload
-    members = payload.get("members") or []
-    return {"stats": stats, "members": members}
+    payload  = data.get("data") or data
+    stats    = payload.get("stats") or payload
+    members  = payload.get("members") or []
+
+    # Enrich every member with live data
+    enriched = []
+    for m in members:
+        member_id = m.get("id")
+        if member_id:
+            live = get_member_live(base_url, token, member_id)
+            if live:
+                m["screen_time"]   = live.get("screen_time",  m.get("screen_time", 0))
+                m["active_time"]   = live.get("active_time",  m.get("active_time", 0))
+                m["idle_time"]     = live.get("idle_time",    m.get("idle_time", 0))
+                m["productivity"]  = live.get("productivity", m.get("productivity", 0))
+                if live.get("status"):
+                    m["status"] = live["status"]
+                m["is_punched_in"] = live.get("is_punched_in", m.get("is_punched_in", False))
+        enriched.append(m)
+
+    # Recalculate aggregate stats from enriched members
+    total   = len(enriched)
+    active  = sum(1 for m in enriched if (m.get("status") or "").lower() == "active")
+    idle    = sum(1 for m in enriched if (m.get("status") or "").lower() == "idle")
+    offline = sum(1 for m in enriched if (m.get("status") or "").lower() == "offline")
+
+    productive = [m["productivity"] for m in enriched if m.get("productivity", 0) > 0]
+    avg_prod = int(sum(productive) / len(productive)) if productive else 0
+
+    stats["total_members"]        = total
+    stats["active_now"]           = active
+    stats["idle_now"]             = idle
+    stats["offline"]              = offline
+    stats["average_productivity"] = avg_prod
+
+    print(f"[stats] {total} members | Active:{active} Idle:{idle} Offline:{offline} AvgProd:{avg_prod}%")
+
+    return {"stats": stats, "members": enriched}
+
 
 def get_attendance(base_url: str, token: str) -> list:
     headers = {"Authorization": f"Bearer {token}"}
@@ -43,23 +112,23 @@ def get_attendance(base_url: str, token: str) -> list:
         stats = get_stats(base_url, token)
         members = stats.get("members", [])
         return [{
-            "name": m.get("name"),
-            "email": m.get("email"),
-            "position": m.get("position"),
-            "status": m.get("status"),
-            "punch_in_time": None,
+            "name":           m.get("name"),
+            "email":          m.get("email"),
+            "position":       m.get("position"),
+            "status":         m.get("status"),
+            "punch_in_time":  None,
             "punch_out_time": None,
-            "today_hours": round((m.get("screen_time") or 0) / 3600, 1),
-            "is_punched_in": m.get("is_punched_in", False)
+            "today_hours":    round((m.get("screen_time") or 0) / 3600, 1),
+            "is_punched_in":  m.get("is_punched_in", False)
         } for m in members]
     except:
         return []
+
 
 def get_screenshots(base_url: str, token: str, date: str = None) -> list:
     """Fetch ALL screenshots for all members across all dates"""
     headers = {"Authorization": f"Bearer {token}"}
 
-    # Get all members first
     try:
         stats = get_stats(base_url, token)
         members = stats.get("members", [])
@@ -69,15 +138,13 @@ def get_screenshots(base_url: str, token: str, date: str = None) -> list:
     all_screenshots = []
 
     for member in members:
-        member_id = member.get("id")
-        member_name = member.get("name", "Unknown")
+        member_id    = member.get("id")
+        member_name  = member.get("name", "Unknown")
         member_email = member.get("email", "")
         if not member_id:
             continue
 
-        # Fetch last 30 days of screenshots per member
         try:
-            # Use large limit and no date filter to get all screenshots
             params = {"limit": 100, "offset": 0}
             if date:
                 params["date"] = date
@@ -86,11 +153,10 @@ def get_screenshots(base_url: str, token: str, date: str = None) -> list:
             r = requests.get(url, headers=headers, params=params, timeout=15)
 
             if r.status_code == 200:
-                data = r.json()
+                data        = r.json()
                 screenshots = data.get("screenshots") or []
-                total = data.get("pagination", {}).get("total", 0)
+                total       = data.get("pagination", {}).get("total", 0)
 
-                # If there are more pages, fetch them
                 offset = 100
                 while len(screenshots) < total and offset < total:
                     params["offset"] = offset
@@ -103,9 +169,9 @@ def get_screenshots(base_url: str, token: str, date: str = None) -> list:
                     offset += 100
 
                 for s in screenshots:
-                    s["member_name"] = member_name
+                    s["member_name"]  = member_name
                     s["member_email"] = member_email
-                    s["image_url"] = f"/proxy-image?workeye_url={base_url}&token={token}&screenshot_id={s['id']}"
+                    s["image_url"]    = f"/proxy-image?workeye_url={base_url}&token={token}&screenshot_id={s['id']}"
 
                 all_screenshots.extend(screenshots)
 
@@ -113,9 +179,9 @@ def get_screenshots(base_url: str, token: str, date: str = None) -> list:
             print(f"Failed to get screenshots for member {member_id}: {e}")
             continue
 
-    # Sort by timestamp descending (newest first)
     all_screenshots.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
     return all_screenshots
+
 
 def get_screenshot_image(base_url: str, token: str, screenshot_id: int) -> bytes:
     headers = {"Authorization": f"Bearer {token}"}
