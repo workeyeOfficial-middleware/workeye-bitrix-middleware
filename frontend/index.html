@@ -606,6 +606,7 @@
             </div>
             <div class="tbl-actions">
               <span class="badge" id="attBadge">—</span>
+              <button onclick="exportAttendanceCSV()" style="background:#10b981;color:white;border:none;border-radius:7px;padding:7px 14px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;">📥 Export CSV</button>
               
             </div>
           </div>
@@ -1039,6 +1040,7 @@ async function loadAttendance() {
   try {
     const res = await apiFetch("/get-attendance");
     const list = res.data || [];
+    attendanceData = list; // save for export
     document.getElementById("attBadge").textContent = list.length;
     document.getElementById("attCount").textContent = list.length + " records";
     tbody.innerHTML = list.map((a,i) => `
@@ -1194,7 +1196,42 @@ async function loadScreenshotCount() {
   } catch(e) { /* silent */ }
 }
 
-// ── 7-Day Trend Chart ────────────────────────────────────
+// ── Export Attendance CSV ────────────────────────────────
+let attendanceData = [];
+
+function exportAttendanceCSV() {
+  if (!attendanceData.length) {
+    toast("No attendance data to export!", "err");
+    return;
+  }
+
+  const today = new Date().toISOString().substring(0, 10);
+  const headers = ["#", "Name", "Email", "Position", "Punch In", "Punch Out", "Hours Today", "Status"];
+
+  const rows = attendanceData.map((a, i) => [
+    i + 1,
+    a.name || "—",
+    a.email || "—",
+    a.position || "—",
+    a.punch_in_time ? a.punch_in_time.substring(11, 16) : "—",
+    a.punch_out_time ? a.punch_out_time.substring(11, 16) : "—",
+    a.today_hours != null ? a.today_hours + "h" : "—",
+    a.status || "—"
+  ]);
+
+  const csvContent = [headers, ...rows]
+    .map(row => row.map(cell => `"${cell}"`).join(","))
+    .join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `Attendance_Report_${today}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+  toast("✓ Attendance exported!", "ok");
+}
 function drawTrendChart(data) {
   const canvas = document.getElementById("trendChart");
   if (!canvas) return;
