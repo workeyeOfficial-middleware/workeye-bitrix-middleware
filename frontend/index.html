@@ -369,7 +369,7 @@
           </div>
           <div class="tbl-wrap">
             <table>
-              <thead><tr><th>Employee</th><th>Status</th><th>Screen Time</th><th>Active Time</th><th>Idle Time</th><th>Productivity</th><th>Last Activity</th></tr></thead>
+              <thead><tr><th>Employee</th><th>Status</th><th>Screen Time</th><th>Active Time</th><th>Idle Time</th><th>Productivity</th><th>Screenshots</th><th>Last Activity</th></tr></thead>
               <tbody id="empBody"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
             </table>
           </div>
@@ -508,6 +508,22 @@
     <button onclick="doLogout()" style="width:100%;padding:10px;background:#fee2e2;color:#b91c1c;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;margin-top:16px">↩ Logout</button>
   </div>
 </div>
+
+<!-- Employee Screenshots Panel -->
+<div id="empSsPanel" style="display:none;position:fixed;top:0;right:0;width:420px;height:100vh;background:var(--surface);border-left:1px solid var(--border);box-shadow:var(--shadow3);z-index:9000;display:none;flex-direction:column;transition:transform .3s">
+  <div style="padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+    <div>
+      <div style="font-family:'Inter',sans-serif;font-size:15px;font-weight:600;color:var(--text)" id="empSsPanelName">Screenshots</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px" id="empSsPanelCount">Loading...</div>
+    </div>
+    <button onclick="closeEmpScreenshots()" style="background:var(--surface2);border:1px solid var(--border);border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:14px;color:var(--text2);display:flex;align-items:center;justify-content:center">✕</button>
+  </div>
+  <div id="empSsPanelGrid" style="overflow-y:auto;flex:1;padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:10px;align-content:start">
+    <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">Loading...</div>
+  </div>
+</div>
+<div id="empSsOverlay" onclick="closeEmpScreenshots()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:8999;backdrop-filter:blur(2px)"></div>
+
 <div id="toast"></div>
 </div>
 <script>
@@ -544,7 +560,7 @@ async function loadStats(){try{const res=await apiFetch("/get-stats"),pl=res.dat
 let allMembers=[];
 function renderEmployees(members){allMembers=members;document.getElementById("empBadge").textContent=members.length;document.getElementById("empCount").textContent=members.length+" employees";renderEmployeesFiltered(members)}
 function filterEmployees(){const search=document.getElementById("empSearch").value.toLowerCase(),filter=document.getElementById("empFilter").value,filtered=allMembers.filter(m=>{const mS=!search||(m.name||"").toLowerCase().includes(search)||(m.email||"").toLowerCase().includes(search)||(m.position||"").toLowerCase().includes(search),mF=filter==="all"||(m.status||"").toLowerCase()===filter;return mS&&mF});renderEmployeesFiltered(filtered)}
-function renderEmployeesFiltered(members){if(!members.length){document.getElementById("empBody").innerHTML='<tr><td colspan="7" class="empty">No employees found.</td></tr>';return}document.getElementById("empBody").innerHTML=members.map((m,i)=>`<tr style="cursor:pointer" onclick='openEmpModal(${JSON.stringify(m).replace(/'/g,"&#39;")},${i})'><td><div class="name-with-avatar"><div class="avatar" style="background:${avatarColor(i)}">${(m.name||"?")[0].toUpperCase()}</div><div><div class="name-cell">${m.name||"—"}</div><div class="email-cell">${m.email||""}</div></div></div></td><td>${statusBadge(m.status)}</td><td style="font-family:'DM Mono',monospace;font-weight:500">${fmtSec(m.screen_time)}</td><td>${fmtSec(m.active_time||0)}</td><td>${fmtSec(m.idle_time||0)}</td><td style="min-width:110px">${prodBar(m.productivity)}</td><td style="color:var(--muted);font-size:11px">${m.last_activity||"—"}</td></tr>`).join("")}
+function renderEmployeesFiltered(members){if(!members.length){document.getElementById("empBody").innerHTML='<tr><td colspan="8" class="empty">No employees found.</td></tr>';return}document.getElementById("empBody").innerHTML=members.map((m,i)=>`<tr style="cursor:pointer" onclick='openEmpModal(${JSON.stringify(m).replace(/'/g,"&#39;")},${i})'><td><div class="name-with-avatar"><div class="avatar" style="background:${avatarColor(i)}">${(m.name||"?")[0].toUpperCase()}</div><div><div class="name-cell">${m.name||"—"}</div><div class="email-cell">${m.email||""}</div></div></div></td><td>${statusBadge(m.status)}</td><td style="font-family:'DM Mono',monospace;font-weight:500">${fmtSec(m.screen_time)}</td><td>${fmtSec(m.active_time||0)}</td><td>${fmtSec(m.idle_time||0)}</td><td style="min-width:110px">${prodBar(m.productivity)}</td><td style="color:var(--muted);font-size:11px">${m.last_activity||"—"}</td></tr>`).join("")}
 let attendanceData=[],attView="table";
 async function loadAttendance(){const tbody=document.getElementById("attBody"),tl=document.getElementById("attTimelineView");try{const res=await apiFetch("/get-attendance"),list=res.data||[];attendanceData=list;document.getElementById("attBadge").textContent=list.length;document.getElementById("attCount").textContent=list.length+" records";const inC=list.filter(a=>a.is_punched_in).length,outC=list.filter(a=>!a.is_punched_in).length,avgH=list.length?(list.reduce((s,a)=>s+(parseFloat(a.today_hours)||0),0)/list.length).toFixed(1):0,pct=list.length?Math.round((inC/list.length)*100):0;document.getElementById("attSumIn").textContent=inC;document.getElementById("attSumOut").textContent=outC;document.getElementById("attSumAvg").textContent=avgH+"h";document.getElementById("attSumPct").textContent=pct+"%";tbody.innerHTML=list.map((a,i)=>`<tr><td style="color:var(--muted);font-family:'DM Mono',monospace">${i+1}</td><td><div class="name-with-avatar"><div class="avatar" style="background:${avatarColor(i)}">${(a.name||"?")[0].toUpperCase()}</div><div><div class="name-cell">${a.name||"—"}</div><div class="email-cell">${a.email||""}</div></div></div></td><td>${a.position||"—"}</td><td style="font-family:'DM Mono',monospace;font-weight:500;color:var(--green)">${fmtTime(a.punch_in_time)}</td><td style="font-family:'DM Mono',monospace;font-weight:500;color:var(--red)">${fmtTime(a.punch_out_time)}</td><td style="font-family:'DM Mono',monospace"><strong>${a.today_hours!=null?a.today_hours+"h":"—"}</strong></td><td>${statusBadge(a.status)}</td></tr>`).join("")||'<tr><td colspan="7" class="empty">No records</td></tr>';tl.innerHTML=list.map((a,i)=>{const st=(a.status||"").toLowerCase(),dc=a.is_punched_in?"punched-in":st==="idle"?"idle":"punched-out";return`<div class="timeline-item"><div class="timeline-dot ${dc}"></div><div class="timeline-content"><div class="timeline-name">${a.name||"—"} <span style="font-weight:400;color:var(--muted)">· ${a.position||"—"}</span></div><div class="timeline-meta">In: ${fmtTime(a.punch_in_time)} &nbsp;·&nbsp; Out: ${fmtTime(a.punch_out_time)} &nbsp;·&nbsp; ${statusBadge(a.status)}</div></div><div class="timeline-hours">${a.today_hours!=null?a.today_hours+"h":"—"}</div></div>`}).join("")||'<div class="empty">No records.</div>'}catch(e){tbody.innerHTML=`<tr><td colspan="7" class="empty" style="color:var(--red)">Error: ${e.message}</td></tr>`}}
 function setAttView(v){attView=v;document.getElementById("attTableView").style.display=v==="table"?"block":"none";document.getElementById("attTimelineView").style.display=v==="timeline"?"block":"none";document.getElementById("attViewTable").classList.toggle("on",v==="table");document.getElementById("attViewTimeline").classList.toggle("on",v==="timeline")}
@@ -678,6 +694,77 @@ function exportDashboardPDF(){
   win.document.close();
   setTimeout(()=>win.print(),600);
   toast('✓ PDF report ready to print/save!','ok');
+}
+
+async function openEmpScreenshots(memberId, memberName){
+  const panel = document.getElementById('empSsPanel');
+  const overlay = document.getElementById('empSsOverlay');
+  const grid = document.getElementById('empSsPanelGrid');
+  const nameEl = document.getElementById('empSsPanelName');
+  const countEl = document.getElementById('empSsPanelCount');
+
+  nameEl.textContent = memberName + "'s Screenshots";
+  countEl.textContent = 'Loading...';
+  grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">Loading…</div>';
+  panel.style.display = 'flex';
+  overlay.style.display = 'block';
+
+  try {
+    const res = await apiFetch('/get-screenshots');
+    const all = res.data || [];
+    const memberSS = all.filter(s => {
+      const name = s.member_name || s.name || '';
+      return name === memberName || s.member_id === memberId;
+    });
+
+    countEl.textContent = memberSS.length + ' screenshots';
+
+    if (!memberSS.length) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">📸 No screenshots found</div>';
+      return;
+    }
+
+    grid.innerHTML = memberSS.map(s => {
+      const ts = s.timestamp || '';
+      const date = ts.substring(0,10) || '—';
+      const time = ts.substring(11,16) || '—';
+      const valid = s.is_valid;
+      return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;transition:box-shadow .2s,transform .2s" id="esspcard-${s.id}" onmouseenter="this.style.transform='translateY(-2px)';this.style.boxShadow='var(--shadow2)'" onmouseleave="this.style.transform='none';this.style.boxShadow='none'" onclick="openModal('','${(s.member_name||'').replace(/'/g,'')}','${date} ${time}')">
+        <div style="height:90px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden" id="esspimg-${s.id}">🖥</div>
+        <div style="padding:8px 10px">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text2)">${date}</div>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted)">${time}</div>
+          <span style="font-size:9px;font-weight:600;padding:1px 6px;border-radius:4px;background:${valid?'#dcfce7':'#fee2e2'};color:${valid?'#166534':'#b91c1c'}">${valid?'✓ Valid':'✗ Invalid'}</span>
+        </div>
+      </div>`;
+    }).join('');
+
+    // Load images
+    for (const s of memberSS) {
+      if (!s.id) continue;
+      try {
+        const imgUrl = `${API}/proxy-image?workeye_url=${encodeURIComponent(SESSION.workeye_url)}&token=${encodeURIComponent(SESSION.token)}&screenshot_id=${s.id}&email=${encodeURIComponent(SESSION.email||'')}&password=${encodeURIComponent(SESSION.password||'')}`;
+        const r = await fetch(imgUrl, {headers:{'ngrok-skip-browser-warning':'1'}});
+        if (!r.ok) continue;
+        const blob = await r.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const wrap = document.getElementById('esspimg-'+s.id);
+        const card = document.getElementById('esspcard-'+s.id);
+        if (wrap) wrap.innerHTML = `<img src="${blobUrl}" style="width:100%;height:100%;object-fit:cover">`;
+        if (card) {
+          const ts = s.timestamp||'', date=ts.substring(0,10), time=ts.substring(11,16);
+          card.onclick = () => openModal(blobUrl, memberName, date+' '+time);
+        }
+      } catch(e) {}
+    }
+  } catch(e) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--red)">Error: ${e.message}</div>`;
+  }
+}
+
+function closeEmpScreenshots(){
+  document.getElementById('empSsPanel').style.display = 'none';
+  document.getElementById('empSsOverlay').style.display = 'none';
 }
 </script>
 </body>
