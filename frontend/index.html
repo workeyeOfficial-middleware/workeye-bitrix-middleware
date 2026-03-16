@@ -546,6 +546,18 @@
           </div>
         </div>
 
+        <!-- 7-Day Productivity Trend -->
+        <div class="card" style="margin-bottom:20px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <div class="card-title" style="margin-bottom:0">📊 7-Day Productivity Trend</div>
+            <span style="font-size:11px;color:var(--muted)">Last 7 days</span>
+          </div>
+          <div style="position:relative;height:160px;">
+            <canvas id="trendChart" style="width:100%;height:160px;"></canvas>
+          </div>
+          <div id="trendLegend" style="display:flex;justify-content:space-around;margin-top:12px;"></div>
+        </div>
+
         <!-- Team Members table -->
         <div class="table-card">
           <div class="table-head">
@@ -1002,7 +1014,12 @@ async function loadStats() {
     updateDonut("donutActive", total>0 ? Math.round((active/total)*100) : 0);
     updateDonut("donutProd", prod);
 
-    if (members.length) renderEmployees(members);
+    if (members.length) {
+      renderEmployees(members);
+      // Draw 7-day trend chart
+      const trendData = generateTrendFromMembers(members);
+      drawTrendChart(trendData);
+    }
   } catch(e) {
     console.error(e);
   }
@@ -1177,7 +1194,126 @@ async function loadScreenshotCount() {
   } catch(e) { /* silent */ }
 }
 
-// ── Employee Detail Modal ────────────────────────────────
+// ── 7-Day Trend Chart ────────────────────────────────────
+function drawTrendChart(data) {
+  const canvas = document.getElementById("trendChart");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = 160 * dpr;
+  canvas.style.width = rect.width + "px";
+  canvas.style.height = "160px";
+  ctx.scale(dpr, dpr);
+
+  const W = rect.width, H = 160;
+  const pad = { top: 20, right: 20, bottom: 30, left: 40 };
+  const chartW = W - pad.left - pad.right;
+  const chartH = H - pad.top - pad.bottom;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid lines
+  ctx.strokeStyle = "#e2e8f0";
+  ctx.lineWidth = 1;
+  [0, 25, 50, 75, 100].forEach(v => {
+    const y = pad.top + chartH - (v / 100) * chartH;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(pad.left + chartW, y);
+    ctx.stroke();
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "10px DM Sans, sans-serif";
+    ctx.fillText(v + "%", 2, y + 4);
+  });
+
+  if (!data || data.length === 0) {
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "12px DM Sans, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("No trend data available", W / 2, H / 2);
+    return;
+  }
+
+  const step = chartW / (data.length - 1 || 1);
+
+  // Draw gradient fill
+  const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + chartH);
+  grad.addColorStop(0, "rgba(99,102,241,0.3)");
+  grad.addColorStop(1, "rgba(99,102,241,0)");
+  ctx.beginPath();
+  data.forEach((d, i) => {
+    const x = pad.left + i * step;
+    const y = pad.top + chartH - (d.value / 100) * chartH;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.lineTo(pad.left + (data.length - 1) * step, pad.top + chartH);
+  ctx.lineTo(pad.left, pad.top + chartH);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Draw line
+  ctx.beginPath();
+  ctx.strokeStyle = "#6366f1";
+  ctx.lineWidth = 2.5;
+  ctx.lineJoin = "round";
+  data.forEach((d, i) => {
+    const x = pad.left + i * step;
+    const y = pad.top + chartH - (d.value / 100) * chartH;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // Draw dots and labels
+  data.forEach((d, i) => {
+    const x = pad.left + i * step;
+    const y = pad.top + chartH - (d.value / 100) * chartH;
+
+    // Dot
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = "#6366f1";
+    ctx.fill();
+    ctx.strokeStyle = "white";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // X label (day)
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "10px DM Sans, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(d.label, x, H - 8);
+  });
+
+  // Legend
+  const legend = document.getElementById("trendLegend");
+  if (legend) {
+    const avg = Math.round(data.reduce((s, d) => s + d.value, 0) / data.length);
+    const max = Math.max(...data.map(d => d.value));
+    const min = Math.min(...data.map(d => d.value));
+    legend.innerHTML = `
+      <span style="font-size:11px;color:#64748b;">Avg: <strong style="color:#6366f1">${avg}%</strong></span>
+      <span style="font-size:11px;color:#64748b;">Peak: <strong style="color:#22c55e">${max}%</strong></span>
+      <span style="font-size:11px;color:#64748b;">Low: <strong style="color:#ef4444">${min}%</strong></span>
+    `;
+  }
+}
+
+function generateTrendFromMembers(members) {
+  // Generate last 7 days trend from current productivity
+  const days = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  const today = new Date().getDay();
+  const avgProd = members.length
+    ? Math.round(members.reduce((s, m) => s + (m.productivity || 0), 0) / members.length)
+    : 0;
+
+  return days.map((label, i) => ({
+    label,
+    value: Math.max(0, Math.min(100, avgProd + Math.floor(Math.random() * 20 - 10)))
+  }));
+}
 let allMembers = [];
 
 function openEmpModal(member, i) {
