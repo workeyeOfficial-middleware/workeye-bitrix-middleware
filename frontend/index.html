@@ -559,6 +559,18 @@
               <button class="sync-all-btn" onclick="syncAll()">⬆ Sync All</button>
             </div>
           </div>
+          <!-- Search + Filter -->
+          <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);background:#fafbfd;">
+            <input id="empSearch" type="text" placeholder="🔍 Search employee..." oninput="filterEmployees()"
+              style="flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:12px;outline:none;"/>
+            <select id="empFilter" onchange="filterEmployees()"
+              style="padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:inherit;font-size:12px;outline:none;background:white;cursor:pointer;">
+              <option value="all">All Status</option>
+              <option value="active">🟢 Active</option>
+              <option value="idle">🟡 Idle</option>
+              <option value="offline">⚫ Offline</option>
+            </select>
+          </div>
           <div class="tbl-wrap">
             <table>
               <thead><tr>
@@ -634,6 +646,63 @@
 <div id="toast"></div>
 
 </div><!-- /mainApp -->
+
+<!-- Employee Detail Modal -->
+<div id="empModal" onclick="if(event.target===this)closeEmpModal()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:16px;padding:32px;min-width:380px;max-width:460px;box-shadow:0 20px 60px rgba(0,0,0,.2);position:relative;">
+    <button onclick="closeEmpModal()" style="position:absolute;top:14px;right:14px;background:#f1f5f9;border:none;border-radius:50%;width:30px;height:30px;cursor:pointer;font-size:14px;">✕</button>
+
+    <!-- Avatar + Name -->
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;">
+      <div id="empModalAvatar" style="width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:white;">?</div>
+      <div>
+        <div id="empModalName" style="font-size:16px;font-weight:700;color:#1e293b;">—</div>
+        <div id="empModalPosition" style="font-size:12px;color:#94a3b8;">—</div>
+        <div id="empModalStatus" style="margin-top:4px;"></div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;">
+      <div style="padding:14px;background:#f8fafc;border-radius:10px;text-align:center;">
+        <div id="empModalScreenTime" style="font-size:22px;font-weight:700;color:#1e293b;">—</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:2px;">Screen Time</div>
+      </div>
+      <div style="padding:14px;background:#f8fafc;border-radius:10px;text-align:center;">
+        <div id="empModalActiveTime" style="font-size:22px;font-weight:700;color:#1e293b;">—</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:2px;">Active Time</div>
+      </div>
+      <div style="padding:14px;background:#f8fafc;border-radius:10px;text-align:center;">
+        <div id="empModalIdleTime" style="font-size:22px;font-weight:700;color:#1e293b;">—</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:2px;">Idle Time</div>
+      </div>
+      <div style="padding:14px;background:#f8fafc;border-radius:10px;text-align:center;">
+        <div id="empModalProductivity" style="font-size:22px;font-weight:700;color:#6366f1;">—</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:2px;">Productivity</div>
+      </div>
+    </div>
+
+    <!-- Info -->
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;justify-content:space-between;padding:10px 14px;background:#f8fafc;border-radius:8px;">
+        <span style="font-size:12px;color:#64748b;font-weight:500;">Email</span>
+        <span id="empModalEmail" style="font-size:12px;color:#1e293b;font-weight:600;">—</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:10px 14px;background:#f8fafc;border-radius:8px;">
+        <span style="font-size:12px;color:#64748b;font-weight:500;">Department</span>
+        <span id="empModalDept" style="font-size:12px;color:#1e293b;font-weight:600;">—</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:10px 14px;background:#f8fafc;border-radius:8px;">
+        <span style="font-size:12px;color:#64748b;font-weight:500;">Last Activity</span>
+        <span id="empModalLastActivity" style="font-size:12px;color:#1e293b;font-weight:600;">—</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:10px 14px;background:#f8fafc;border-radius:8px;">
+        <span style="font-size:12px;color:#64748b;font-weight:500;">Screenshots Today</span>
+        <span id="empModalScreenshots" style="font-size:12px;color:#1e293b;font-weight:600;">—</span>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Profile Modal -->
 <div id="profileModal" onclick="if(event.target===this)closeProfile()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.5);align-items:center;justify-content:center;">
@@ -941,26 +1010,10 @@ async function loadStats() {
 
 // ── Employees ───────────────────────────────────────────
 function renderEmployees(members) {
+  allMembers = members;
   document.getElementById("empBadge").textContent = members.length;
   document.getElementById("empCount").textContent = members.length + " employees";
-  document.getElementById("empBody").innerHTML = members.map((m,i) => `
-    <tr>
-      <td>
-        <div class="name-with-avatar">
-          <div class="avatar" style="background:${avatarColor(i)}">${(m.name||"?")[0].toUpperCase()}</div>
-          <div>
-            <div class="name-cell">${m.name||"—"}</div>
-            <div class="email-cell">${m.email||""}</div>
-          </div>
-        </div>
-      </td>
-      <td>${statusBadge(m.status)}</td>
-      <td style="font-weight:500">${fmtSec(m.screen_time)}</td>
-      <td>${fmtSec(m.active_time||0)}</td>
-      <td>${fmtSec(m.idle_time||0)}</td>
-      <td style="min-width:110px">${prodBar(m.productivity)}</td>
-      <td style="color:var(--muted)">${m.last_activity||"—"}</td>
-    </tr>`).join("");
+  renderEmployeesFiltered(members);
 }
 
 // ── Attendance ──────────────────────────────────────────
@@ -1124,7 +1177,78 @@ async function loadScreenshotCount() {
   } catch(e) { /* silent */ }
 }
 
-// ── Init ─────────────────────────────────────────────────
+// ── Employee Detail Modal ────────────────────────────────
+let allMembers = [];
+
+function openEmpModal(member, i) {
+  const el = (id) => document.getElementById(id);
+  const colors = ["#6366f1","#14b8a6","#f59e0b","#ef4444","#8b5cf6","#10b981","#f97316","#3b82f6"];
+  el("empModalAvatar").style.background = colors[i % colors.length];
+  el("empModalAvatar").textContent = (member.name||"?")[0].toUpperCase();
+  el("empModalName").textContent = member.name || "—";
+  el("empModalPosition").textContent = member.position || "—";
+  el("empModalStatus").innerHTML = statusBadge(member.status);
+  el("empModalScreenTime").textContent = fmtSec(member.screen_time);
+  el("empModalActiveTime").textContent = fmtSec(member.active_time||0);
+  el("empModalIdleTime").textContent = fmtSec(member.idle_time||0);
+  el("empModalProductivity").textContent = (member.productivity||0) + "%";
+  el("empModalEmail").textContent = member.email || "—";
+  el("empModalDept").textContent = member.department || "—";
+  el("empModalLastActivity").textContent = member.last_activity || "—";
+  el("empModalScreenshots").textContent = member.screenshots_count || "0";
+  document.getElementById("empModal").style.display = "flex";
+}
+
+function closeEmpModal() {
+  document.getElementById("empModal").style.display = "none";
+}
+
+// ── Search & Filter ──────────────────────────────────────
+function filterEmployees() {
+  const search = document.getElementById("empSearch").value.toLowerCase();
+  const filter = document.getElementById("empFilter").value;
+  const filtered = allMembers.filter(m => {
+    const matchSearch = !search ||
+      (m.name||"").toLowerCase().includes(search) ||
+      (m.email||"").toLowerCase().includes(search) ||
+      (m.position||"").toLowerCase().includes(search);
+    const matchFilter = filter === "all" || (m.status||"").toLowerCase() === filter;
+    return matchSearch && matchFilter;
+  });
+  renderEmployeesFiltered(filtered);
+}
+
+function renderEmployeesFiltered(members) {
+  if (!members.length) {
+    document.getElementById("empBody").innerHTML = '<tr><td colspan="7" class="empty">No employees found.</td></tr>';
+    return;
+  }
+  document.getElementById("empBody").innerHTML = members.map((m,i) => `
+    <tr style="cursor:pointer;" onclick='openEmpModal(${JSON.stringify(m).replace(/'/g,"&#39;")}, ${i})'>
+      <td>
+        <div class="name-with-avatar">
+          <div class="avatar" style="background:${avatarColor(i)}">${(m.name||"?")[0].toUpperCase()}</div>
+          <div>
+            <div class="name-cell">${m.name||"—"}</div>
+            <div class="email-cell">${m.email||""}</div>
+          </div>
+        </div>
+      </td>
+      <td>${statusBadge(m.status)}</td>
+      <td style="font-weight:500">${fmtSec(m.screen_time)}</td>
+      <td>${fmtSec(m.active_time||0)}</td>
+      <td>${fmtSec(m.idle_time||0)}</td>
+      <td style="min-width:110px">${prodBar(m.productivity)}</td>
+      <td style="color:var(--muted)">${m.last_activity||"—"}</td>
+    </tr>`).join("");
+}
+
+// ── Auto Refresh every 5 minutes ────────────────────────
+setInterval(() => {
+  if (SESSION.token && SESSION.workeye_url) {
+    loadAll();
+  }
+}, 5 * 60 * 1000);
 loadSession();
 if (SESSION.token && SESSION.workeye_url) {
   showDashboard();
