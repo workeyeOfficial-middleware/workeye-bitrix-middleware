@@ -82,8 +82,8 @@ def get_stats(base_url: str, token: str) -> dict:
     idle    = sum(1 for m in enriched if (m.get("status") or "").lower() == "idle")
     offline = sum(1 for m in enriched if (m.get("status") or "").lower() == "offline")
 
-    productive = [m["productivity"] for m in enriched if m.get("productivity", 0) > 0]
-    avg_prod = int(sum(productive) / len(productive)) if productive else 0
+    all_prod = [m.get("productivity", 0) for m in enriched]
+    avg_prod = int(sum(all_prod) / len(all_prod)) if all_prod else 0
 
     stats["total_members"]        = total
     stats["active_now"]           = active
