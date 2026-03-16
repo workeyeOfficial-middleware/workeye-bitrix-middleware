@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>WorkEye → Bitrix24</title>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&family=Inter:wght@200;300;400;500&display=swap" rel="stylesheet"/>
   <style>
     :root {
       --bg: #f0f2f7; --surface: #ffffff; --surface2: #f8fafc; --border: #e4e8f0;
@@ -72,16 +72,16 @@
     .sync-all-btn:hover{opacity:.88}
     .sync-all-btn:disabled{opacity:.45;cursor:not-allowed}
     .top-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px}
-    .top-stat{background:var(--surface);border-radius:var(--radius);padding:20px 22px;box-shadow:var(--shadow);position:relative;overflow:hidden;display:flex;flex-direction:column;gap:6px;border:1px solid var(--border);transition:transform .2s,box-shadow .2s,background .3s}
+    .top-stat{background:var(--surface);border-radius:var(--radius);padding:24px 24px 20px;box-shadow:var(--shadow);position:relative;overflow:hidden;display:flex;flex-direction:column;gap:6px;border:1px solid var(--border);transition:transform .2s,box-shadow .2s,background .3s}
     .top-stat:hover{transform:translateY(-2px);box-shadow:var(--shadow2)}
-    .top-stat-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
-    .top-stat-val{font-family:'Syne',sans-serif;font-size:38px;font-weight:800;line-height:1;color:var(--text);letter-spacing:-1px}
-    .top-stat-change{font-size:11px;color:var(--green);font-weight:600;display:flex;align-items:center;gap:4px}
-    .top-stat-icon{position:absolute;right:18px;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px}
+    .top-stat-lbl{font-size:9.5px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:1.4px;font-family:'DM Sans',sans-serif}
+    .top-stat-val{font-family:'Inter',sans-serif;font-size:46px;font-weight:200;line-height:1;color:var(--text);letter-spacing:-2px;margin:4px 0 2px}
+    .top-stat-change{font-size:11px;color:var(--green);font-weight:500;display:flex;align-items:center;gap:4px;font-family:'DM Sans',sans-serif}
+    .top-stat-icon{position:absolute;right:20px;top:20px;width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;opacity:.9}
     .tsi-blue{background:#dbeafe}[data-theme="dark"] .tsi-blue{background:#1e3a5f}
     .tsi-teal{background:#ccfbf1}[data-theme="dark"] .tsi-teal{background:#0c3830}
     .tsi-purple{background:#ede9fe}[data-theme="dark"] .tsi-purple{background:#2e1065}
-    .top-stat::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px;border-radius:0 0 var(--radius) var(--radius)}
+    .top-stat::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px}
     .top-stat:nth-child(1)::after{background:linear-gradient(90deg,#5b5ef4,#818cf8)}
     .top-stat:nth-child(2)::after{background:linear-gradient(90deg,#06b6d4,#10b981)}
     .top-stat:nth-child(3)::after{background:linear-gradient(90deg,#a855f7,#ec4899)}
@@ -268,8 +268,7 @@
       <div class="nav-item active" id="nav-dashboard" onclick="showPage('dashboard',this)"><span class="nav-icon">📊</span> Dashboard</div>
       <div class="nav-item" id="nav-attendance" onclick="showPage('attendance',this)"><span class="nav-icon">🕐</span> Attendance</div>
       <div class="nav-item" id="nav-screenshots" onclick="showPage('screenshots',this)"><span class="nav-icon">🖥</span> Screenshots</div>
-      <div class="nav-section" style="margin-top:8px">Bitrix24</div>
-      <div class="nav-item" id="nav-sync" onclick="showPage('sync',this)"><span class="nav-icon">⬆</span> Sync History<span class="nav-badge" id="syncBadge">0</span></div>
+
     </nav>
     <div class="sidebar-footer">
       <div class="logout-btn" onclick="doLogout()">↩ <span>Logout</span></div>
@@ -283,11 +282,11 @@
           <div class="page-title" id="pageTitle">Dashboard</div>
           <div style="font-size:11px;color:var(--muted);margin-top:2px" id="pageSubtitle">Live employee monitoring</div>
         </div>
-        <div class="header-right">
+        <div class="header-right" style="position:relative">
           <span id="lastSync" style="font-size:11px;color:var(--muted)"></span>
           <span id="serverStatus" class="server-dot"><span class="dot dot-online"></span><span>Connected</span></span>
           <button class="refresh-btn" onclick="loadAllWithAnim()"><span class="spin-icon">↻</span> Refresh</button>
-          <button class="sync-all-btn" onclick="syncAll()">⬆ Sync All</button>
+          <button class="sync-all-btn" onclick="showDownloadMenu()" id="downloadBtn">📥 Download Report</button><div id="downloadMenu" style="display:none;position:absolute;right:0;top:44px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow2);padding:6px;z-index:999;min-width:190px"><div onclick="exportDashboardCSV()" style="padding:9px 14px;cursor:pointer;border-radius:8px;font-size:12px;font-weight:500;color:var(--text);display:flex;align-items:center;gap:8px;transition:background .15s" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background='transparent'">📊 Dashboard CSV</div><div onclick="exportDashboardPDF()" style="padding:9px 14px;cursor:pointer;border-radius:8px;font-size:12px;font-weight:500;color:var(--text);display:flex;align-items:center;gap:8px;transition:background .15s" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background='transparent'">📋 Dashboard PDF</div><div onclick="exportEmployeesCSV()" style="padding:9px 14px;cursor:pointer;border-radius:8px;font-size:12px;font-weight:500;color:var(--text);display:flex;align-items:center;gap:8px;transition:background .15s" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background='transparent'">👥 Employees CSV</div><div onclick="exportAttendanceCSV()" style="padding:9px 14px;cursor:pointer;border-radius:8px;font-size:12px;font-weight:500;color:var(--text);display:flex;align-items:center;gap:8px;transition:background .15s" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background='transparent'">🕐 Attendance CSV</div></div>
         </div>
       </div>
       <div id="page-dashboard" class="page on">
@@ -585,6 +584,101 @@ if(attDateEl)attDateEl.value=todayDate;
 loadSession();
 if(SESSION.token&&SESSION.workeye_url)showDashboard();
 else{document.getElementById("loginPage").style.display="flex";document.getElementById("mainApp").style.display="none"}
+
+function showDownloadMenu(){
+  const menu=document.getElementById('downloadMenu');
+  menu.style.display=menu.style.display==='none'?'block':'none';
+}
+document.addEventListener('click',function(e){
+  const btn=document.getElementById('downloadBtn');
+  const menu=document.getElementById('downloadMenu');
+  if(menu&&btn&&!btn.contains(e.target)&&!menu.contains(e.target))menu.style.display='none';
+});
+function exportDashboardCSV(){
+  document.getElementById('downloadMenu').style.display='none';
+  const today=new Date().toISOString().substring(0,10);
+  const el=id=>document.getElementById(id);
+  const rows=[
+    ['Metric','Value'],
+    ['Total Employees', el('vTotal')?.textContent||'—'],
+    ['Active Rate', el('vActiveRate')?.textContent||'—'],
+    ['Avg Productivity', el('vProd')?.textContent||'—'],
+    ['Active Now', el('vActive')?.textContent||'—'],
+    ['Idle', el('vIdle')?.textContent||'—'],
+    ['Offline', el('vOffline')?.textContent||'—'],
+    ['Team Size', el('vTeamSize')?.textContent||'—'],
+    ['Avg Screen Time', el('vScreenTime')?.textContent||'—'],
+    ['Total Screenshots', el('vScreenshots')?.textContent||'—'],
+    ['',''],
+    ['Generated',''+new Date().toLocaleString()]
+  ];
+  if(allMembers.length){
+    rows.push(['',''],['Employee Details',''],['Name','Status','Productivity','Screen Time']);
+    allMembers.forEach(m=>rows.push([m.name||'—',(m.status||'—'),(m.productivity||0)+'%',fmtSec(m.screen_time)]));
+  }
+  const csv=rows.map(r=>r.map(c=>'"'+c+'"').join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement('a');link.href=url;link.download='Dashboard_Report_'+today+'.csv';link.click();URL.revokeObjectURL(url);
+  toast('✓ Dashboard CSV downloaded!','ok');
+}
+function exportDashboardPDF(){
+  document.getElementById('downloadMenu').style.display='none';
+  const today=new Date().toISOString().substring(0,10);
+  const el=id=>document.getElementById(id);
+  const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  const bg=isDark?'#0b0e18':'#ffffff', text=isDark?'#f1f5f9':'#0f172a', muted=isDark?'#64748b':'#94a3b8', surface=isDark?'#141826':'#f8fafc', accent='#5b5ef4';
+  let empRows='';
+  allMembers.forEach((m,i)=>{
+    const rowBg=i%2===0?surface:bg;
+    const statusColor=m.status==='active'?'#10b981':m.status==='idle'?'#f59e0b':'#ef4444';
+    empRows+=`<tr style="background:${rowBg}"><td style="padding:10px 14px;font-size:12px;color:${text};border-bottom:1px solid ${isDark?'#242b40':'#e4e8f0'}">${m.name||'—'}</td><td style="padding:10px 14px"><span style="background:${statusColor}20;color:${statusColor};padding:2px 9px;border-radius:5px;font-size:11px;font-weight:600">${m.status||'—'}</span></td><td style="padding:10px 14px;font-size:12px;color:${text};font-weight:600">${(m.productivity||0)}%</td><td style="padding:10px 14px;font-size:12px;color:${text}">${fmtSec(m.screen_time)}</td><td style="padding:10px 14px;font-size:12px;color:${muted}">${fmtSec(m.active_time||0)}</td></tr>`;
+  });
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>WorkEye Dashboard Report</title>
+  <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:${bg};color:${text};padding:40px}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:36px;padding-bottom:20px;border-bottom:2px solid ${accent}}
+  .logo{display:flex;align-items:center;gap:12px}.logo-icon{width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,#5b5ef4,#a855f7);display:flex;align-items:center;justify-content:center;font-size:22px}
+  .logo-text{font-size:22px;font-weight:700;color:${text}}.logo-sub{font-size:11px;color:${muted};margin-top:2px}
+  .meta{text-align:right;font-size:11px;color:${muted}}.meta strong{color:${text};font-size:13px}
+  .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px}
+  .stat-card{background:${surface};border-radius:12px;padding:20px 22px;border:1px solid ${isDark?'#242b40':'#e4e8f0'}}
+  .stat-lbl{font-size:9px;font-weight:600;color:${muted};text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px}
+  .stat-val{font-size:36px;font-weight:200;color:${text};letter-spacing:-1px;line-height:1}
+  .stat-sub{font-size:11px;color:#10b981;margin-top:6px;font-weight:500}
+  .section-title{font-size:13px;font-weight:700;color:${text};margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid ${isDark?'#242b40':'#e4e8f0'}}
+  .small-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:28px}
+  .small-card{background:${surface};border-radius:10px;padding:12px 14px;border:1px solid ${isDark?'#242b40':'#e4e8f0'};text-align:center}
+  .small-val{font-size:20px;font-weight:300;color:${text};letter-spacing:-.5px}
+  .small-lbl{font-size:9px;color:${muted};margin-top:4px;text-transform:uppercase;letter-spacing:.6px}
+  table{width:100%;border-collapse:collapse}th{background:${surface};color:${muted};font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;padding:10px 14px;text-align:left;border-bottom:2px solid ${isDark?'#242b40':'#e4e8f0'}}
+  .footer{margin-top:28px;padding-top:16px;border-top:1px solid ${isDark?'#242b40':'#e4e8f0'};font-size:10px;color:${muted};text-align:center}
+  @media print{body{padding:20px}}</style></head><body>
+  <div class="header">
+    <div class="logo"><div class="logo-icon">👁</div><div><div class="logo-text">WorkEye Monitor</div><div class="logo-sub">Employee Monitoring Dashboard</div></div></div>
+    <div class="meta"><strong>Dashboard Report</strong><br>${today}<br>Generated at ${new Date().toLocaleTimeString()}</div>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="stat-lbl">Total Employees</div><div class="stat-val">${el('vTotal')?.textContent||'—'}</div><div class="stat-sub">↑ ${el('vChange')?.textContent||''}</div></div>
+    <div class="stat-card"><div class="stat-lbl">Active Rate</div><div class="stat-val">${el('vActiveRate')?.textContent||'—'}</div><div class="stat-sub">↑ ${el('vActiveChange')?.textContent||''}</div></div>
+    <div class="stat-card"><div class="stat-lbl">Avg Productivity</div><div class="stat-val">${el('vProd')?.textContent||'—'}</div><div class="stat-sub">↑ ${el('vProdChange')?.textContent||''}</div></div>
+  </div>
+  <div class="small-grid">
+    <div class="small-card"><div class="small-val">${el('vActive')?.textContent||'—'}</div><div class="small-lbl">Active Now</div></div>
+    <div class="small-card"><div class="small-val">${el('vScreenTime')?.textContent||'—'}</div><div class="small-lbl">Avg Screen</div></div>
+    <div class="small-card"><div class="small-val">${el('vTeamSize')?.textContent||'—'}</div><div class="small-lbl">Team Size</div></div>
+    <div class="small-card"><div class="small-val">${el('vIdle')?.textContent||'—'}</div><div class="small-lbl">Idle</div></div>
+    <div class="small-card"><div class="small-val">${el('vScreenshots')?.textContent||'—'}</div><div class="small-lbl">Screenshots</div></div>
+    <div class="small-card"><div class="small-val">${el('vOffline')?.textContent||'—'}</div><div class="small-lbl">Offline</div></div>
+  </div>
+  ${allMembers.length?`<div class="section-title">Team Members (${allMembers.length})</div><table><thead><tr><th>Name</th><th>Status</th><th>Productivity</th><th>Screen Time</th><th>Active Time</th></tr></thead><tbody>${empRows}</tbody></table>`:''}
+  <div class="footer">WorkEye Monitor · Report generated on ${new Date().toLocaleString()} · Confidential</div>
+  </body></html>`;
+  const win=window.open('','_blank');
+  win.document.write(html);
+  win.document.close();
+  setTimeout(()=>win.print(),600);
+  toast('✓ PDF report ready to print/save!','ok');
+}
 </script>
 </body>
 </html>
