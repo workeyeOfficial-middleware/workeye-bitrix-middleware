@@ -731,12 +731,22 @@ async function openEmpScreenshots(memberId, memberName){
   overlay.style.display = 'block';
 
   try {
-    const res = await apiFetch('/get-screenshots');
-    const all = res.data || [];
-    const memberSS = all.filter(s => {
-      const name = s.member_name || s.name || '';
-      return name === memberName || s.member_id === memberId;
-    });
+    let memberSS = [];
+if (allScreenshots && allScreenshots.length > 0) {
+  memberSS = allScreenshots.filter(s => {
+    const n = s.member_name || s.name || '';
+    return n === memberName || String(s.member_id) === String(memberId);
+  });
+}
+if (!memberSS.length) {
+  const res = await apiFetch('/get-screenshots');
+  allScreenshots = res.data || [];
+  memberSS = allScreenshots.filter(s => {
+    const n = s.member_name || s.name || '';
+    return n === memberName || String(s.member_id) === String(memberId);
+  });
+}
+    
 
     countEl.textContent = memberSS.length + ' screenshots';
 
