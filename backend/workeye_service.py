@@ -1,6 +1,5 @@
 import requests
 from datetime import datetime, timedelta
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def get_token(base_url: str, email: str, password: str) -> str:
     url = f"{base_url}/auth/admin/login"
@@ -56,28 +55,8 @@ def get_stats(base_url: str, token: str) -> dict:
     if not isinstance(members, list):
         members = []
 
-    # Enrich every member with live data — parallel for speed
-    def enrich_member(m):
-        member_id = m.get("id")
-        if member_id:
-            live = get_member_live(base_url, token, member_id)
-            if live:
-                m["screen_time"]   = live.get("screen_time",  m.get("screen_time", 0))
-                m["active_time"]   = live.get("active_time",  m.get("active_time", 0))
-                m["idle_time"]     = live.get("idle_time",    m.get("idle_time", 0))
-                m["productivity"]  = live.get("productivity", m.get("productivity", 0))
-                if live.get("status"):
-                    m["status"] = live["status"]
-                m["is_punched_in"] = live.get("is_punched_in", m.get("is_punched_in", False))
-        return m
-
-    enriched = members
-    try:
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            enriched = list(executor.map(enrich_member, members))
-    except Exception as e:
-        print(f"[stats] Parallel enrichment failed: {e}")
-        enriched = members
+    # Use base stats data directly - already real-time from WorkEye
+    enriched = list(members)
 
     # Recalculate aggregate stats from enriched members
     total   = len(enriched)
