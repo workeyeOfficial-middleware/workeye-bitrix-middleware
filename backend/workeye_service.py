@@ -1,5 +1,6 @@
 import requests
 from datetime import datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def get_token(base_url: str, email: str, password: str) -> str:
     url = f"{base_url}/auth/admin/login"
@@ -17,15 +18,10 @@ def get_token(base_url: str, email: str, password: str) -> str:
 
 
 def get_member_live(base_url: str, token: str, member_id: int) -> dict:
-    """
-    Fetch live counters for a single member.
-    Returns accurate real-time productivity, screen time, active time, idle time.
-    Falls back to empty dict if the call fails.
-    """
     try:
         headers = {"Authorization": f"Bearer {token}"}
         url = f"{base_url}/api/dashboard/member/{member_id}/live"
-        r = requests.get(url, headers=headers, timeout=10)
+        r = requests.get(url, headers=headers, timeout=5)
         if r.status_code == 200:
             data = r.json()
             counters = data.get("live_counters") or {}
@@ -44,25 +40,24 @@ def get_member_live(base_url: str, token: str, member_id: int) -> dict:
 
 
 def get_stats(base_url: str, token: str) -> dict:
-    """
-    Fetch dashboard stats and enrich each member with live productivity data.
-    Uses /api/dashboard/stats for the member list, then calls
-    /api/dashboard/member/:id/live for accurate per-member figures.
-    """
     headers = {"Authorization": f"Bearer {token}"}
     url = f"{base_url}/api/dashboard/stats"
     r = requests.get(url, headers=headers, timeout=15)
     if r.status_code != 200:
         raise Exception(f"Failed to fetch stats: {r.status_code}")
 
-    data = r.json()
+    try:
+        data = r.json()
+    except Exception:
+        raise Exception("Failed to parse stats response")
     payload  = data.get("data") or data
     stats    = payload.get("stats") or payload
     members  = payload.get("members") or []
+    if not isinstance(members, list):
+        members = []
 
-    # Enrich every member with live data
-    enriched = []
-    for m in members:
+    # Enrich every member with live data — parallel for speed
+    def enrich_member(m):
         member_id = m.get("id")
         if member_id:
             live = get_member_live(base_url, token, member_id)
@@ -74,7 +69,15 @@ def get_stats(base_url: str, token: str) -> dict:
                 if live.get("status"):
                     m["status"] = live["status"]
                 m["is_punched_in"] = live.get("is_punched_in", m.get("is_punched_in", False))
-        enriched.append(m)
+        return m
+
+    enriched = members
+    try:
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            enriched = list(executor.map(enrich_member, members))
+    except Exception as e:
+        print(f"[stats] Parallel enrichment failed: {e}")
+        enriched = members
 
     # Recalculate aggregate stats from enriched members
     total   = len(enriched)
@@ -94,6 +97,19 @@ def get_stats(base_url: str, token: str) -> dict:
     print(f"[stats] {total} members | Active:{active} Idle:{idle} Offline:{offline} AvgProd:{avg_prod}%")
 
     return {"stats": stats, "members": enriched}
+
+
+def get_activity_trends(base_url: str, token: str) -> list:
+    try:
+        headers = {"Authorization": f"Bearer {token}"}
+        url = f"{base_url}/api/dashboard/activity-trends"
+        r = requests.get(url, headers=headers, timeout=15)
+        if r.status_code == 200:
+            data = r.json()
+            return data.get("trends") or []
+    except Exception as e:
+        print(f"[trends] Failed: {e}")
+    return []
 
 
 def get_attendance(base_url: str, token: str, date: str = None) -> list:
@@ -129,7 +145,6 @@ def get_attendance(base_url: str, token: str, date: str = None) -> list:
 
 
 def get_screenshots(base_url: str, token: str, date: str = None) -> list:
-    """Fetch ALL screenshots for all members across all dates"""
     headers = {"Authorization": f"Bearer {token}"}
 
     try:
@@ -174,7 +189,7 @@ def get_screenshots(base_url: str, token: str, date: str = None) -> list:
                 for s in screenshots:
                     s["member_name"]  = member_name
                     s["member_email"] = member_email
-                    # Use Cloudinary URL directly if available, else fallback to proxy
+                    # Use Cloudinary URL directly if available
                     if s.get("screenshot_url"):
                         s["image_url"] = s["screenshot_url"]
                     else:
