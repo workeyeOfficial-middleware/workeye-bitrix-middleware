@@ -281,6 +281,7 @@
     <nav>
       <div class="nav-section">Monitor</div>
       <div class="nav-item active" id="nav-dashboard" onclick="showPage('dashboard',this)"><span class="nav-icon">📊</span> Dashboard</div>
+      <div class="nav-item" id="nav-team" onclick="showPage('team',this)"><span class="nav-icon">👥</span> Team</div>
       <div class="nav-item" id="nav-attendance" onclick="showPage('attendance',this)"><span class="nav-icon">🕐</span> Attendance</div>
       <div class="nav-item" id="nav-screenshots" onclick="showPage('screenshots',this)"><span class="nav-icon">🖥</span> Screenshots</div>
 
@@ -390,6 +391,31 @@
           </div>
         </div>
       </div>
+
+      <div id="page-team" class="page">
+        <div class="table-card">
+          <div class="table-head">
+            <div><div class="table-title">Team Members</div><div class="table-sub" id="teamCount">— employees</div></div>
+            <div class="tbl-actions">
+              <span class="badge" id="teamBadge">0</span>
+              <button class="action-btn btn-green" onclick="exportEmployeesCSV()">📥 Export CSV</button>
+            </div>
+          </div>
+          <div class="search-bar">
+            <input id="teamSearch" class="search-input" type="text" placeholder="🔍 Search employee..." oninput="filterTeam()"/>
+            <select id="teamFilter" class="filter-select" onchange="filterTeam()">
+              <option value="all">All Status</option>
+              <option value="active">🟢 Active</option>
+              <option value="idle">🟡 Idle</option>
+              <option value="offline">⚫ Offline</option>
+            </select>
+          </div>
+          <div id="teamGrid" style="padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">
+            <div class="empty" style="grid-column:1/-1">Loading…</div>
+          </div>
+        </div>
+      </div>
+
       <div id="page-attendance" class="page">
         <div class="table-card">
           <div class="table-head">
@@ -555,13 +581,14 @@ function closeProfile(){document.getElementById("profileModal").style.display="n
 function doLogout(){clearSession();document.getElementById("mainApp").style.display="none";document.getElementById("loginPage").style.display="flex";document.getElementById("loginPassword").value="";if(autoRefreshTimer)clearInterval(autoRefreshTimer)}
 function showDashboard(){document.getElementById("loginPage").style.display="none";document.getElementById("mainApp").style.display="block";const name=SESSION.email?SESSION.email.split("@")[0]:"Admin";document.getElementById("sidebarName").textContent=name;document.getElementById("sidebarAvatar").textContent=(name||"A")[0].toUpperCase();loadAll();startAutoRefresh()}
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.getElementById("loginPage").style.display!=="none")doLogin()});
-const pages=["dashboard","attendance","screenshots","sync"];
-function showPage(name,el){pages.forEach(p=>{const pg=document.getElementById("page-"+p);if(pg)pg.style.display=p===name?"block":"none"});document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));if(el)el.classList.add("active");const titles={dashboard:"Dashboard",attendance:"Attendance",screenshots:"Screenshots",sync:"Sync to Bitrix24"},subs={dashboard:"Live employee monitoring",attendance:"Check-in & check-out records",screenshots:"Activity captures",sync:"Push data to Bitrix24 Drive"};document.getElementById("pageTitle").textContent=titles[name]||name;document.getElementById("pageSubtitle").textContent=subs[name]||"";if(name==="attendance")loadAttendance();if(name==="screenshots")loadScreenshots()}
+const pages=["dashboard","team","attendance","screenshots","sync"];
+function showPage(name,el){pages.forEach(p=>{const pg=document.getElementById("page-"+p);if(pg)pg.style.display=p===name?"block":"none"});document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));if(el)el.classList.add("active");const titles={dashboard:"Dashboard",team:"Team",attendance:"Attendance",screenshots:"Screenshots",sync:"Sync to Bitrix24"},subs={dashboard:"Live employee monitoring",team:"All team members",attendance:"Check-in & check-out records",screenshots:"Activity captures",sync:"Push data to Bitrix24 Drive"};document.getElementById("pageTitle").textContent=titles[name]||name;document.getElementById("pageSubtitle").textContent=subs[name]||"";if(name==="team")renderTeamGrid(allMembers);if(name==="attendance")loadAttendance();if(name==="screenshots")loadScreenshots()}
 let _tt;
 function toast(msg,type="ok"){const el=document.getElementById("toast");el.textContent=msg;el.className="show "+type;clearTimeout(_tt);_tt=setTimeout(()=>el.className="",4000)}
 const avatarColors=["#5b5ef4","#06b6d4","#f59e0b","#ef4444","#8b5cf6","#10b981","#f97316","#3b82f6","#ec4899"];
 function avatarColor(i){return avatarColors[i%avatarColors.length]}
 function statusBadge(s){s=(s||"").toLowerCase();const cls=s==="active"?"status-active":s==="idle"?"status-idle":"status-offline",dot=s==="active"?"🟢":s==="idle"?"🟡":"⚫";return`<span class="status-badge ${cls}">${dot} ${s||"—"}</span>`}
+
 function fmtTime(iso){return iso?iso.substring(11,16):"—"}
 function fmtSec(sec){sec=parseInt(sec)||0;const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60);return h>0?`${h}h ${m}m`:`${m}m`}
 function prodBar(pct){pct=parseInt(pct)||0;const color=pct>=70?"var(--green)":pct>=40?"var(--amber)":"var(--red)";return`<div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div><span class="bar-pct">${pct}%</span></div>`}
@@ -809,6 +836,60 @@ if (!memberSS.length) {
 function closeEmpScreenshots(){
   document.getElementById('empSsPanel').style.display = 'none';
   document.getElementById('empSsOverlay').style.display = 'none';
+}
+
+function filterTeam(){
+  const search=document.getElementById("teamSearch").value.toLowerCase();
+  const filter=document.getElementById("teamFilter").value;
+  const filtered=allMembers.filter(m=>{
+    const mS=!search||(m.name||"").toLowerCase().includes(search)||(m.email||"").toLowerCase().includes(search);
+    const mF=filter==="all"||(m.status||"").toLowerCase()===filter;
+    return mS&&mF;
+  });
+  renderTeamGrid(filtered);
+}
+
+function renderTeamGrid(members){
+  const grid=document.getElementById("teamGrid");
+  if(!grid)return;
+  document.getElementById("teamBadge").textContent=members.length;
+  document.getElementById("teamCount").textContent=members.length+" employees";
+  if(!members.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1">No employees found.</div>';return;}
+  grid.innerHTML=members.map((m,i)=>{
+    const statusColor=m.status==="active"?"var(--green)":m.status==="idle"?"var(--amber)":"var(--red)";
+    const statusBg=m.status==="active"?"#dcfce7":m.status==="idle"?"#fef9c3":"#fee2e2";
+    const statusTxt=m.status==="active"?"#166534":m.status==="idle"?"#854d0e":"#b91c1c";
+    return `<div style="background:var(--surface);border-radius:14px;padding:18px;box-shadow:0 2px 12px rgba(0,0,0,.06);cursor:pointer;transition:transform .2s,box-shadow .2s;border:1px solid var(--border)" 
+      onmouseenter="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,.1)'" 
+      onmouseleave="this.style.transform='none';this.style.boxShadow='0 2px 12px rgba(0,0,0,.06)'"
+      onclick='openEmpModal(${JSON.stringify(m).replace(/'/g,"&#39;")},${i})'>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+        <div style="width:46px;height:46px;border-radius:50%;background:${avatarColor(i)};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:white;flex-shrink:0">${(m.name||"?")[0].toUpperCase()}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.name||"—"}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.email||""}</div>
+        </div>
+        <span style="background:${statusBg};color:${statusTxt};padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;flex-shrink:0">${m.status||"—"}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+        <div style="background:var(--surface2);border-radius:8px;padding:8px;text-align:center;border:1px solid var(--border)">
+          <div style="font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:var(--text)">${fmtSec(m.screen_time)}</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Screen</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:8px;text-align:center;border:1px solid var(--border)">
+          <div style="font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:var(--text)">${fmtSec(m.active_time||0)}</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Active</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:8px;text-align:center;border:1px solid var(--border)">
+          <div style="font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:var(--accent)">${(m.productivity||0)}%</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Productivity</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:11px;color:var(--muted)">${m.position||"—"}</div>
+        <button onclick="event.stopPropagation();showSS(this)" data-id="${m.id}" data-name="${m.name||''}" style="background:rgba(91,94,244,0.12);color:#5b5ef4;border:1.5px solid #5b5ef4;border-radius:8px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">📸 ${m.screenshots_count||0}</button>
+    </div>`;
+  }).join("");
 }
 </script>
 </body>
