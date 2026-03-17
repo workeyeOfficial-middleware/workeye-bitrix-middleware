@@ -171,7 +171,11 @@ def get_screenshots(base_url: str, token: str, date: str = None) -> list:
                 for s in screenshots:
                     s["member_name"]  = member_name
                     s["member_email"] = member_email
-                    s["image_url"]    = f"/proxy-image?workeye_url={base_url}&token={token}&screenshot_id={s['id']}"
+                    # Use Cloudinary URL directly if available, else fallback to proxy
+                    if s.get("screenshot_url"):
+                        s["image_url"] = s["screenshot_url"]
+                    else:
+                        s["image_url"] = f"/proxy-image?workeye_url={base_url}&token={token}&screenshot_id={s['id']}"
 
                 all_screenshots.extend(screenshots)
 
