@@ -67,9 +67,9 @@ async def get_trends(workeye_url: str, token: str):
 
 # ── Attendance ───────────────────────────────────────────
 @app.get("/get-attendance")
-async def get_attendance(workeye_url: str, token: str):
+async def get_attendance(workeye_url: str, token: str, date: str = None):
     try:
-        data = ws.get_attendance(workeye_url, token)
+        data = ws.get_attendance(workeye_url, token, date)
         return {"success": True, "data": data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

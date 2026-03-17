@@ -96,11 +96,14 @@ def get_stats(base_url: str, token: str) -> dict:
     return {"stats": stats, "members": enriched}
 
 
-def get_attendance(base_url: str, token: str) -> list:
+def get_attendance(base_url: str, token: str, date: str = None) -> list:
     headers = {"Authorization": f"Bearer {token}"}
     try:
         url = f"{base_url}/api/attendance/members"
-        r = requests.get(url, headers=headers, timeout=15)
+        params = {}
+        if date:
+            params["date"] = date
+        r = requests.get(url, headers=headers, params=params, timeout=15)
         if r.status_code == 200:
             data = r.json()
             members = data.get("members") or data.get("data") or []
