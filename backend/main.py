@@ -57,48 +57,14 @@ async def get_stats(workeye_url: str, token: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 # ── Attendance ───────────────────────────────────────────
-@app.get("/get-attendance")
-async def get_attendance(workeye_url: str, token: str):
+@app.get("/get-trends")
+async def get_trends(workeye_url: str, token: str):
     try:
-        data = ws.get_attendance(workeye_url, token)
+        data = ws.get_activity_trends(workeye_url, token)
         return {"success": True, "data": data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ── Screenshots ──────────────────────────────────────────
-@app.get("/get-screenshots")
-async def get_screenshots(workeye_url: str, token: str, date: str = None):
-    try:
-        data = ws.get_screenshots(workeye_url, token, date)
-        return {"success": True, "data": data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# ── Proxy image ──────────────────────────────────────────
-@app.get("/proxy-image")
-async def proxy_image(workeye_url: str, token: str, screenshot_id: int, email: str = None, password: str = None):
-    try:
-        try:
-            image_bytes = ws.get_screenshot_image(workeye_url, token, screenshot_id)
-        except Exception as e:
-            if ("401" in str(e) or "404" in str(e) or "403" in str(e)) and email and password:
-                new_token = ws.get_token(workeye_url, email, password)
-                image_bytes = ws.get_screenshot_image(workeye_url, new_token, screenshot_id)
-            else:
-                raise e
-        return Response(content=image_bytes, media_type="image/webp")
-    except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-# ── Sync ─────────────────────────────────────────────────
-@app.post("/sync-dashboard")
-async def sync_dashboard(workeye_url: str, token: str):
-    try:
-        data = ws.get_stats(workeye_url, token)
-        result = bs.sync_dashboard(data)
-        return {"success": True, "result": result}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/sync-employees")
 async def sync_employees(workeye_url: str, token: str):
