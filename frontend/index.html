@@ -762,8 +762,8 @@ if (!memberSS.length) {
       const valid = s.is_valid;
       const vc = valid ? 'ss-valid-ok' : 'ss-valid-bad';
       const vt = valid ? '✓ Valid' : '✗ Invalid';
-      return `<div class="ss-card" id="esspcard-${s.id}" onclick="openModal('','${(s.member_name||'').replace(/'/g,'')}','${date} ${time}')">
-        <div class="ss-img-wrap" id="esspimg-${s.id}">
+      return  `<div class="ss-card" id="esspcard-${s.id}" onclick="openModal('','${(s.member_name||'').replace(/'/g,'')}','${date} ${time}')" style="min-height:165px;display:flex;flex-direction:column">
+        <div class="ss-img-wrap" id="esspimg-${s.id}" style="height:110px;min-height:110px;flex-shrink:0">
           <div class="ss-no-img"><span style="font-size:26px">🖥</span><span>Loading…</span></div>
         </div>
         <div class="ss-info">
