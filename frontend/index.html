@@ -1056,8 +1056,9 @@ function renderEdTab(tab,member,i){
   }
 }
 
-async function loadEdAttendanceFull(member){
-  if(typeof member==='string')try{member=JSON.parse(member)}catch(e){}
+async function loadEdAttendanceFull(btn){
+  let member;
+  try{member=JSON.parse(btn.getAttribute('data-member').replace(/&#39;/g,"'"))}catch(e){toast('Error parsing member','err');return;}
   const el=document.getElementById('edTabContent');
   const end=new Date().toISOString().substring(0,10);
   const start=new Date(Date.now()-30*24*60*60*1000).toISOString().substring(0,10);
@@ -1070,13 +1071,11 @@ async function loadEdAttendanceFull(member){
       tableRows.innerHTML=records.map(r=>{
         const d=new Date(r.date);
         const sBg=r.status==='Present'?'#dcfce7':r.status==='Absent'?'#fee2e2':'#fef9c3';
-        const sTxt=r.status==='Present'?'#166534':r.status==='Absent'?'#b91c1c':'#854d0e';
+        const sTxt=r.status==='Present'?'#166634':r.status==='Absent'?'#b91c1c':'#854d0e';
         return `<tr><td style="padding:8px 12px;border-bottom:1px solid var(--border);font-weight:500;color:var(--text)">${r.date||'—'}</td><td style="padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text2)">${days[d.getDay()]||'—'}</td><td style="padding:8px 12px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;color:var(--green)">${r.punch_in_time?fmtTime12(r.punch_in_time):'N/A'}</td><td style="padding:8px 12px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;color:var(--red)">${r.punch_out_time?fmtTime12(r.punch_out_time):'N/A'}</td><td style="padding:8px 12px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace">${r.duration||'—'}</td><td style="padding:8px 12px;border-bottom:1px solid var(--border)"><span style="background:${sBg};color:${sTxt};padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">${r.status||'—'}</span></td></tr>`;
       }).join('');
     }
-    // Remove the view more button
-    const btn=el.querySelector('button');
-    if(btn&&btn.textContent.includes('View All'))btn.parentElement.remove();
+    btn.parentElement.remove();
   }catch(e){toast('Error loading full attendance','err');}
 }
 
@@ -1127,7 +1126,7 @@ async function loadEdAttendance(member){
           return `<tr><td style="padding:8px 12px;border-bottom:1px solid var(--border);font-weight:500;color:var(--text)">${r.date||'—'}</td><td style="padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text2)">${days[d.getDay()]||'—'}</td><td style="padding:8px 12px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;color:var(--green)">${r.punch_in_time?fmtTime12(r.punch_in_time):'N/A'}</td><td style="padding:8px 12px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;color:var(--red)">${r.punch_out_time?fmtTime12(r.punch_out_time):'N/A'}</td><td style="padding:8px 12px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace">${r.duration||'—'}</td><td style="padding:8px 12px;border-bottom:1px solid var(--border)"><span style="background:${sBg};color:${sTxt};padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">${r.status||'—'}</span></td></tr>`;
         }).join('')}</tbody>
       </table></div>
-      ${records.length>14?`<div style="text-align:center;padding:12px"><button onclick="loadEdAttendanceFull(${JSON.stringify(member).replace(/'/g,"&#39;")})" style="background:var(--accent);color:white;border:none;border-radius:8px;padding:8px 20px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">View All ${records.length} Records</button></div>`:''}
+      ${records.length>14?`<div style="text-align:center;padding:12px"><button onclick="loadEdAttendanceFull(this)"  data-member='${JSON.stringify(member).replace(/'/g,"&#39;")}' style="background:var(--accent);color:white;border:none;border-radius:8px;padding:8px 20px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">View All ${records.length} Records</button></div>`:''}
     `;
   }catch(e){el.innerHTML=`<div class="empty" style="color:var(--red)">Error: ${e.message}</div>`;}
 }
