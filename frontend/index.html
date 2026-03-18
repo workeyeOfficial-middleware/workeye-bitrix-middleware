@@ -899,6 +899,14 @@ function closeEmpScreenshots(){
   document.getElementById('empSsPanel').style.display = 'none';
   document.getElementById('empSsOverlay').style.display = 'none';
 }
+function fmtHour(t){
+  if(!t)return'—';
+  const parts=t.split(':');
+  let h=parseInt(parts[0]),m=parseInt(parts[1]||0);
+  const ampm=h>=12?'PM':'AM';
+  h=h%12||12;
+  return m===0?`${h} ${ampm}`:`${h}:${String(m).padStart(2,'0')} ${ampm}`;
+}
 
 // ── Settings Page ──────────────────────────────────────
 async function loadSettings(){
@@ -944,7 +952,7 @@ async function loadSettings(){
       </div>
       <div style="background:var(--surface2);border-radius:12px;padding:18px;border:1px solid var(--border);text-align:center">
         <div style="font-size:28px;margin-bottom:8px">🕐</div>
-        <div style="font-family:'DM Mono',monospace;font-size:20px;font-weight:500;color:var(--green)">${cfg.office_start_time||'09:00'} – ${cfg.office_end_time||'18:00'}</div>
+        <div style="font-family:'DM Mono',monospace;font-size:20px;font-weight:500;color:var(--green)">${fmtHour(cfg.office_start_time||'09:00')} – ${fmtHour(cfg.office_end_time||'18:00')}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.5px">Office Hours</div>
       </div>
     `;
