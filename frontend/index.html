@@ -284,6 +284,7 @@
       <div class="nav-item" id="nav-team" onclick="showPage('team',this)"><span class="nav-icon">👥</span> Team</div>
       <div class="nav-item" id="nav-attendance" onclick="showPage('attendance',this)"><span class="nav-icon">🕐</span> Attendance</div>
       <div class="nav-item" id="nav-screenshots" onclick="showPage('screenshots',this)"><span class="nav-icon">🖥</span> Screenshots</div>
+      <div class="nav-item" id="nav-settings" onclick="showPage('settings',this)"><span class="nav-icon">⚙️</span> Settings</div>
 
     </nav>
     <div class="sidebar-footer">
@@ -299,7 +300,7 @@
           <div style="font-size:11px;color:var(--muted);margin-top:2px" id="pageSubtitle">Live employee monitoring</div>
         </div>
         <div class="header-right" style="position:relative">
-          <span id="lastSync" style="font-size:11px;color:var(--muted)"></span>
+          <span id="lastSync" style="font-size:11px;color:var(--muted)"></span><span id="liveTimer" style="font-size:11px;color:var(--green);display:none">🟢 Live</span>
           <span id="serverStatus" class="server-dot"><span class="dot dot-online"></span><span>Connected</span></span>
           <button class="refresh-btn" onclick="loadAllWithAnim()"><span class="spin-icon">↻</span> Refresh</button>
           <button class="sync-all-btn" onclick="showDownloadMenu()" id="downloadBtn">📥 Download Report</button><div id="downloadMenu" style="display:none;position:absolute;right:0;top:44px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow2);padding:6px;z-index:999;min-width:190px"><div onclick="exportDashboardCSV()" style="padding:9px 14px;cursor:pointer;border-radius:8px;font-size:12px;font-weight:500;color:var(--text);display:flex;align-items:center;gap:8px;transition:background .15s" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background='transparent'">📊 Dashboard CSV</div><div onclick="exportDashboardPDF()" style="padding:9px 14px;cursor:pointer;border-radius:8px;font-size:12px;font-weight:500;color:var(--text);display:flex;align-items:center;gap:8px;transition:background .15s" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background='transparent'">📋 Dashboard PDF</div><div onclick="exportEmployeesCSV()" style="padding:9px 14px;cursor:pointer;border-radius:8px;font-size:12px;font-weight:500;color:var(--text);display:flex;align-items:center;gap:8px;transition:background .15s" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background='transparent'">👥 Employees CSV</div><div onclick="exportAttendanceCSV()" style="padding:9px 14px;cursor:pointer;border-radius:8px;font-size:12px;font-weight:500;color:var(--text);display:flex;align-items:center;gap:8px;transition:background .15s" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background='transparent'">🕐 Attendance CSV</div></div>
@@ -355,7 +356,7 @@
             </div>
           </div>
         </div>
-        
+
         <div class="table-card">
           <div class="table-head">
             <div><div class="table-title">Team Members</div><div class="table-sub" id="empCount">— employees</div></div>
@@ -386,18 +387,12 @@
         <div class="table-card">
           <div class="table-head">
             <div><div class="table-title">Team Members</div><div class="table-sub" id="teamCount">— employees</div></div>
-            <div class="tbl-actions">
-              <span class="badge" id="teamBadge">0</span>
-              <button class="action-btn btn-green" onclick="exportEmployeesCSV()">📥 Export CSV</button>
-            </div>
+            <div class="tbl-actions"><span class="badge" id="teamBadge">0</span><button class="action-btn btn-green" onclick="exportEmployeesCSV()">📥 Export CSV</button></div>
           </div>
           <div class="search-bar">
             <input id="teamSearch" class="search-input" type="text" placeholder="🔍 Search employee..." oninput="filterTeam()"/>
             <select id="teamFilter" class="filter-select" onchange="filterTeam()">
-              <option value="all">All Status</option>
-              <option value="active">🟢 Active</option>
-              <option value="idle">🟡 Idle</option>
-              <option value="offline">⚫ Offline</option>
+              <option value="all">All Status</option><option value="active">🟢 Active</option><option value="idle">🟡 Idle</option><option value="offline">⚫ Offline</option>
             </select>
           </div>
           <div id="teamGrid" style="padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;grid-auto-rows:auto">
@@ -459,6 +454,39 @@
           <div class="ss-grid" id="ssGrid"><p style="color:var(--muted);text-align:center;padding:40px;grid-column:1/-1">Loading…</p></div>
         </div>
       </div>
+      
+      <div id="page-settings" class="page">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+          <!-- Current Config Card -->
+          <div class="table-card">
+            <div class="table-head">
+              <div><div class="table-title">⚙️ Current Configuration</div><div class="table-sub">Active settings for your company</div></div>
+            </div>
+            <div id="settingsBody" style="padding:20px">
+              <div class="empty">Loading…</div>
+            </div>
+          </div>
+          <!-- Working Days Card -->
+          <div class="table-card">
+            <div class="table-head">
+              <div><div class="table-title">📅 Working Days</div><div class="table-sub">Days your team is active</div></div>
+            </div>
+            <div id="workingDaysBody" style="padding:20px">
+              <div class="empty">Loading…</div>
+            </div>
+          </div>
+        </div>
+        <!-- Office Hours Card -->
+        <div class="table-card">
+          <div class="table-head">
+            <div><div class="table-title">🕐 Office Hours & Intervals</div><div class="table-sub">Monitoring schedule</div></div>
+          </div>
+          <div id="officeHoursBody" style="padding:20px;display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+            <div class="empty" style="grid-column:1/-1">Loading…</div>
+          </div>
+        </div>
+      </div>
+
       <div id="page-sync" class="page">
         <div class="table-card" style="margin-bottom:16px">
           <div class="table-head">
@@ -555,15 +583,10 @@
 </div>
 <div id="empSsOverlay" onclick="closeEmpScreenshots()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:8999;backdrop-filter:blur(2px)"></div>
 
-
-<!-- Attendance Detail Modal -->
 <div id="attDetailModal" onclick="if(event.target===this)closeAttDetail()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px;backdrop-filter:blur(3px)">
   <div style="background:var(--surface);border-radius:18px;width:100%;max-width:860px;box-shadow:var(--shadow3);position:relative;border:1px solid var(--border);animation:modalIn .2s ease;margin:auto">
     <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-      <div>
-        <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:var(--text)">📅 Attendance Details</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:3px" id="attDetailSub">—</div>
-      </div>
+      <div><div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:var(--text)">📅 Attendance Details</div><div style="font-size:11px;color:var(--muted);margin-top:3px" id="attDetailSub">—</div></div>
       <button onclick="closeAttDetail()" style="background:var(--surface2);border:1px solid var(--border);border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:16px;color:var(--text2);display:flex;align-items:center;justify-content:center">✕</button>
     </div>
     <div style="padding:14px 24px;border-bottom:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -579,14 +602,10 @@
       <div style="padding:14px 20px;border-right:1px solid var(--border);text-align:center"><div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:500;color:var(--accent)" id="attDetailHours">—</div><div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Total Hours</div></div>
       <div style="padding:14px 20px;text-align:center"><div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:500;color:var(--amber)" id="attDetailPct">—</div><div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Attendance %</div></div>
     </div>
-    <div style="overflow-x:auto">
-      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
-        <thead><tr>
-          <th>Date</th><th>Day</th><th>Punch In</th><th>Punch Out</th><th>Duration</th><th>Status</th>
-        </tr></thead>
-        <tbody id="attDetailBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
-      </table>
-    </div>
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px">
+      <thead><tr><th>Date</th><th>Day</th><th>Punch In</th><th>Punch Out</th><th>Duration</th><th>Status</th></tr></thead>
+      <tbody id="attDetailBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+    </table></div>
   </div>
 </div>
 
@@ -604,10 +623,10 @@ async function doLogin(){const url="https://backend-35m2.onrender.com",email=doc
 function showProfile(){const email=SESSION.email||"—",name=email.split("@")[0];document.getElementById("profileName").textContent=name;document.getElementById("profileAvatar").textContent=(email||"?")[0].toUpperCase();document.getElementById("profileEmail").textContent=email;document.getElementById("profileModal").style.display="flex"}
 function closeProfile(){document.getElementById("profileModal").style.display="none"}
 function doLogout(){clearSession();document.getElementById("mainApp").style.display="none";document.getElementById("loginPage").style.display="flex";document.getElementById("loginPassword").value="";if(autoRefreshTimer)clearInterval(autoRefreshTimer)}
-function showDashboard(){document.getElementById("loginPage").style.display="none";document.getElementById("mainApp").style.display="block";const name=SESSION.email?SESSION.email.split("@")[0]:"Admin";document.getElementById("sidebarName").textContent=name;document.getElementById("sidebarAvatar").textContent=(name||"A")[0].toUpperCase();loadAll();startAutoRefresh()}
+function showDashboard(){document.getElementById("loginPage").style.display="none";document.getElementById("mainApp").style.display="block";const name=SESSION.email?SESSION.email.split("@")[0]:"Admin";document.getElementById("sidebarName").textContent=name;document.getElementById("sidebarAvatar").textContent=(name||"A")[0].toUpperCase();loadAll();startAutoRefresh();startLiveTimer()}
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.getElementById("loginPage").style.display!=="none")doLogin()});
-const pages=["dashboard","team","attendance","screenshots","sync"];
-function showPage(name,el){pages.forEach(p=>{const pg=document.getElementById("page-"+p);if(pg)pg.style.display=p===name?"block":"none"});document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));if(el)el.classList.add("active");const titles={dashboard:"Dashboard",team:"Team",attendance:"Attendance",screenshots:"Screenshots",sync:"Sync to Bitrix24"},subs={dashboard:"Live employee monitoring",team:"All team members",attendance:"Check-in & check-out records",screenshots:"Activity captures",sync:"Push data to Bitrix24 Drive"};document.getElementById("pageTitle").textContent=titles[name]||name;document.getElementById("pageSubtitle").textContent=subs[name]||"";if(name==="team")renderTeamGrid(allMembers);if(name==="attendance")loadAttendance();if(name==="screenshots")loadScreenshots()}
+const pages=["dashboard","team","attendance","screenshots","settings","sync"];
+function showPage(name,el){pages.forEach(p=>{const pg=document.getElementById("page-"+p);if(pg)pg.style.display=p===name?"block":"none"});document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));if(el)el.classList.add("active");const titles={dashboard:"Dashboard",team:"Team",attendance:"Attendance",screenshots:"Screenshots",settings:"Settings",sync:"Sync to Bitrix24"},subs={dashboard:"Live employee monitoring",team:"All team members",attendance:"Check-in & check-out records",screenshots:"Activity captures",settings:"Company configuration",sync:"Push data to Bitrix24 Drive"};document.getElementById("pageTitle").textContent=titles[name]||name;document.getElementById("pageSubtitle").textContent=subs[name]||"";if(name==="team")renderTeamGrid(allMembers);if(name==="attendance")loadAttendance();if(name==="screenshots")loadScreenshots();if(name==="settings")loadSettings()}
 let _tt;
 function toast(msg,type="ok"){const el=document.getElementById("toast");el.textContent=msg;el.className="show "+type;clearTimeout(_tt);_tt=setTimeout(()=>el.className="",4000)}
 const avatarColors=["#5b5ef4","#06b6d4","#f59e0b","#ef4444","#8b5cf6","#10b981","#f97316","#3b82f6","#ec4899"];
@@ -622,7 +641,26 @@ function sessionParams(extra={}){let p=`?workeye_url=${encodeURIComponent(SESSIO
 async function apiFetch(p,extra={}){let r=await fetch(API+p+sessionParams(extra),{headers:HEADERS});if(r.status===401){const ok=await refreshToken();if(ok)r=await fetch(API+p+sessionParams(),{headers:HEADERS});else throw new Error("Session expired")}if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}
 async function apiPost(p){let r=await fetch(API+p+sessionParams(),{method:"POST",headers:HEADERS});if(r.status===401){const ok=await refreshToken();if(ok)r=await fetch(API+p+sessionParams(),{method:"POST",headers:HEADERS});else throw new Error("Session expired")}if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}
 function updateDonut(id,pct){const circ=2*Math.PI*46,offset=circ-(pct/100)*circ,el=document.getElementById(id);if(el)el.style.strokeDashoffset=offset}
-async function loadStats(){try{const res=await apiFetch("/get-stats"),pl=res.data||res,s=pl.stats||pl,members=pl.members||[],total=s.total_members||members.length||0,active=s.active_now||0,idle=s.idle_now||0,offline=s.offline||0,prod=s.average_productivity||0,activeRate=total>0?Math.round((active/total)*100):0;animateCount(document.getElementById("vTotal"),total);animateCount(document.getElementById("vActiveRate"),activeRate,"%");animateCount(document.getElementById("vProd"),prod,"%");animateCount(document.getElementById("vActive"),active);animateCount(document.getElementById("vIdle"),idle);animateCount(document.getElementById("vOffline"),offline);animateCount(document.getElementById("vTeamSize"),total);document.getElementById("vChange").textContent="↗ "+activeRate+"% increase";document.getElementById("vActiveChange").textContent="↗ "+activeRate+"% increase";document.getElementById("vProdChange").textContent="↗ "+prod+"% increase";const totalScreenSec=members.reduce((sum,m)=>sum+(parseInt(m.screen_time)||0),0),avgScreenSec=members.length?Math.round(totalScreenSec/members.length):0,avgH=Math.floor(avgScreenSec/3600),avgM=Math.floor((avgScreenSec%3600)/60);document.getElementById("vScreenTime").textContent=avgH>0?`${avgH}.${Math.round(avgM/6)}h`:`${avgM}m`;const totalSS=members.reduce((sum,m)=>sum+(parseInt(m.screenshots_count)||0),0);animateCount(document.getElementById("vScreenshots"),totalSS);document.getElementById("donutNum").textContent=total;document.getElementById("donutProdNum").textContent=prod+"%";document.getElementById("legendActive").textContent=active;document.getElementById("legendIdle").textContent=idle;document.getElementById("legendInactive").textContent=offline;const highP=members.filter(m=>(m.productivity||0)>=70).length,midP=members.filter(m=>(m.productivity||0)>=40&&(m.productivity||0)<70).length,lowP=members.filter(m=>(m.productivity||0)<40).length;document.getElementById("legendProd").textContent=highP;document.getElementById("legendMid").textContent=midP;document.getElementById("legendBelow").textContent=lowP;updateDonut("donutActive",total>0?Math.round((active/total)*100):0);updateDonut("donutProd",prod);if(members.length){renderEmployees(members);updateAlertCards(s,members);setServerStatus(true);drawTrendChart(generateTrendFromMembers(members),currentChartMode)}}catch(e){console.error(e);setServerStatus(false)}}
+async function loadStats(retries=2){
+  // Show loading state
+  const statEls=["vTotal","vActiveRate","vProd","vActive","vIdle","vOffline","vTeamSize","vScreenshots"];
+  statEls.forEach(id=>{const el=document.getElementById(id);if(el&&el.textContent==="—")el.textContent="…"});
+  for(let attempt=0;attempt<=retries;attempt++){try{const res=await apiFetch("/get-stats"),pl=res.data||res,s=pl.stats||pl,members=pl.members||[],total=s.total_members||members.length||0,active=s.active_now||0,idle=s.idle_now||0,offline=s.offline||0,prod=s.average_productivity||0,activeRate=total>0?Math.round((active/total)*100):0;animateCount(document.getElementById("vTotal"),total);animateCount(document.getElementById("vActiveRate"),activeRate,"%");animateCount(document.getElementById("vProd"),prod,"%");animateCount(document.getElementById("vActive"),active);animateCount(document.getElementById("vIdle"),idle);animateCount(document.getElementById("vOffline"),offline);animateCount(document.getElementById("vTeamSize"),total);document.getElementById("vChange").textContent="↗ "+activeRate+"% increase";document.getElementById("vActiveChange").textContent="↗ "+activeRate+"% increase";document.getElementById("vProdChange").textContent="↗ "+prod+"% increase";const totalScreenSec=members.reduce((sum,m)=>sum+(parseInt(m.screen_time)||0),0),avgScreenSec=members.length?Math.round(totalScreenSec/members.length):0,avgH=Math.floor(avgScreenSec/3600),avgM=Math.floor((avgScreenSec%3600)/60);document.getElementById("vScreenTime").textContent=avgH>0?`${avgH}.${Math.round(avgM/6)}h`:`${avgM}m`;const totalSS=members.reduce((sum,m)=>sum+(parseInt(m.screenshots_count)||0),0);animateCount(document.getElementById("vScreenshots"),totalSS);document.getElementById("donutNum").textContent=total;document.getElementById("donutProdNum").textContent=prod+"%";document.getElementById("legendActive").textContent=active;document.getElementById("legendIdle").textContent=idle;document.getElementById("legendInactive").textContent=offline;const highP=members.filter(m=>(m.productivity||0)>=70).length,midP=members.filter(m=>(m.productivity||0)>=40&&(m.productivity||0)<70).length,lowP=members.filter(m=>(m.productivity||0)<40).length;document.getElementById("legendProd").textContent=highP;document.getElementById("legendMid").textContent=midP;document.getElementById("legendBelow").textContent=lowP;updateDonut("donutActive",total>0?Math.round((active/total)*100):0);updateDonut("donutProd",prod);if(members.length){renderEmployees(members);updateAlertCards(s,members);setServerStatus(true);drawTrendChart(generateTrendFromMembers(members),currentChartMode)}}catch(e){
+      console.error("[loadStats attempt "+(attempt+1)+"]",e);
+      setServerStatus(false);
+      if(attempt<retries){
+        console.log("Retrying in 3s...");
+        await new Promise(r=>setTimeout(r,3000));
+      } else {
+        // Show error state
+        statEls.forEach(id=>{const el=document.getElementById(id);if(el&&el.textContent==="…")el.textContent="—"});
+        const ac=document.getElementById("alertCards");
+        if(ac)ac.innerHTML='<div class="alert-card" style="background:#fee2e2;border-left:3px solid #ef4444"><span style="font-size:16px">⚠️</span><span style="font-size:12px;font-weight:500;color:#b91c1c">Failed to load data. Click Refresh to try again.</span></div>';
+      }
+    }
+  }
+}
+
 let allMembers=[];
 function renderEmployees(members){allMembers=members;document.getElementById("empBadge").textContent=members.length;document.getElementById("empCount").textContent=members.length+" employees";renderEmployeesFiltered(members)}
 function filterEmployees(){const search=document.getElementById("empSearch").value.toLowerCase(),filter=document.getElementById("empFilter").value,filtered=allMembers.filter(m=>{const mS=!search||(m.name||"").toLowerCase().includes(search)||(m.email||"").toLowerCase().includes(search)||(m.position||"").toLowerCase().includes(search),mF=filter==="all"||(m.status||"").toLowerCase()===filter;return mS&&mF});renderEmployeesFiltered(filtered)}
@@ -655,7 +693,7 @@ let currentChartMode="productivity";
 function switchChart(mode,btn){currentChartMode=mode;document.querySelectorAll(".chart-tab").forEach(b=>b.classList.remove("on"));if(btn)btn.classList.add("on");drawTrendChart(generateTrendFromMembers(allMembers),mode)}
 function drawTrendChart(data,mode="productivity"){const canvas=document.getElementById("trendChart");if(!canvas)return;const ctx=canvas.getContext("2d"),dpr=window.devicePixelRatio||1,rect=canvas.parentElement.getBoundingClientRect();canvas.width=rect.width*dpr;canvas.height=160*dpr;canvas.style.width=rect.width+"px";canvas.style.height="160px";ctx.scale(dpr,dpr);const W=rect.width,H=160,pad={top:20,right:20,bottom:30,left:44},chartW=W-pad.left-pad.right,chartH=H-pad.top-pad.bottom,isDark=document.documentElement.getAttribute("data-theme")==="dark",gridColor=isDark?"#242b40":"#e4e8f0",textColor=isDark?"#64748b":"#94a3b8",lineColor=mode==="productivity"?"#5b5ef4":"#06b6d4",fillStart=mode==="productivity"?"rgba(91,94,244,0.25)":"rgba(6,182,212,0.2)";ctx.clearRect(0,0,W,H);[0,25,50,75,100].forEach(v=>{const y=pad.top+chartH-(v/100)*chartH;ctx.strokeStyle=gridColor;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(pad.left+chartW,y);ctx.stroke();ctx.fillStyle=textColor;ctx.font="10px DM Mono,monospace";ctx.textAlign="right";ctx.fillText(v+"%",pad.left-6,y+4)});if(!data||!data.length)return;const step=chartW/(data.length-1||1),grad=ctx.createLinearGradient(0,pad.top,0,pad.top+chartH);grad.addColorStop(0,fillStart);grad.addColorStop(1,"rgba(0,0,0,0)");ctx.beginPath();data.forEach((d,i)=>{const x=pad.left+i*step,y=pad.top+chartH-(d.value/100)*chartH;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});ctx.lineTo(pad.left+(data.length-1)*step,pad.top+chartH);ctx.lineTo(pad.left,pad.top+chartH);ctx.closePath();ctx.fillStyle=grad;ctx.fill();ctx.beginPath();ctx.strokeStyle=lineColor;ctx.lineWidth=2.5;ctx.lineJoin="round";data.forEach((d,i)=>{const x=pad.left+i*step,y=pad.top+chartH-(d.value/100)*chartH;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});ctx.stroke();data.forEach((d,i)=>{const x=pad.left+i*step,y=pad.top+chartH-(d.value/100)*chartH;ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fillStyle=lineColor;ctx.fill();ctx.strokeStyle=isDark?"#141826":"white";ctx.lineWidth=2;ctx.stroke();ctx.fillStyle=textColor;ctx.font="10px DM Mono,monospace";ctx.textAlign="center";ctx.fillText(d.label,x,H-8)});const legend=document.getElementById("trendLegend");if(legend&&data.length){const avg=Math.round(data.reduce((s,d)=>s+d.value,0)/data.length),max=Math.max(...data.map(d=>d.value)),min=Math.min(...data.map(d=>d.value));legend.innerHTML=`<span style="font-size:11px;color:var(--text2)">7-day avg: <strong style="color:var(--accent)">${avg}%</strong></span><span style="font-size:11px;color:var(--text2)">Peak: <strong style="color:var(--green)">${max}%</strong></span><span style="font-size:11px;color:var(--text2)">Low: <strong style="color:var(--red)">${min}%</strong></span>`}}
 function generateTrendFromMembers(members){const days=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],avgProd=members.length?Math.round(members.reduce((s,m)=>s+(m.productivity||0),0)/members.length):0,avgAct=members.length?Math.round((members.filter(m=>(m.status||"").toLowerCase()==="active").length/members.length)*100):0,base=currentChartMode==="activity"?avgAct:avgProd;return days.map(label=>({label,value:Math.max(0,Math.min(100,base+Math.floor(Math.random()*22-11)))}))}
-async function loadAll(){if(!SESSION.token||!SESSION.workeye_url)return;await Promise.all([loadStats(),loadScreenshotCount()]);const an=document.querySelector(".nav-item.active");if(an){const txt=an.textContent.trim().toLowerCase();if(txt.includes("attendance"))loadAttendance();if(txt.includes("screenshot"))loadScreenshots()}const now=new Date();document.getElementById("lastSync").textContent=`\u21bb ${now.getHours()}:${String(now.getMinutes()).padStart(2,"0")}`}
+async function loadAll(){if(!SESSION.token||!SESSION.workeye_url)return;await Promise.all([loadStats(),loadScreenshotCount()]);const an=document.querySelector(".nav-item.active");if(an){const txt=an.textContent.trim().toLowerCase();if(txt.includes("attendance"))loadAttendance();if(txt.includes("screenshot"))loadScreenshots()}const now=new Date();lastSyncTime=Date.now();document.getElementById("lastSync").textContent=""}
 async function loadAllWithAnim(){const btn=document.querySelector(".refresh-btn");if(btn)btn.classList.add("spinning");await loadAll();if(btn)btn.classList.remove("spinning")}
 async function loadScreenshotCount(){try{const res=await apiFetch("/get-screenshots"),list=res.data||[];animateCount(document.getElementById("vScreenshots"),list.length)}catch(e){}}
 let autoRefreshTimer;
@@ -862,60 +900,81 @@ function closeEmpScreenshots(){
   document.getElementById('empSsOverlay').style.display = 'none';
 }
 
-// ── Attendance Detail ──────────────────────────────────
-let currentAttMember=null;
-function openAttDetail(memberId,memberName,memberEmail,memberPosition){
-  currentAttMember={id:memberId,name:memberName,email:memberEmail,position:memberPosition};
-  document.getElementById('attDetailSub').textContent=memberName+' · '+memberEmail+(memberPosition?' · '+memberPosition:'');
-  const end=new Date().toISOString().substring(0,10);
-  const start=new Date(Date.now()-30*24*60*60*1000).toISOString().substring(0,10);
-  document.getElementById('attDetailStart').value=start;
-  document.getElementById('attDetailEnd').value=end;
-  document.getElementById('attDetailModal').style.display='flex';
-  loadAttDetail();
-}
-function closeAttDetail(){
-  document.getElementById('attDetailModal').style.display='none';
-  currentAttMember=null;
-}
-async function loadAttDetail(){
-  if(!currentAttMember)return;
-  const start=document.getElementById('attDetailStart').value;
-  const end=document.getElementById('attDetailEnd').value;
-  const tbody=document.getElementById('attDetailBody');
-  tbody.innerHTML='<tr><td colspan="6" class="empty">Loading…</td></tr>';
-  ['attDetailWorkingDays','attDetailPresent','attDetailHours','attDetailPct'].forEach(id=>{document.getElementById(id).textContent='—'});
+// ── Settings Page ──────────────────────────────────────
+async function loadSettings(){
+  const body=document.getElementById('settingsBody');
+  const wdBody=document.getElementById('workingDaysBody');
+  const ohBody=document.getElementById('officeHoursBody');
+  if(body)body.innerHTML='<div class="empty">Loading…</div>';
   try{
-    const res=await apiFetch('/get-attendance-member',{member_id:currentAttMember.id,start_date:start,end_date:end});
-    const data=res.data||{};
-    const stats=data.statistics||{};
-    const records=data.daily_records||[];
-    document.getElementById('attDetailWorkingDays').textContent=stats.working_days||stats.total_working_days||'—';
-    document.getElementById('attDetailPresent').textContent=stats.days_present||'—';
-    document.getElementById('attDetailHours').textContent=stats.total_hours?stats.total_hours+'h':'—';
-    document.getElementById('attDetailPct').textContent=stats.attendance_percentage?stats.attendance_percentage+'%':'—';
-    const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-    if(!records.length){tbody.innerHTML='<tr><td colspan="6" class="empty">No records found for this period.</td></tr>';return;}
-    tbody.innerHTML=records.map(r=>{
-      const d=new Date(r.date);
-      const dayName=days[d.getDay()]||'—';
-      const sBg=r.status==='Present'?'#dcfce7':r.status==='Absent'?'#fee2e2':'#fef9c3';
-      const sTxt=r.status==='Present'?'#166534':r.status==='Absent'?'#b91c1c':'#854d0e';
-      return `<tr>
-        <td style="padding:10px 16px;border-bottom:1px solid var(--border);font-weight:500;color:var(--text)">${r.date||'—'}</td>
-        <td style="padding:10px 16px;border-bottom:1px solid var(--border);color:var(--text2)">${dayName}</td>
-        <td style="padding:10px 16px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;color:var(--green)">${r.punch_in_time?r.punch_in_time.substring(11,16):'N/A'}</td>
-        <td style="padding:10px 16px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;color:var(--red)">${r.punch_out_time?r.punch_out_time.substring(11,16):'N/A'}</td>
-        <td style="padding:10px 16px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace">${r.duration||'0h 0m'}</td>
-        <td style="padding:10px 16px;border-bottom:1px solid var(--border)"><span style="background:${sBg};color:${sTxt};padding:2px 8px;border-radius:5px;font-size:11px;font-weight:600">${r.status||'—'}</span></td>
-      </tr>`;
-    }).join('');
+    const res=await apiFetch('/get-configuration');
+    const cfg=res.data||{};
+    const dayNames=['','Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    const workingDays=cfg.working_days||[1,2,3,4,5];
+
+    // Config card
+    if(body)body.innerHTML=`
+      <div class="emp-modal-row"><span class="emp-modal-row-key">Config ID</span><span class="emp-modal-row-val">${cfg.id||'—'}</span></div>
+      <div class="emp-modal-row"><span class="emp-modal-row-key">Company ID</span><span class="emp-modal-row-val">${cfg.company_id||'—'}</span></div>
+      <div class="emp-modal-row"><span class="emp-modal-row-key">Last Modified</span><span class="emp-modal-row-val">${cfg.updated_at?new Date(cfg.updated_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'—'}</span></div>
+      <div class="emp-modal-row"><span class="emp-modal-row-key">Modified By</span><span class="emp-modal-row-val">Admin #${cfg.last_modified_by||'—'}</span></div>
+    `;
+
+    // Working days
+    const allDays=[{v:1,l:'Mon'},{v:2,l:'Tue'},{v:3,l:'Wed'},{v:4,l:'Thu'},{v:5,l:'Fri'},{v:6,l:'Sat'},{v:7,l:'Sun'}];
+    if(wdBody)wdBody.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:8px;padding:4px 0">'+
+      allDays.map(d=>{
+        const active=workingDays.includes(d.v);
+        return `<div style="padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;background:${active?'var(--accent)':'var(--surface2)'};color:${active?'white':'var(--muted)'};border:1.5px solid ${active?'var(--accent)':'var(--border)'}">${d.l}</div>`;
+      }).join('')+
+      `<div style="width:100%;margin-top:8px;font-size:11px;color:var(--muted)">${workingDays.length} working days per week</div>
+    </div>`;
+
+    // Office hours + intervals
+    if(ohBody)ohBody.innerHTML=`
+      <div style="background:var(--surface2);border-radius:12px;padding:18px;border:1px solid var(--border);text-align:center">
+        <div style="font-size:28px;margin-bottom:8px">📸</div>
+        <div style="font-family:'DM Mono',monospace;font-size:28px;font-weight:500;color:var(--accent)">${cfg.screenshot_interval||20}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.5px">Screenshot Interval (min)</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:12px;padding:18px;border:1px solid var(--border);text-align:center">
+        <div style="font-size:28px;margin-bottom:8px">💤</div>
+        <div style="font-family:'DM Mono',monospace;font-size:28px;font-weight:500;color:var(--amber)">${cfg.idle_timeout||30}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.5px">Idle Timeout (min)</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:12px;padding:18px;border:1px solid var(--border);text-align:center">
+        <div style="font-size:28px;margin-bottom:8px">🕐</div>
+        <div style="font-family:'DM Mono',monospace;font-size:20px;font-weight:500;color:var(--green)">${cfg.office_start_time||'09:00'} – ${cfg.office_end_time||'18:00'}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.5px">Office Hours</div>
+      </div>
+    `;
   }catch(e){
-    tbody.innerHTML=`<tr><td colspan="6" class="empty" style="color:var(--red)">Error: ${e.message}</td></tr>`;
+    if(body)body.innerHTML=`<div class="empty" style="color:var(--red)">Error: ${e.message}</div>`;
   }
 }
 
+// ── Real-time last updated counter ──────────────────────
+let lastSyncTime=null;
+function startLiveTimer(){
+  setInterval(()=>{
+    if(!lastSyncTime)return;
+    const sec=Math.floor((Date.now()-lastSyncTime)/1000);
+    const el=document.getElementById('lastSync');
+    const live=document.getElementById('liveTimer');
+    if(!el)return;
+    if(sec<10){
+      if(live)live.style.display='inline-flex';
+      el.textContent='';
+    } else {
+      if(live)live.style.display='none';
+      if(sec<60)el.textContent=`↻ ${sec}s ago`;
+      else if(sec<3600)el.textContent=`↻ ${Math.floor(sec/60)}m ago`;
+      else el.textContent=`↻ ${Math.floor(sec/3600)}h ago`;
+    }
+  },1000);
+}
 
+// ── Team page ──────────────────────────────────────────
 function filterTeam(){
   const search=document.getElementById("teamSearch").value.toLowerCase();
   const filter=document.getElementById("teamFilter").value;
@@ -967,6 +1026,59 @@ function renderTeamGrid(members){
       </div>
     </div>`;
   }).join("");
+}
+
+// ── Attendance Detail ──────────────────────────────────
+let currentAttMember=null;
+function openAttDetail(memberId,memberName,memberEmail,memberPosition){
+  currentAttMember={id:memberId,name:memberName,email:memberEmail,position:memberPosition};
+  document.getElementById('attDetailSub').textContent=memberName+' · '+memberEmail+(memberPosition?' · '+memberPosition:'');
+  const end=new Date().toISOString().substring(0,10);
+  const start=new Date(Date.now()-30*24*60*60*1000).toISOString().substring(0,10);
+  document.getElementById('attDetailStart').value=start;
+  document.getElementById('attDetailEnd').value=end;
+  document.getElementById('attDetailModal').style.display='flex';
+  loadAttDetail();
+}
+function closeAttDetail(){
+  document.getElementById('attDetailModal').style.display='none';
+  currentAttMember=null;
+}
+async function loadAttDetail(){
+  if(!currentAttMember)return;
+  const start=document.getElementById('attDetailStart').value;
+  const end=document.getElementById('attDetailEnd').value;
+  const tbody=document.getElementById('attDetailBody');
+  tbody.innerHTML='<tr><td colspan="6" class="empty">Loading…</td></tr>';
+  ['attDetailWorkingDays','attDetailPresent','attDetailHours','attDetailPct'].forEach(id=>{document.getElementById(id).textContent='—'});
+  try{
+    const res=await apiFetch('/get-attendance-member',{member_id:currentAttMember.id,start_date:start,end_date:end});
+    const data=res.data||{};
+    const stats=data.statistics||{};
+    const records=data.daily_records||[];
+    document.getElementById('attDetailWorkingDays').textContent=stats.working_days||stats.total_working_days||'—';
+    document.getElementById('attDetailPresent').textContent=stats.days_present||'—';
+    document.getElementById('attDetailHours').textContent=stats.total_hours?parseFloat(stats.total_hours).toFixed(1)+'h':'—';
+    document.getElementById('attDetailPct').textContent=stats.attendance_percentage?parseFloat(stats.attendance_percentage).toFixed(1)+'%':'—';
+    const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    if(!records.length){tbody.innerHTML='<tr><td colspan="6" class="empty">No records found.</td></tr>';return;}
+    tbody.innerHTML=records.map(r=>{
+      const d=new Date(r.date);
+      const dayName=days[d.getDay()]||'—';
+      const sBg=r.status==='Present'?'#dcfce7':r.status==='Absent'?'#fee2e2':'#fef9c3';
+      const sTxt=r.status==='Present'?'#166534':r.status==='Absent'?'#b91c1c':'#854d0e';
+      return `<tr>
+        <td style="padding:10px 16px;border-bottom:1px solid var(--border);font-weight:500;color:var(--text)">${r.date||'—'}</td>
+        <td style="padding:10px 16px;border-bottom:1px solid var(--border);color:var(--text2)">${dayName}</td>
+        <td style="padding:10px 16px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;color:var(--green)">${r.punch_in_time?r.punch_in_time.substring(11,16):'N/A'}</td>
+        <td style="padding:10px 16px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;color:var(--red)">${r.punch_out_time?r.punch_out_time.substring(11,16):'N/A'}</td>
+        <td style="padding:10px 16px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace">${r.duration||'0h 0m'}</td>
+        <td style="padding:10px 16px;border-bottom:1px solid var(--border)"><span style="background:${sBg};color:${sTxt};padding:2px 8px;border-radius:5px;font-size:11px;font-weight:600">${r.status||'—'}</span></td>
+      </tr>`;
+    }).join('');
+  }catch(e){
+    tbody.innerHTML=`<tr><td colspan="6" class="empty" style="color:var(--red)">Error: ${e.message}</td></tr>`;
+  }
 }
 
 </script>

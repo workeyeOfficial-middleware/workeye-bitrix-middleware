@@ -56,15 +56,6 @@ async def get_stats(workeye_url: str, token: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ── Live member data ──────────────────────────────────────
-@app.get("/get-member-live")
-async def get_member_live(workeye_url: str, token: str, member_id: int):
-    try:
-        data = ws.get_member_live(workeye_url, token, member_id)
-        return {"success": True, "data": data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 # ── Trends ───────────────────────────────────────────────
 @app.get("/get-trends")
 async def get_trends(workeye_url: str, token: str):
@@ -109,20 +100,20 @@ async def proxy_image(workeye_url: str, token: str, screenshot_id: int, email: s
         raise HTTPException(status_code=404, detail=str(e))
 
 
+# ── Configuration ─────────────────────────────────────────
+@app.get("/get-configuration")
+async def get_configuration(workeye_url: str, token: str):
+    try:
+        data = ws.get_configuration(workeye_url, token)
+        return {"success": True, "data": data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ── Attendance Member Detail ──────────────────────────────
 @app.get("/get-attendance-member")
 async def get_attendance_member(workeye_url: str, token: str, member_id: int, start_date: str = None, end_date: str = None):
     try:
         data = ws.get_attendance_member(workeye_url, token, member_id, start_date, end_date)
-        return {"success": True, "data": data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# ── Attendance Analytics ──────────────────────────────────
-@app.get("/get-attendance-analytics")
-async def get_attendance_analytics(workeye_url: str, token: str, member_id: int, view: str = "daily", start_date: str = None, end_date: str = None):
-    try:
-        data = ws.get_attendance_analytics(workeye_url, token, member_id, view, start_date, end_date)
         return {"success": True, "data": data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

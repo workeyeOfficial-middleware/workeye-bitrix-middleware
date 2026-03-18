@@ -17,10 +17,15 @@ def get_token(base_url: str, email: str, password: str) -> str:
 
 
 def get_member_live(base_url: str, token: str, member_id: int) -> dict:
+    """
+    Fetch live counters for a single member.
+    Returns accurate real-time productivity, screen time, active time, idle time.
+    Falls back to empty dict if the call fails.
+    """
     try:
         headers = {"Authorization": f"Bearer {token}"}
         url = f"{base_url}/api/dashboard/member/{member_id}/live"
-        r = requests.get(url, headers=headers, timeout=5)
+        r = requests.get(url, headers=headers, timeout=10)
         if r.status_code == 200:
             data = r.json()
             counters = data.get("live_counters") or {}
@@ -39,26 +44,37 @@ def get_member_live(base_url: str, token: str, member_id: int) -> dict:
 
 
 def get_stats(base_url: str, token: str) -> dict:
+    """
+    Fetch dashboard stats and enrich each member with live productivity data.
+    Uses /api/dashboard/stats for the member list, then calls
+    /api/dashboard/member/:id/live for accurate per-member figures.
+    """
     headers = {"Authorization": f"Bearer {token}"}
     url = f"{base_url}/api/dashboard/stats"
     r = requests.get(url, headers=headers, timeout=15)
     if r.status_code != 200:
-        raise Exception(f"WorkEye backend error: {r.status_code} - {r.text[:200]}")
+        raise Exception(f"Failed to fetch stats: {r.status_code}")
 
-    try:
-        data = r.json()
-    except Exception:
-        raise Exception("Failed to parse stats response")
+    data = r.json()
     payload  = data.get("data") or data
-    stats    = payload.get("stats") or {}
+    stats    = payload.get("stats") or payload
     members  = payload.get("members") or []
-    if not isinstance(members, list):
-        members = []
-    if not isinstance(stats, dict):
-        stats = {}
 
-    # Use base stats data directly - already real-time from WorkEye
-    enriched = list(members)
+    # Enrich every member with live data
+    enriched = []
+    for m in members:
+        member_id = m.get("id")
+        if member_id:
+            live = get_member_live(base_url, token, member_id)
+            if live:
+                m["screen_time"]   = live.get("screen_time",  m.get("screen_time", 0))
+                m["active_time"]   = live.get("active_time",  m.get("active_time", 0))
+                m["idle_time"]     = live.get("idle_time",    m.get("idle_time", 0))
+                m["productivity"]  = live.get("productivity", m.get("productivity", 0))
+                if live.get("status"):
+                    m["status"] = live["status"]
+                m["is_punched_in"] = live.get("is_punched_in", m.get("is_punched_in", False))
+        enriched.append(m)
 
     # Recalculate aggregate stats from enriched members
     total   = len(enriched)
@@ -78,19 +94,6 @@ def get_stats(base_url: str, token: str) -> dict:
     print(f"[stats] {total} members | Active:{active} Idle:{idle} Offline:{offline} AvgProd:{avg_prod}%")
 
     return {"stats": stats, "members": enriched}
-
-
-def get_activity_trends(base_url: str, token: str) -> list:
-    try:
-        headers = {"Authorization": f"Bearer {token}"}
-        url = f"{base_url}/api/dashboard/activity-trends"
-        r = requests.get(url, headers=headers, timeout=15)
-        if r.status_code == 200:
-            data = r.json()
-            return data.get("trends") or []
-    except Exception as e:
-        print(f"[trends] Failed: {e}")
-    return []
 
 
 def get_attendance(base_url: str, token: str, date: str = None) -> list:
@@ -126,6 +129,7 @@ def get_attendance(base_url: str, token: str, date: str = None) -> list:
 
 
 def get_screenshots(base_url: str, token: str, date: str = None) -> list:
+    """Fetch ALL screenshots for all members across all dates"""
     headers = {"Authorization": f"Bearer {token}"}
 
     try:
@@ -170,7 +174,7 @@ def get_screenshots(base_url: str, token: str, date: str = None) -> list:
                 for s in screenshots:
                     s["member_name"]  = member_name
                     s["member_email"] = member_email
-                    # Use Cloudinary URL directly if available
+                    # Use Cloudinary URL directly if available, else fallback to proxy
                     if s.get("screenshot_url"):
                         s["image_url"] = s["screenshot_url"]
                     else:
@@ -195,38 +199,30 @@ def get_screenshot_image(base_url: str, token: str, screenshot_id: int) -> bytes
         raise Exception(f"Image not found: {r.status_code} - {r.text[:100]}")
     return r.content
 
+def get_configuration(base_url: str, token: str) -> dict:
+    """Fetch admin configuration settings"""
+    try:
+        headers = {"Authorization": f"Bearer {token}"}
+        url = f"{base_url}/api/configuration"
+        r = requests.get(url, headers=headers, timeout=10)
+        if r.status_code == 200:
+            data = r.json()
+            return data.get("config") or data
+    except Exception as e:
+        print(f"[config] Failed: {e}")
+    return {}
+
 
 def get_attendance_member(base_url: str, token: str, member_id: int, start_date: str = None, end_date: str = None) -> dict:
-    """Fetch attendance history for a specific member"""
     try:
         headers = {"Authorization": f"Bearer {token}"}
         params = {}
-        if start_date:
-            params["start_date"] = start_date
-        if end_date:
-            params["end_date"] = end_date
+        if start_date: params["start_date"] = start_date
+        if end_date: params["end_date"] = end_date
         url = f"{base_url}/api/attendance/member/{member_id}"
         r = requests.get(url, headers=headers, params=params, timeout=15)
         if r.status_code == 200:
             return r.json()
     except Exception as e:
         print(f"[attendance_member] Failed: {e}")
-    return {}
-
-
-def get_attendance_analytics(base_url: str, token: str, member_id: int, view: str = "daily", start_date: str = None, end_date: str = None) -> dict:
-    """Fetch attendance analytics for a specific member"""
-    try:
-        headers = {"Authorization": f"Bearer {token}"}
-        params = {"view": view}
-        if start_date:
-            params["start_date"] = start_date
-        if end_date:
-            params["end_date"] = end_date
-        url = f"{base_url}/api/attendance/analytics/{member_id}"
-        r = requests.get(url, headers=headers, params=params, timeout=15)
-        if r.status_code == 200:
-            return r.json()
-    except Exception as e:
-        print(f"[attendance_analytics] Failed: {e}")
     return {}
