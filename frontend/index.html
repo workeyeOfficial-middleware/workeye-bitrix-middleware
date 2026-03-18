@@ -1055,6 +1055,30 @@ function renderEdTab(tab,member,i){
     loadEdAttendance(member);
   }
 }
+
+async function loadEdAttendanceFull(member){
+  const el=document.getElementById('edTabContent');
+  const end=new Date().toISOString().substring(0,10);
+  const start=new Date(Date.now()-30*24*60*60*1000).toISOString().substring(0,10);
+  try{
+    const res=await apiFetch('/get-attendance-member',{member_id:member.id,start_date:start,end_date:end});
+    const data=res.data||{},stats=data.statistics||{},records=data.daily_records||[];
+    const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const tableRows=el.querySelector('tbody');
+    if(tableRows){
+      tableRows.innerHTML=records.map(r=>{
+        const d=new Date(r.date);
+        const sBg=r.status==='Present'?'#dcfce7':r.status==='Absent'?'#fee2e2':'#fef9c3';
+        const sTxt=r.status==='Present'?'#166534':r.status==='Absent'?'#b91c1c':'#854d0e';
+        return `<tr><td style="padding:8px 12px;border-bottom:1px solid var(--border);font-weight:500;color:var(--text)">${r.date||'—'}</td><td style="padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text2)">${days[d.getDay()]||'—'}</td><td style="padding:8px 12px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;color:var(--green)">${r.punch_in_time?fmtTime12(r.punch_in_time):'N/A'}</td><td style="padding:8px 12px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;color:var(--red)">${r.punch_out_time?fmtTime12(r.punch_out_time):'N/A'}</td><td style="padding:8px 12px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace">${r.duration||'—'}</td><td style="padding:8px 12px;border-bottom:1px solid var(--border)"><span style="background:${sBg};color:${sTxt};padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">${r.status||'—'}</span></td></tr>`;
+      }).join('');
+    }
+    // Remove the view more button
+    const btn=el.querySelector('button');
+    if(btn&&btn.textContent.includes('View All'))btn.parentElement.remove();
+  }catch(e){toast('Error loading full attendance','err');}
+}
+
 async function loadEdScreenshots(member){
   const el=document.getElementById('edTabContent');
   try{
@@ -1102,7 +1126,7 @@ async function loadEdAttendance(member){
           return `<tr><td style="padding:8px 12px;border-bottom:1px solid var(--border);font-weight:500;color:var(--text)">${r.date||'—'}</td><td style="padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text2)">${days[d.getDay()]||'—'}</td><td style="padding:8px 12px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;color:var(--green)">${r.punch_in_time?fmtTime12(r.punch_in_time):'N/A'}</td><td style="padding:8px 12px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;color:var(--red)">${r.punch_out_time?fmtTime12(r.punch_out_time):'N/A'}</td><td style="padding:8px 12px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace">${r.duration||'—'}</td><td style="padding:8px 12px;border-bottom:1px solid var(--border)"><span style="background:${sBg};color:${sTxt};padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600">${r.status||'—'}</span></td></tr>`;
         }).join('')}</tbody>
       </table></div>
-      ${records.length>14?`<div style="text-align:center;padding:10px;color:var(--muted);font-size:11px">Showing 14 of ${records.length} days</div>`:''}
+      ${records.length>14?`<div style="text-align:center;padding:12px"><button onclick="loadEdAttendanceFull(member)" style="background:var(--accent);color:white;border:none;border-radius:8px;padding:8px 20px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">View All ${records.length} Records</button></div>`:''}
     `;
   }catch(e){el.innerHTML=`<div class="empty" style="color:var(--red)">Error: ${e.message}</div>`;}
 }
