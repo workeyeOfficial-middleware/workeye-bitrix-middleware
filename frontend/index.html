@@ -391,7 +391,7 @@
           </div>
         </div>
       </div>
-
+      
       <div id="page-team" class="page">
         <div class="table-card">
           <div class="table-head">
@@ -439,7 +439,7 @@
           </div>
           <div id="attTableView" class="tbl-wrap">
             <table>
-              <thead><tr><th>#</th><th>Employee</th><th>Department</th><th>Position</th><th>Punch In</th><th>Punch Out</th><th>Hours</th><th>Status</th></tr></thead>
+              <thead><tr><th>#</th><th>Employee</th><th>Department</th><th>Position</th><th>Punch In</th><th>Punch Out</th><th>Hours</th><th>Status</th><th>Actions</th></tr></thead>
               <tbody id="attBody"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
             </table>
           </div>
@@ -565,6 +565,41 @@
 </div>
 <div id="empSsOverlay" onclick="closeEmpScreenshots()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:8999;backdrop-filter:blur(2px)"></div>
 
+
+<!-- Attendance Detail Modal -->
+<div id="attDetailModal" onclick="if(event.target===this)closeAttDetail()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px;backdrop-filter:blur(3px)">
+  <div style="background:var(--surface);border-radius:18px;width:100%;max-width:860px;box-shadow:var(--shadow3);position:relative;border:1px solid var(--border);animation:modalIn .2s ease;margin:auto">
+    <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:var(--text)">📅 Attendance Details</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px" id="attDetailSub">—</div>
+      </div>
+      <button onclick="closeAttDetail()" style="background:var(--surface2);border:1px solid var(--border);border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:16px;color:var(--text2);display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+    <div style="padding:14px 24px;border-bottom:1px solid var(--border);background:var(--surface2);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span style="font-size:12px;font-weight:600;color:var(--text2)">Date Range:</span>
+      <input type="date" id="attDetailStart" class="filter-select" style="cursor:pointer"/>
+      <span style="color:var(--muted);font-size:14px">→</span>
+      <input type="date" id="attDetailEnd" class="filter-select" style="cursor:pointer"/>
+      <button onclick="loadAttDetail()" style="background:var(--accent);color:white;border:none;border-radius:8px;padding:8px 18px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Apply</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:1px solid var(--border)">
+      <div style="padding:14px 20px;border-right:1px solid var(--border);text-align:center"><div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:500;color:var(--text)" id="attDetailWorkingDays">—</div><div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Working Days</div></div>
+      <div style="padding:14px 20px;border-right:1px solid var(--border);text-align:center"><div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:500;color:var(--green)" id="attDetailPresent">—</div><div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Days Present</div></div>
+      <div style="padding:14px 20px;border-right:1px solid var(--border);text-align:center"><div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:500;color:var(--accent)" id="attDetailHours">—</div><div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Total Hours</div></div>
+      <div style="padding:14px 20px;text-align:center"><div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:500;color:var(--amber)" id="attDetailPct">—</div><div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Attendance %</div></div>
+    </div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+        <thead><tr>
+          <th>Date</th><th>Day</th><th>Punch In</th><th>Punch Out</th><th>Duration</th><th>Status</th>
+        </tr></thead>
+        <tbody id="attDetailBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 </div>
 <script>
@@ -588,7 +623,6 @@ function toast(msg,type="ok"){const el=document.getElementById("toast");el.textC
 const avatarColors=["#5b5ef4","#06b6d4","#f59e0b","#ef4444","#8b5cf6","#10b981","#f97316","#3b82f6","#ec4899"];
 function avatarColor(i){return avatarColors[i%avatarColors.length]}
 function statusBadge(s){s=(s||"").toLowerCase();const cls=s==="active"?"status-active":s==="idle"?"status-idle":"status-offline",dot=s==="active"?"🟢":s==="idle"?"🟡":"⚫";return`<span class="status-badge ${cls}">${dot} ${s||"—"}</span>`}
-
 function fmtTime(iso){return iso?iso.substring(11,16):"—"}
 function fmtSec(sec){sec=parseInt(sec)||0;const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60);return h>0?`${h}h ${m}m`:`${m}m`}
 function prodBar(pct){pct=parseInt(pct)||0;const color=pct>=70?"var(--green)":pct>=40?"var(--amber)":"var(--red)";return`<div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div><span class="bar-pct">${pct}%</span></div>`}
@@ -604,7 +638,7 @@ function renderEmployees(members){allMembers=members;document.getElementById("em
 function filterEmployees(){const search=document.getElementById("empSearch").value.toLowerCase(),filter=document.getElementById("empFilter").value,filtered=allMembers.filter(m=>{const mS=!search||(m.name||"").toLowerCase().includes(search)||(m.email||"").toLowerCase().includes(search)||(m.position||"").toLowerCase().includes(search),mF=filter==="all"||(m.status||"").toLowerCase()===filter;return mS&&mF});renderEmployeesFiltered(filtered)}
 function renderEmployeesFiltered(members){if(!members.length){document.getElementById("empBody").innerHTML='<tr><td colspan="8" class="empty">No employees found.</td></tr>';return}document.getElementById("empBody").innerHTML=members.map((m,i)=>`<tr style="cursor:pointer" onclick='openEmpModal(${JSON.stringify(m).replace(/'/g,"&#39;")},${i})'><td><div class="name-with-avatar"><div class="avatar" style="background:${avatarColor(i)}">${(m.name||"?")[0].toUpperCase()}</div><div><div class="name-cell">${m.name||"—"}</div><div class="email-cell">${m.email||""}</div></div></div></td><td>${statusBadge(m.status)}</td><td style="font-family:'DM Mono',monospace;font-weight:500">${fmtSec(m.screen_time)}</td><td>${fmtSec(m.active_time||0)}</td><td>${fmtSec(m.idle_time||0)}</td><td style="min-width:110px">${prodBar(m.productivity)}</td><td><button onclick="event.stopPropagation();showSS(this)" data-id="${m.id}" data-name="${m.name||''}" style="background:rgba(91,94,244,0.12);color:#5b5ef4;border:1.5px solid #5b5ef4;border-radius:8px;padding:4px 12px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">📸 ${m.screenshots_count||0}</button></td><td style="color:var(--muted);font-size:11px">${m.last_activity||"—"}</td></tr>`).join("")}
 let attendanceData=[],attView="table";
-async function loadAttendance(){const tbody=document.getElementById("attBody"),tl=document.getElementById("attTimelineView");try{const selDate=document.getElementById("attDate")?.value||"";const res=await apiFetch("/get-attendance",selDate?{date:selDate}:{});const list=res.data||[];attendanceData=list;document.getElementById("attBadge").textContent=list.length;document.getElementById("attCount").textContent=list.length+" records";const inC=list.filter(a=>a.is_punched_in).length,outC=list.filter(a=>!a.is_punched_in&&a.punch_in_time).length,avgH=list.length?(list.reduce((s,a)=>s+(parseFloat(a.today_hours)||0),0)/list.length).toFixed(1):0,pct=list.length?Math.round((inC/list.length)*100):0;document.getElementById("attSumIn").textContent=inC;document.getElementById("attSumOut").textContent=outC;document.getElementById("attSumAvg").textContent=avgH+"h";document.getElementById("attSumPct").textContent=pct+"%";tbody.innerHTML=list.map((a,i)=>`<tr><td style="color:var(--muted);font-family:'DM Mono',monospace">${i+1}</td><td><div class="name-with-avatar"><div class="avatar" style="background:${avatarColor(i)}">${(a.name||"?")[0].toUpperCase()}</div><div><div class="name-cell">${a.name||"—"}</div><div class="email-cell">${a.email||""}</div></div></div></td><td>${a.department||"—"}</td><td>${a.position||"—"}</td><td style="font-family:'DM Mono',monospace;font-weight:500;color:var(--green)">${fmtTime(a.punch_in_time)}</td><td style="font-family:'DM Mono',monospace;font-weight:500;color:var(--red)">${fmtTime(a.punch_out_time)}</td><td style="font-family:'DM Mono',monospace"><strong>${a.today_hours!=null?a.today_hours+"h":"—"}</strong></td><td>${statusBadge(a.status)}</td></tr>`).join("")||'<tr><td colspan="7" class="empty">No records</td></tr>';tl.innerHTML=list.map((a,i)=>{const st=(a.status||"").toLowerCase(),dc=a.is_punched_in?"punched-in":st==="idle"?"idle":"punched-out";return`<div class="timeline-item"><div class="timeline-dot ${dc}"></div><div class="timeline-content"><div class="timeline-name">${a.name||"—"} <span style="font-weight:400;color:var(--muted)">· ${a.position||"—"}</span></div><div class="timeline-meta">In: ${fmtTime(a.punch_in_time)} &nbsp;·&nbsp; Out: ${fmtTime(a.punch_out_time)} &nbsp;·&nbsp; ${statusBadge(a.status)}</div></div><div class="timeline-hours">${a.today_hours!=null?a.today_hours+"h":"—"}</div></div>`}).join("")||'<div class="empty">No records.</div>'}catch(e){tbody.innerHTML=`<tr><td colspan="7" class="empty" style="color:var(--red)">Error: ${e.message}</td></tr>`}}
+async function loadAttendance(){const tbody=document.getElementById("attBody"),tl=document.getElementById("attTimelineView");try{const selDate=document.getElementById("attDate")?.value||"";const res=await apiFetch("/get-attendance",selDate?{date:selDate}:{});const list=res.data||[];attendanceData=list;document.getElementById("attBadge").textContent=list.length;document.getElementById("attCount").textContent=list.length+" records";const inC=list.filter(a=>a.is_punched_in).length,outC=list.filter(a=>!a.is_punched_in&&a.punch_in_time).length,avgH=list.length?(list.reduce((s,a)=>s+(parseFloat(a.today_hours)||0),0)/list.length).toFixed(1):0,pct=list.length?Math.round((inC/list.length)*100):0;document.getElementById("attSumIn").textContent=inC;document.getElementById("attSumOut").textContent=outC;document.getElementById("attSumAvg").textContent=avgH+"h";document.getElementById("attSumPct").textContent=pct+"%";tbody.innerHTML=list.map((a,i)=>`<tr><td style="color:var(--muted);font-family:'DM Mono',monospace">${i+1}</td><td><div class="name-with-avatar"><div class="avatar" style="background:${avatarColor(i)}">${(a.name||"?")[0].toUpperCase()}</div><div><div class="name-cell">${a.name||"—"}</div><div class="email-cell">${a.email||""}</div></div></div></td><td>${a.department||"—"}</td><td>${a.position||"—"}</td><td style="font-family:'DM Mono',monospace;font-weight:500;color:var(--green)">${fmtTime(a.punch_in_time)}</td><td style="font-family:'DM Mono',monospace;font-weight:500;color:var(--red)">${fmtTime(a.punch_out_time)}</td><td style="font-family:'DM Mono',monospace"><strong>${a.today_hours!=null?a.today_hours+"h":"—"}</strong></td><td>${statusBadge(a.status)}</td><td><button onclick="event.stopPropagation();openAttDetail(${a.id||0},'${(a.name||'').replace(/'/g,'')}','${(a.email||'').replace(/'/g,'')}','${(a.position||'').replace(/'/g,'')}')" style="background:var(--accent);color:white;border:none;border-radius:7px;padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">👁 View</button></td></tr>`).join("")||'<tr><td colspan="7" class="empty">No records</td></tr>';tl.innerHTML=list.map((a,i)=>{const st=(a.status||"").toLowerCase(),dc=a.is_punched_in?"punched-in":st==="idle"?"idle":"punched-out";return`<div class="timeline-item"><div class="timeline-dot ${dc}"></div><div class="timeline-content"><div class="timeline-name">${a.name||"—"} <span style="font-weight:400;color:var(--muted)">· ${a.position||"—"}</span></div><div class="timeline-meta">In: ${fmtTime(a.punch_in_time)} &nbsp;·&nbsp; Out: ${fmtTime(a.punch_out_time)} &nbsp;·&nbsp; ${statusBadge(a.status)}</div></div><div class="timeline-hours">${a.today_hours!=null?a.today_hours+"h":"—"}</div></div>`}).join("")||'<div class="empty">No records.</div>'}catch(e){tbody.innerHTML=`<tr><td colspan="7" class="empty" style="color:var(--red)">Error: ${e.message}</td></tr>`}}
 function setAttView(v){attView=v;document.getElementById("attTableView").style.display=v==="table"?"block":"none";document.getElementById("attTimelineView").style.display=v==="timeline"?"block":"none";document.getElementById("attViewTable").classList.toggle("on",v==="table");document.getElementById("attViewTimeline").classList.toggle("on",v==="timeline")}
 let allScreenshots=[],ssFilterMode="all";
 async function loadScreenshots(){const grid=document.getElementById("ssGrid");grid.innerHTML='<p style="color:var(--muted);text-align:center;padding:40px;grid-column:1/-1">Loading…</p>';try{const res=await apiFetch("/get-screenshots");allScreenshots=res.data||[];document.getElementById("ssBadge").textContent=allScreenshots.length;document.getElementById("ssCount").textContent=allScreenshots.length+" records";applySSFilters();async function loadImage(s,retries=3){if(!s.id)return;const name=s.member_name||s.name||"Unknown",ts=s.timestamp||"";const directUrl=s.image_url&&(s.image_url.startsWith("http")||s.image_url.startsWith("https"))?s.image_url:null;if(directUrl){const wrap=document.getElementById("ssimg-"+s.id);if(wrap)wrap.innerHTML=`<img src="${directUrl}" style="width:100%;height:100%;object-fit:cover;transition:transform .3s" onerror="this.parentElement.innerHTML='<div class=ss-no-img><span style=font-size:26px>🖥</span><span>No Preview</span></div>'">`;const card=document.getElementById("sscard-"+s.id);if(card)card.onclick=()=>openModal(directUrl,name,ts.substring(0,10)+" "+ts.substring(11,19));return;}const imgUrl=`${API}/proxy-image?workeye_url=${encodeURIComponent(SESSION.workeye_url)}&token=${encodeURIComponent(SESSION.token)}&screenshot_id=${s.id}&email=${encodeURIComponent(SESSION.email||"")}&password=${encodeURIComponent(SESSION.password||"")}`;for(let a=0;a<retries;a++){try{const r=await fetch(imgUrl,{headers:{"ngrok-skip-browser-warning":"1"}});if(!r.ok)throw new Error("HTTP "+r.status);const blob=await r.blob(),blobUrl=URL.createObjectURL(blob),wrap=document.getElementById("ssimg-"+s.id);if(wrap)wrap.innerHTML=`<img src="${blobUrl}" style="width:100%;height:100%;object-fit:cover;transition:transform .3s">`;const card=document.getElementById("sscard-"+s.id);if(card)card.onclick=()=>openModal(blobUrl,name,ts.substring(0,10)+" "+ts.substring(11,19));return}catch(e){if(a<retries-1)await new Promise(r=>setTimeout(r,500*(a+1)));else{const wrap=document.getElementById("ssimg-"+s.id);if(wrap)wrap.innerHTML='<div class="ss-no-img"><span style="font-size:26px">🖥</span><span>No Preview</span></div>'}}}}async function loadAllImages(){const batchSize=5;for(let i=0;i<allScreenshots.length;i+=batchSize){const batch=allScreenshots.slice(i,i+batchSize);await Promise.all(batch.map(s=>loadImage(s)))}}loadAllImages()}catch(e){document.getElementById("ssGrid").innerHTML=`<p style="color:var(--red);text-align:center;padding:40px;grid-column:1/-1">Error: ${e.message}</p>`}}
@@ -838,6 +872,60 @@ function closeEmpScreenshots(){
   document.getElementById('empSsOverlay').style.display = 'none';
 }
 
+// ── Attendance Detail ──────────────────────────────────
+let currentAttMember=null;
+function openAttDetail(memberId,memberName,memberEmail,memberPosition){
+  currentAttMember={id:memberId,name:memberName,email:memberEmail,position:memberPosition};
+  document.getElementById('attDetailSub').textContent=memberName+' · '+memberEmail+(memberPosition?' · '+memberPosition:'');
+  const end=new Date().toISOString().substring(0,10);
+  const start=new Date(Date.now()-30*24*60*60*1000).toISOString().substring(0,10);
+  document.getElementById('attDetailStart').value=start;
+  document.getElementById('attDetailEnd').value=end;
+  document.getElementById('attDetailModal').style.display='flex';
+  loadAttDetail();
+}
+function closeAttDetail(){
+  document.getElementById('attDetailModal').style.display='none';
+  currentAttMember=null;
+}
+async function loadAttDetail(){
+  if(!currentAttMember)return;
+  const start=document.getElementById('attDetailStart').value;
+  const end=document.getElementById('attDetailEnd').value;
+  const tbody=document.getElementById('attDetailBody');
+  tbody.innerHTML='<tr><td colspan="6" class="empty">Loading…</td></tr>';
+  ['attDetailWorkingDays','attDetailPresent','attDetailHours','attDetailPct'].forEach(id=>{document.getElementById(id).textContent='—'});
+  try{
+    const res=await apiFetch('/get-attendance-member',{member_id:currentAttMember.id,start_date:start,end_date:end});
+    const data=res.data||{};
+    const stats=data.statistics||{};
+    const records=data.daily_records||[];
+    document.getElementById('attDetailWorkingDays').textContent=stats.total_working_days||'—';
+    document.getElementById('attDetailPresent').textContent=stats.days_present||'—';
+    document.getElementById('attDetailHours').textContent=stats.total_hours?stats.total_hours+'h':'—';
+    document.getElementById('attDetailPct').textContent=stats.attendance_percentage?stats.attendance_percentage+'%':'—';
+    const days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    if(!records.length){tbody.innerHTML='<tr><td colspan="6" class="empty">No records found for this period.</td></tr>';return;}
+    tbody.innerHTML=records.map(r=>{
+      const d=new Date(r.date);
+      const dayName=days[d.getDay()]||'—';
+      const sBg=r.status==='Present'?'#dcfce7':r.status==='Absent'?'#fee2e2':'#fef9c3';
+      const sTxt=r.status==='Present'?'#166534':r.status==='Absent'?'#b91c1c':'#854d0e';
+      return `<tr>
+        <td style="padding:10px 16px;border-bottom:1px solid var(--border);font-weight:500;color:var(--text)">${r.date||'—'}</td>
+        <td style="padding:10px 16px;border-bottom:1px solid var(--border);color:var(--text2)">${dayName}</td>
+        <td style="padding:10px 16px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;color:var(--green)">${r.punch_in_time?r.punch_in_time.substring(11,16):'N/A'}</td>
+        <td style="padding:10px 16px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace;color:var(--red)">${r.punch_out_time?r.punch_out_time.substring(11,16):'N/A'}</td>
+        <td style="padding:10px 16px;border-bottom:1px solid var(--border);font-family:'DM Mono',monospace">${r.duration||'0h 0m'}</td>
+        <td style="padding:10px 16px;border-bottom:1px solid var(--border)"><span style="background:${sBg};color:${sTxt};padding:2px 8px;border-radius:5px;font-size:11px;font-weight:600">${r.status||'—'}</span></td>
+      </tr>`;
+    }).join('');
+  }catch(e){
+    tbody.innerHTML=`<tr><td colspan="6" class="empty" style="color:var(--red)">Error: ${e.message}</td></tr>`;
+  }
+}
+
+
 function filterTeam(){
   const search=document.getElementById("teamSearch").value.toLowerCase();
   const filter=document.getElementById("teamFilter").value;
@@ -848,7 +936,6 @@ function filterTeam(){
   });
   renderTeamGrid(filtered);
 }
-
 function renderTeamGrid(members){
   const grid=document.getElementById("teamGrid");
   if(!grid)return;
@@ -856,11 +943,10 @@ function renderTeamGrid(members){
   document.getElementById("teamCount").textContent=members.length+" employees";
   if(!members.length){grid.innerHTML='<div class="empty" style="grid-column:1/-1">No employees found.</div>';return;}
   grid.innerHTML=members.map((m,i)=>{
-    const statusColor=m.status==="active"?"var(--green)":m.status==="idle"?"var(--amber)":"var(--red)";
     const statusBg=m.status==="active"?"#dcfce7":m.status==="idle"?"#fef9c3":"#fee2e2";
     const statusTxt=m.status==="active"?"#166534":m.status==="idle"?"#854d0e":"#b91c1c";
-    return `<div style="background:var(--surface);border-radius:14px;padding:18px;box-shadow:0 2px 12px rgba(0,0,0,.06);cursor:pointer;transition:transform .2s,box-shadow .2s;border:1px solid var(--border);overflow:hidden;position:relative" 
-      onmouseenter="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,.1)'" 
+    return `<div style="background:var(--surface);border-radius:14px;padding:18px;box-shadow:0 2px 12px rgba(0,0,0,.06);cursor:pointer;transition:transform .2s,box-shadow .2s;border:1px solid var(--border);overflow:hidden"
+      onmouseenter="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,.1)'"
       onmouseleave="this.style.transform='none';this.style.boxShadow='0 2px 12px rgba(0,0,0,.06)'"
       onclick='openEmpModal(${JSON.stringify(m).replace(/'/g,"&#39;")},${i})'>
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
@@ -882,16 +968,17 @@ function renderTeamGrid(members){
         </div>
         <div style="background:var(--surface2);border-radius:8px;padding:8px;text-align:center;border:1px solid var(--border)">
           <div style="font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:var(--accent)">${(m.productivity||0)}%</div>
-          <div style="font-size:9px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Productivity</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Prod</div>
         </div>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div style="font-size:11px;color:var(--muted)">${m.position||"—"}</div>
         <button onclick="event.stopPropagation();showSS(this)" data-id="${m.id}" data-name="${m.name||''}" style="background:rgba(91,94,244,0.12);color:#5b5ef4;border:1.5px solid #5b5ef4;border-radius:8px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">📸 ${m.screenshots_count||0}</button>
       </div>
-      </div>`;
+    </div>`;
   }).join("");
 }
+
 </script>
 </body>
 </html>

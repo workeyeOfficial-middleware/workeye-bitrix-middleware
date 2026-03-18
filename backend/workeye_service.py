@@ -43,17 +43,19 @@ def get_stats(base_url: str, token: str) -> dict:
     url = f"{base_url}/api/dashboard/stats"
     r = requests.get(url, headers=headers, timeout=15)
     if r.status_code != 200:
-        raise Exception(f"Failed to fetch stats: {r.status_code}")
+        raise Exception(f"WorkEye backend error: {r.status_code} - {r.text[:200]}")
 
     try:
         data = r.json()
     except Exception:
         raise Exception("Failed to parse stats response")
     payload  = data.get("data") or data
-    stats    = payload.get("stats") or payload
+    stats    = payload.get("stats") or {}
     members  = payload.get("members") or []
     if not isinstance(members, list):
         members = []
+    if not isinstance(stats, dict):
+        stats = {}
 
     # Use base stats data directly - already real-time from WorkEye
     enriched = list(members)
@@ -192,3 +194,39 @@ def get_screenshot_image(base_url: str, token: str, screenshot_id: int) -> bytes
     if r.status_code != 200:
         raise Exception(f"Image not found: {r.status_code} - {r.text[:100]}")
     return r.content
+
+
+def get_attendance_member(base_url: str, token: str, member_id: int, start_date: str = None, end_date: str = None) -> dict:
+    """Fetch attendance history for a specific member"""
+    try:
+        headers = {"Authorization": f"Bearer {token}"}
+        params = {}
+        if start_date:
+            params["start_date"] = start_date
+        if end_date:
+            params["end_date"] = end_date
+        url = f"{base_url}/api/attendance/member/{member_id}"
+        r = requests.get(url, headers=headers, params=params, timeout=15)
+        if r.status_code == 200:
+            return r.json()
+    except Exception as e:
+        print(f"[attendance_member] Failed: {e}")
+    return {}
+
+
+def get_attendance_analytics(base_url: str, token: str, member_id: int, view: str = "daily", start_date: str = None, end_date: str = None) -> dict:
+    """Fetch attendance analytics for a specific member"""
+    try:
+        headers = {"Authorization": f"Bearer {token}"}
+        params = {"view": view}
+        if start_date:
+            params["start_date"] = start_date
+        if end_date:
+            params["end_date"] = end_date
+        url = f"{base_url}/api/attendance/analytics/{member_id}"
+        r = requests.get(url, headers=headers, params=params, timeout=15)
+        if r.status_code == 200:
+            return r.json()
+    except Exception as e:
+        print(f"[attendance_analytics] Failed: {e}")
+    return {}
