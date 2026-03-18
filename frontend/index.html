@@ -929,7 +929,7 @@ function globalSearchFn(){
   drop.innerHTML=matches.map((m,i)=>{
     const statusBg=m.status==='active'?'#dcfce7':m.status==='idle'?'#fef9c3':'#fee2e2';
     const statusTxt=m.status==='active'?'#166534':m.status==='idle'?'#854d0e':'#b91c1c';
-    return `<div onclick="openEmpDetail(${JSON.stringify(m).replace(/'/g,'&#39;')},${allMembers.indexOf(m)});document.getElementById('globalSearch').value='';document.getElementById('globalSearchDrop').style.display='none'" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .15s;display:flex;align-items:center;gap:10px" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background='transparent'">
+    return `<div onclick="openEmpDetailFromEl(this);document.getElementById('globalSearch').value='';document.getElementById('globalSearchDrop').style.display='none'" data-emp='${JSON.stringify(m).replace(/'/g,"&#39;")}' data-idx='${allMembers.indexOf(m)}' style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .15s;display:flex;align-items:center;gap:10px" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background='transparent'">
       <div style="width:32px;height:32px;border-radius:50%;background:${avatarColor(allMembers.indexOf(m))};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:white;flex-shrink:0">${(m.name||'?')[0].toUpperCase()}</div>
       <div style="flex:1;min-width:0">
         <div style="font-weight:600;font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m.name||'—'}</div>
@@ -984,6 +984,15 @@ function showNotif(title,body,icon='👁'){
 // ── Employee Detail Modal ──────────────────────────────
 let currentEmpDetail=null;
 let currentEdTab='info';
+
+function openEmpDetailFromEl(el){
+  try{
+    const m=JSON.parse(el.getAttribute('data-emp').replace(/&#39;/g,"'"));
+    const i=parseInt(el.getAttribute('data-idx'));
+    openEmpDetail(m,i);
+  }catch(e){}
+}
+
 function openEmpDetail(member,i){
   currentEmpDetail={member,i};
   currentEdTab='info';
