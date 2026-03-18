@@ -410,7 +410,7 @@
               <option value="offline">⚫ Offline</option>
             </select>
           </div>
-          <div id="teamGrid" style="padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">
+          <div id="teamGrid" style="padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;grid-auto-rows:auto">
             <div class="empty" style="grid-column:1/-1">Loading…</div>
           </div>
         </div>
@@ -859,7 +859,7 @@ function renderTeamGrid(members){
     const statusColor=m.status==="active"?"var(--green)":m.status==="idle"?"var(--amber)":"var(--red)";
     const statusBg=m.status==="active"?"#dcfce7":m.status==="idle"?"#fef9c3":"#fee2e2";
     const statusTxt=m.status==="active"?"#166534":m.status==="idle"?"#854d0e":"#b91c1c";
-    return `<div style="background:var(--surface);border-radius:14px;padding:18px;box-shadow:0 2px 12px rgba(0,0,0,.06);cursor:pointer;transition:transform .2s,box-shadow .2s;border:1px solid var(--border)" 
+    return `<div style="background:var(--surface);border-radius:14px;padding:18px;box-shadow:0 2px 12px rgba(0,0,0,.06);cursor:pointer;transition:transform .2s,box-shadow .2s;border:1px solid var(--border);overflow:hidden;position:relative" 
       onmouseenter="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(0,0,0,.1)'" 
       onmouseleave="this.style.transform='none';this.style.boxShadow='0 2px 12px rgba(0,0,0,.06)'"
       onclick='openEmpModal(${JSON.stringify(m).replace(/'/g,"&#39;")},${i})'>
@@ -888,7 +888,8 @@ function renderTeamGrid(members){
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div style="font-size:11px;color:var(--muted)">${m.position||"—"}</div>
         <button onclick="event.stopPropagation();showSS(this)" data-id="${m.id}" data-name="${m.name||''}" style="background:rgba(91,94,244,0.12);color:#5b5ef4;border:1.5px solid #5b5ef4;border-radius:8px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">📸 ${m.screenshots_count||0}</button>
-    </div>`;
+      </div>
+      </div>`;
   }).join("");
 }
 </script>
