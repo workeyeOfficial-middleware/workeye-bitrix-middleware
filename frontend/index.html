@@ -890,7 +890,7 @@ async function loadAttDetail(){
     const data=res.data||{};
     const stats=data.statistics||{};
     const records=data.daily_records||[];
-    document.getElementById('attDetailWorkingDays').textContent=stats.total_working_days||'—';
+    document.getElementById('attDetailWorkingDays').textContent=stats.working_days||stats.total_working_days||'—';
     document.getElementById('attDetailPresent').textContent=stats.days_present||'—';
     document.getElementById('attDetailHours').textContent=stats.total_hours?stats.total_hours+'h':'—';
     document.getElementById('attDetailPct').textContent=stats.attendance_percentage?stats.attendance_percentage+'%':'—';
