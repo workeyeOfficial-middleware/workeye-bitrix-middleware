@@ -599,9 +599,16 @@
           <div style="margin-top:6px;display:flex;align-items:center;gap:10px">
             <div id="edStatus"></div>
             <span style="font-size:11px;color:var(--muted)" id="edLastSeen"></span>
+            <span style="font-size:11px;color:var(--muted)" id="edLastSeen"></span>
+<div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+  <span style="font-size:11px;color:var(--muted)">📅 View Date:</span>
+  <input type="date" id="edDatePicker" class="filter-select" style="cursor:pointer;font-size:11px;padding:5px 10px"/>
+  <button onclick="onEdDateChange()" style="background:var(--accent);color:white;border:none;border-radius:7px;padding:6px 14px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">Apply</button>
+</div>
           </div>
         </div>
       </div>
+      
       <button onclick="closeEmpDetail()" style="background:var(--surface2);border:1px solid var(--border);border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:16px;color:var(--text2);display:flex;align-items:center;justify-content:center">✕</button>
     </div>
     <!-- 5 Stat Cards -->
@@ -1049,9 +1056,20 @@ function openEmpDetail(member,i){
   document.querySelectorAll('#empDetailModal .ss-filter-btn').forEach(b=>b.classList.remove('on'));
   el('edTabInfo').classList.add('on');
   renderEdTab('info',member,i);
+  const dp=document.getElementById('edDatePicker');
+  if(dp)dp.value=new Date().toISOString().substring(0,10);
   el('empDetailModal').style.display='block';
 document.body.style.overflow='hidden';
 }
+
+function onEdDateChange(){
+  const date=document.getElementById('edDatePicker').value;
+  if(!currentEmpDetail)return;
+  const {member,i}=currentEmpDetail;
+  if(currentEdTab==='screenshots')loadEdScreenshots(member,date);
+  else if(currentEdTab==='attendance')loadEdAttendance(member,date);
+}
+
 function closeEmpDetail(){
   document.getElementById('empDetailModal').style.display='none';
   document.body.style.overflow='';
@@ -1125,6 +1143,8 @@ async function loadEdAttendanceFull(btn){
 
 async function loadEdScreenshots(member){
   const el=document.getElementById('edTabContent');
+  const end=date||new Date().toISOString().substring(0,10);
+  const start=date?date:new Date(Date.now()-30*24*60*60*1000).toISOString().substring(0,10);
   try{
     let memberSS=allScreenshots.filter(s=>(s.member_name||s.name||'')===(member.name||'')||String(s.member_id)===String(member.id));
     if(!memberSS.length){
