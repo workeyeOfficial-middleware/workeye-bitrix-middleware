@@ -583,7 +583,7 @@
 
 
 <!-- Employee Detail Modal - Full Page Style -->
-<div id="empDetailModal" onclick="if(event.target===this)closeEmpDetail()" style="display:none;position:fixed;inset:0;z-index:9999;background:var(--bg);overflow-y:auto">
+<div id="empDetailModal" style="display:none;position:fixed;inset:0;z-index:9999;background:var(--bg);overflow-y:auto">
   <div style="max-width:1000px;margin:0 auto;padding:24px">
     <!-- Back button -->
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
@@ -649,38 +649,8 @@
       </div>
     </div>
   </div>
-</div> style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px;backdrop-filter:blur(3px)">
-  <div style="background:var(--surface);border-radius:18px;width:100%;max-width:900px;box-shadow:var(--shadow3);border:1px solid var(--border);animation:modalIn .2s ease;margin:auto">
-    <!-- Header -->
-    <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:16px">
-      <div id="edAvatar" style="width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:white;flex-shrink:0">?</div>
-      <div style="flex:1">
-        <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--text)" id="edName">—</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px" id="edMeta">—</div>
-        <div style="margin-top:4px" id="edStatus"></div>
-      </div>
-      <button onclick="closeEmpDetail()" style="background:var(--surface2);border:1px solid var(--border);border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:16px;color:var(--text2);display:flex;align-items:center;justify-content:center;flex-shrink:0">✕</button>
-    </div>
-    <!-- Stats -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:1px solid var(--border)">
-      <div style="padding:14px 20px;border-right:1px solid var(--border);text-align:center"><div style="font-family:'DM Mono',monospace;font-size:20px;font-weight:500;color:var(--text)" id="edScreenTime">—</div><div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Screen Time</div></div>
-      <div style="padding:14px 20px;border-right:1px solid var(--border);text-align:center"><div style="font-family:'DM Mono',monospace;font-size:20px;font-weight:500;color:var(--green)" id="edActiveTime">—</div><div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Active Time</div></div>
-      <div style="padding:14px 20px;border-right:1px solid var(--border);text-align:center"><div style="font-family:'DM Mono',monospace;font-size:20px;font-weight:500;color:var(--amber)" id="edIdleTime">—</div><div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Idle Time</div></div>
-      <div style="padding:14px 20px;text-align:center"><div style="font-family:'DM Mono',monospace;font-size:20px;font-weight:500;color:var(--accent)" id="edProductivity">—</div><div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Productivity</div></div>
-    </div>
-    <!-- Tabs -->
-    <div style="display:flex;gap:2px;padding:12px 20px;border-bottom:1px solid var(--border);background:var(--surface2)">
-      <button class="ss-filter-btn on" id="edTabInfo" onclick="switchEdTab('info',this)">👤 Profile</button>
-      <button class="ss-filter-btn" id="edTabScreenshots" onclick="switchEdTab('screenshots',this)">📸 Screenshots</button>
-      <button class="ss-filter-btn" id="edTabAttendance" onclick="switchEdTab('attendance',this)">📅 Attendance</button>
-    </div>
-    <!-- Tab Content -->
-    <div id="edTabContent" style="padding:20px;min-height:200px">
-      <div class="empty">Loading…</div>
-    </div>
   </div>
-</div>
-
+  </div>
 <!-- Attendance Detail Modal -->
 <div id="attDetailModal" onclick="if(event.target===this)closeAttDetail()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);align-items:flex-start;justify-content:center;overflow-y:auto;padding:24px;backdrop-filter:blur(3px)">
   <div style="background:var(--surface);border-radius:18px;width:100%;max-width:860px;box-shadow:var(--shadow3);position:relative;border:1px solid var(--border);animation:modalIn .2s ease;margin:auto">
@@ -762,7 +732,7 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeModal();closeE
 function openEmpModal(member,i){const el=id=>document.getElementById(id);el("empModalAvatar").style.background=avatarColor(i);el("empModalAvatar").textContent=(member.name||"?")[0].toUpperCase();el("empModalName").textContent=member.name||"—";el("empModalPosition").textContent=member.position||"—";el("empModalStatus").innerHTML=statusBadge(member.status);el("empModalScreenTime").textContent=fmtSec(member.screen_time);el("empModalActiveTime").textContent=fmtSec(member.active_time||0);el("empModalIdleTime").textContent=fmtSec(member.idle_time||0);el("empModalProductivity").textContent=(member.productivity||0)+"%";el("empModalEmail").textContent=member.email||"—";el("empModalDept").textContent=member.department||"—";el("empModalLastActivity").textContent=member.last_activity||"—";el("empModalScreenshots").textContent=member.screenshots_count||"0";document.getElementById("empModal").classList.add("show")}
 function closeEmpModal(){document.getElementById("empModal").classList.remove("show")}
 let syncHistory=[];
-function addSyncHistory(type,success,detail=""){syncHistory.unshift({type,success,time:new Date().toLocaleTimeString(),detail});const c=syncHistory.length;document.getElementById("syncBadge").textContent=c;document.getElementById("syncBadge2").textContent=c;renderSyncHistory()}
+function addSyncHistory(type,success,detail=""){syncHistory.unshift({type,success,time:new Date().toLocaleTimeString(),detail});const c=syncHistory.length;const sb=document.getElementById("syncBadge");if(sb)sb.textContent=c;document.getElementById("syncBadge2").textContent=c;renderSyncHistory()}
 function renderSyncHistory(){const wrap=document.getElementById("syncHistoryWrap");if(!syncHistory.length){wrap.innerHTML='<div class="empty">No syncs yet</div>';return}wrap.innerHTML=syncHistory.map(h=>`<div class="sync-history-item ${h.success?'ok':'err'}"><div class="sync-hist-left"><span style="font-size:18px">${h.success?'✅':'❌'}</span><div><div class="sync-hist-type">${h.type}</div><div class="sync-hist-time">${h.time}${h.detail?' · '+h.detail:''}</div></div></div><div class="sync-hist-status" style="color:${h.success?'var(--green)':'var(--red)'}">${h.success?'Success':'Failed'}</div></div>`).join("")}
 function clearSyncHistory(){syncHistory=[];document.getElementById("syncBadge").textContent="0";document.getElementById("syncBadge2").textContent="0";renderSyncHistory()}
 function exportSyncHistory(){if(!syncHistory.length){toast("No sync history to export!","err");return}const rows=[["Type","Time","Status","Detail"],...syncHistory.map(h=>[h.type,h.time,h.success?"Success":"Failed",h.detail])],csv=rows.map(r=>r.map(c=>`"${c}"`).join(",")).join("\n"),blob=new Blob([csv],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=`SyncHistory_${new Date().toISOString().substring(0,10)}.csv`;link.click();URL.revokeObjectURL(url);toast("\u2713 Sync history exported!","ok")}
@@ -1070,6 +1040,7 @@ function openEmpDetail(member,i){
   el('edScreenTime').textContent=fmtSec(member.screen_time);
   el('edActiveTime').textContent=fmtSec(member.active_time||0);
   el('edIdleTime').textContent=fmtSec(member.idle_time||0);
+  el('edProductivity').textContent=(member.productivity||0)+'%';
   el('edScreenshots').textContent=member.screenshots_count||0;
   el('edLastSeen').textContent=member.last_activity?'Last seen: '+member.last_activity:'Last seen: Never';
   el('edScreenshots').textContent=member.screenshots_count||0;
@@ -1078,10 +1049,12 @@ function openEmpDetail(member,i){
   document.querySelectorAll('#empDetailModal .ss-filter-btn').forEach(b=>b.classList.remove('on'));
   el('edTabInfo').classList.add('on');
   renderEdTab('info',member,i);
-  el('empDetailModal').style.display='flex';
+  el('empDetailModal').style.display='block';
+document.body.style.overflow='hidden';
 }
 function closeEmpDetail(){
   document.getElementById('empDetailModal').style.display='none';
+  document.body.style.overflow='';
   currentEmpDetail=null;
 }
 function switchEdTab(tab,btn){
