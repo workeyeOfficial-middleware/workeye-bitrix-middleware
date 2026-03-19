@@ -1066,8 +1066,11 @@ function onEdDateChange(){
   const date=document.getElementById('edDatePicker').value;
   if(!currentEmpDetail)return;
   const {member,i}=currentEmpDetail;
-  if(currentEdTab==='screenshots')loadEdScreenshots(member,date);
-  else if(currentEdTab==='attendance')loadEdAttendance(member,date);
+  if(currentEdTab==='screenshots'){
+    loadEdScreenshots(member,date);
+  } else if(currentEdTab==='attendance'){
+    loadEdAttendance(member,date);
+  }
 }
 
 function closeEmpDetail(){
@@ -1155,6 +1158,8 @@ async function loadEdScreenshots(member,date=''){
       memberSS=allScreenshots.filter(s=>(s.member_name||s.name||'')===(member.name||'')||String(s.member_id)===String(member.id));
     }
     if(!memberSS.length){el.innerHTML='<div class="empty">📸 No screenshots found</div>';return;}
+    if(date)memberSS=memberSS.filter(s=>(s.timestamp||'').substring(0,10)===date);
+    if(!memberSS.length){el.innerHTML='<div class="empty">📸 No screenshots found for this date</div>';return;}
     el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">`+
       memberSS.slice(0,20).map(s=>{
         const ts=s.timestamp||'',date=ts.substring(0,10),time=ts.substring(11,16);
@@ -1166,10 +1171,10 @@ async function loadEdScreenshots(member,date=''){
       }).join('')+`</div>${memberSS.length>20?`<div style="text-align:center;padding:10px;color:var(--muted);font-size:11px">Showing 20 of ${memberSS.length} screenshots</div>`:''}`;
   }catch(e){el.innerHTML=`<div class="empty" style="color:var(--red)">Error: ${e.message}</div>`;}
 }
-async function loadEdAttendance(member){
+async function loadEdAttendance(member,date=''){
   const el=document.getElementById('edTabContent');
-  const end=new Date().toISOString().substring(0,10);
-  const start=new Date(Date.now()-30*24*60*60*1000).toISOString().substring(0,10);
+  const end=date?date:new Date().toISOString().substring(0,10);
+const start=date?date:new Date(Date.now()-30*24*60*60*1000).toISOString().substring(0,10);
   try{
     const res=await apiFetch('/get-attendance-member',{member_id:member.id,start_date:start,end_date:end});
     const data=res.data||{};
