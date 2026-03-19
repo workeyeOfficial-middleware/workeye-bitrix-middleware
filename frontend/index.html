@@ -582,8 +582,74 @@
 <div id="empSsOverlay" onclick="closeEmpScreenshots()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:8999;backdrop-filter:blur(2px)"></div>
 
 
-<!-- Employee Detail Modal -->
-<div id="empDetailModal" onclick="if(event.target===this)closeEmpDetail()" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px;backdrop-filter:blur(3px)">
+<!-- Employee Detail Modal - Full Page Style -->
+<div id="empDetailModal" onclick="if(event.target===this)closeEmpDetail()" style="display:none;position:fixed;inset:0;z-index:9999;background:var(--bg);overflow-y:auto">
+  <div style="max-width:1000px;margin:0 auto;padding:24px">
+    <!-- Back button -->
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+      <button onclick="closeEmpDetail()" style="display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-family:inherit;font-size:12px;font-weight:500;color:var(--text2);cursor:pointer">← Back</button>
+    </div>
+    <!-- Header -->
+    <div style="background:var(--surface);border-radius:16px;padding:24px;margin-bottom:16px;border:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:16px">
+        <div id="edAvatar" style="width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:white;flex-shrink:0">?</div>
+        <div>
+          <div style="font-size:20px;font-weight:700;color:var(--text)" id="edName">—</div>
+          <div style="font-size:13px;color:var(--muted);margin-top:2px" id="edMeta">—</div>
+          <div style="margin-top:6px;display:flex;align-items:center;gap:10px">
+            <div id="edStatus"></div>
+            <span style="font-size:11px;color:var(--muted)" id="edLastSeen"></span>
+          </div>
+        </div>
+      </div>
+      <button onclick="closeEmpDetail()" style="background:var(--surface2);border:1px solid var(--border);border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:16px;color:var(--text2);display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+    <!-- 5 Stat Cards -->
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px">
+      <div style="background:var(--surface);border-radius:14px;padding:20px;border:1px solid var(--border);text-align:center">
+        <div style="font-size:22px;margin-bottom:8px">🕐</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Screen Time</div>
+        <div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:600;color:var(--text)" id="edScreenTime">—</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">Total today</div>
+      </div>
+      <div style="background:var(--surface);border-radius:14px;padding:20px;border:1px solid var(--border);text-align:center">
+        <div style="font-size:22px;margin-bottom:8px">📈</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Active Time</div>
+        <div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:600;color:var(--green)" id="edActiveTime">—</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">Productive hours</div>
+      </div>
+      <div style="background:var(--surface);border-radius:14px;padding:20px;border:1px solid var(--border);text-align:center">
+        <div style="font-size:22px;margin-bottom:8px">💤</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Idle Time</div>
+        <div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:600;color:var(--amber)" id="edIdleTime">—</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">Inactive periods</div>
+      </div>
+      <div style="background:var(--surface);border-radius:14px;padding:20px;border:1px solid var(--border);text-align:center">
+        <div style="font-size:22px;margin-bottom:8px">⚙️</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Productivity</div>
+        <div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:600;color:var(--accent)" id="edProductivity">—</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">Efficiency score</div>
+      </div>
+      <div style="background:var(--surface);border-radius:14px;padding:20px;border:1px solid var(--border);text-align:center">
+        <div style="font-size:22px;margin-bottom:8px">📸</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px">Screenshots</div>
+        <div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:600;color:var(--purple)" id="edScreenshots">—</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">Captured today</div>
+      </div>
+    </div>
+    <!-- Tabs -->
+    <div style="background:var(--surface);border-radius:16px;border:1px solid var(--border);overflow:hidden">
+      <div style="display:flex;border-bottom:1px solid var(--border)">
+        <button class="ed-tab-btn active-tab" id="edTabInfo" onclick="switchEdTab('info',this)" style="flex:1;padding:14px;border:none;background:transparent;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;color:var(--accent);border-bottom:2px solid var(--accent)">👤 Profile</button>
+        <button class="ed-tab-btn" id="edTabScreenshots" onclick="switchEdTab('screenshots',this)" style="flex:1;padding:14px;border:none;background:transparent;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent">📸 Screenshots</button>
+        <button class="ed-tab-btn" id="edTabAttendance" onclick="switchEdTab('attendance',this)" style="flex:1;padding:14px;border:none;background:transparent;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent">📅 Attendance</button>
+      </div>
+      <div id="edTabContent" style="padding:24px;min-height:300px">
+        <div class="empty">Loading…</div>
+      </div>
+    </div>
+  </div>
+</div> style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px;backdrop-filter:blur(3px)">
   <div style="background:var(--surface);border-radius:18px;width:100%;max-width:900px;box-shadow:var(--shadow3);border:1px solid var(--border);animation:modalIn .2s ease;margin:auto">
     <!-- Header -->
     <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:16px">
@@ -1004,7 +1070,10 @@ function openEmpDetail(member,i){
   el('edScreenTime').textContent=fmtSec(member.screen_time);
   el('edActiveTime').textContent=fmtSec(member.active_time||0);
   el('edIdleTime').textContent=fmtSec(member.idle_time||0);
-  el('edProductivity').textContent=(member.productivity||0)+'%';
+  el('edScreenshots').textContent=member.screenshots_count||0;
+  el('edLastSeen').textContent=member.last_activity?'Last seen: '+member.last_activity:'Last seen: Never';
+  el('edScreenshots').textContent=member.screenshots_count||0;
+  el('edLastSeen').textContent=member.last_activity?'Last seen: '+member.last_activity:'Last seen: Never';
   // Reset tabs
   document.querySelectorAll('#empDetailModal .ss-filter-btn').forEach(b=>b.classList.remove('on'));
   el('edTabInfo').classList.add('on');
@@ -1017,8 +1086,11 @@ function closeEmpDetail(){
 }
 function switchEdTab(tab,btn){
   currentEdTab=tab;
-  document.querySelectorAll('#empDetailModal .ss-filter-btn').forEach(b=>b.classList.remove('on'));
-  if(btn)btn.classList.add('on');
+  document.querySelectorAll('.ed-tab-btn').forEach(b=>{
+    b.style.color='var(--muted)';
+    b.style.borderBottom='2px solid transparent';
+  });
+  if(btn){btn.style.color='var(--accent)';btn.style.borderBottom='2px solid var(--accent)';}
   if(currentEmpDetail)renderEdTab(tab,currentEmpDetail.member,currentEmpDetail.i);
 }
 function renderEdTab(tab,member,i){
