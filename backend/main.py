@@ -78,7 +78,16 @@ async def get_attendance(workeye_url: str, token: str, date: str = None):
 @app.get("/get-screenshots")
 async def get_screenshots(workeye_url: str, token: str, date: str = None):
     try:
-        data = ws.get_screenshots(workeye_url, token, date)
+        import screenshot_cache
+        # Always fetch fresh from WorkEye (saves to cache automatically)
+        try:
+            data = ws.get_screenshots(workeye_url, token, date)
+            if data:
+                return {"success": True, "data": data}
+        except:
+            pass
+        # Fallback to local cache
+        data = screenshot_cache.get_screenshots_by_date(date)
         return {"success": True, "data": data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

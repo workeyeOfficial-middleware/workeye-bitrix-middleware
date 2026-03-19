@@ -187,6 +187,12 @@ def get_screenshots(base_url: str, token: str, date: str = None) -> list:
             continue
 
     all_screenshots.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+    # Save to local cache
+    try:
+        import screenshot_cache
+        screenshot_cache.save_screenshots(all_screenshots)
+    except Exception as e:
+        print(f"Cache save failed: {e}")
     return all_screenshots
 
 
