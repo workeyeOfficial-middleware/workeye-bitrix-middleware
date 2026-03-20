@@ -1201,6 +1201,7 @@ async function loadSettings(){
   try{
     const res=await apiFetch('/get-configuration');
     const cfg=res.data||{};
+    console.log('Config:', JSON.stringify(cfg));
     const workingDays=cfg.working_days||[1,2,3,4,5];
     if(body)body.innerHTML=`
       <div class="emp-modal-row"><span class="emp-modal-row-key">Config ID</span><span class="emp-modal-row-val">${cfg.id||'—'}</span></div>
