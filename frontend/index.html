@@ -370,6 +370,23 @@
   margin-top: 0 !important;
 }
 
+  
+/* Fix page title visibility in dark mode */
+.page-title { color: var(--text) !important; }
+.page-subtitle { color: var(--text2) !important; }
+[data-theme="dark"] .page-title { color: #f1f5f9 !important; }
+[data-theme="dark"] .page-subtitle { color: #94a3b8 !important; }
+[data-theme="dark"] .header-row { color: #f1f5f9 !important; }
+
+  
+/* Fix all headings and text in dark mode */
+[data-theme="dark"] #pageTitle,
+[data-theme="dark"] .page-title { color: #f1f5f9 !important; }
+[data-theme="dark"] #pageSubtitle,
+[data-theme="dark"] .page-subtitle { color: #94a3b8 !important; }
+[data-theme="dark"] .main-inner h1,
+[data-theme="dark"] .main-inner h2 { color: #f1f5f9 !important; }
+
   </style>
 </head>
 <body>
@@ -433,7 +450,7 @@
       <div class="header-row">
         <div>
           <div class="page-title" id="pageTitle">Dashboard</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px" id="pageSubtitle">Live employee monitoring</div>
+          <div class="page-subtitle" style="font-size:11px;margin-top:2px" id="pageSubtitle">Live employee monitoring</div>
         </div>
         <div class="header-right" style="position:relative">
           <span id="lastSync" style="font-size:11px;color:var(--muted)"></span><span id="liveTimer" style="font-size:11px;color:var(--green);display:none">🟢 Live</span>
