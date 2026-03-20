@@ -333,6 +333,43 @@
   font-weight: 500 !important;
 }
 
+  
+/* Fix small stat label wrapping */
+.small-stat { min-width: 0 !important; }
+.small-stat > div { min-width: 0 !important; }
+.ss-lbl { white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; font-size: 10.5px !important; }
+.ss-val { font-size: 30px !important; font-weight: 300 !important; line-height: 1 !important; }
+.small-stats { grid-template-columns: repeat(6,1fr) !important; }
+
+  
+/* Fix small stat card - icon+number top, label bottom */
+.small-stat {
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 4px !important;
+  padding: 20px 18px !important;
+}
+.small-stat-top {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  margin-bottom: 6px !important;
+}
+.ss-icon-wrap {
+  margin-bottom: 0 !important;
+}
+.ss-val {
+  font-size: 28px !important;
+  font-weight: 300 !important;
+  line-height: 1 !important;
+}
+.ss-lbl {
+  font-size: 12px !important;
+  color: var(--muted) !important;
+  white-space: nowrap !important;
+  margin-top: 0 !important;
+}
+
   </style>
 </head>
 <body>
@@ -416,12 +453,12 @@
           <div class="top-stat"><div class="top-stat-lbl">Avg Productivity</div><div class="top-stat-val" id="vProd">—</div><div class="top-stat-change" id="vProdChange">↑ Loading...</div><div class="top-stat-icon tsi-purple" style="color:white">⚙️</div></div>
         </div>
         <div class="small-stats">
-          <div class="small-stat"><div class="ss-icon-wrap" style="background:linear-gradient(135deg,#c084fc,#9333ea)">👤</div><div class="ss-val" id="vActive">—</div><div class="ss-lbl">Active users</div></div>
-          <div class="small-stat"><div class="ss-icon-wrap" style="background:linear-gradient(135deg,#67e8f9,#0891b2)">⏱</div><div class="ss-val" id="vScreenTime">—</div><div class="ss-lbl">Avg screen time</div></div>
-          <div class="small-stat"><div class="ss-icon-wrap" style="background:linear-gradient(135deg,#6ee7b7,#059669)">👥</div><div class="ss-val" id="vTeamSize">—</div><div class="ss-lbl">Team size</div></div>
-          <div class="small-stat"><div class="ss-icon-wrap" style="background:linear-gradient(135deg,#fca5a5,#e11d48)">💤</div><div class="ss-val" id="vIdle">—</div><div class="ss-lbl">Idle</div></div>
-          <div class="small-stat"><div class="ss-icon-wrap" style="background:linear-gradient(135deg,#fdba74,#ea580c)">📸</div><div class="ss-val" id="vScreenshots">—</div><div class="ss-lbl">Screenshots</div></div>
-          <div class="small-stat"><div class="ss-icon-wrap" style="background:linear-gradient(135deg,#a78bfa,#7c3aed)">⚫</div><div class="ss-val" id="vOffline">—</div><div class="ss-lbl">Offline</div></div>
+          <div class="small-stat"><div class="small-stat-top"><div class="ss-icon-wrap" style="background:linear-gradient(135deg,#c084fc,#9333ea)">👤</div><div class="ss-val" id="vActive">—</div></div><div class="ss-lbl">Active users</div></div>
+          <div class="small-stat"><div class="small-stat-top"><div class="ss-icon-wrap" style="background:linear-gradient(135deg,#67e8f9,#0891b2)">⏱</div><div class="ss-val" id="vScreenTime">—</div></div><div class="ss-lbl">Avg screen time</div></div>
+          <div class="small-stat"><div class="small-stat-top"><div class="ss-icon-wrap" style="background:linear-gradient(135deg,#6ee7b7,#059669)">👥</div><div class="ss-val" id="vTeamSize">—</div></div><div class="ss-lbl">Team size</div></div>
+          <div class="small-stat"><div class="small-stat-top"><div class="ss-icon-wrap" style="background:linear-gradient(135deg,#fca5a5,#e11d48)">💤</div><div class="ss-val" id="vIdle">—</div></div><div class="ss-lbl">Idle</div></div>
+          <div class="small-stat"><div class="small-stat-top"><div class="ss-icon-wrap" style="background:linear-gradient(135deg,#fdba74,#ea580c)">📸</div><div class="ss-val" id="vScreenshots">—</div></div><div class="ss-lbl">Screenshots</div></div>
+          <div class="small-stat"><div class="small-stat-top"><div class="ss-icon-wrap" style="background:linear-gradient(135deg,#a78bfa,#7c3aed)">⚫</div><div class="ss-val" id="vOffline">—</div></div><div class="ss-lbl">Offline</div></div>
         </div>
         <div id="alertCards"></div>
         <div class="mid-row">
