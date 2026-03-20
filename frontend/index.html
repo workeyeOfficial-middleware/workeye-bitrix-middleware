@@ -387,6 +387,23 @@
 [data-theme="dark"] .main-inner h1,
 [data-theme="dark"] .main-inner h2 { color: #f1f5f9 !important; }
 
+  
+/* FORCE fix page title in dark mode */
+[data-theme="dark"] #pageTitle {
+  color: #f1f5f9 !important;
+  -webkit-text-fill-color: #f1f5f9 !important;
+}
+[data-theme="dark"] #pageSubtitle {
+  color: #94a3b8 !important;
+  -webkit-text-fill-color: #94a3b8 !important;
+}
+[data-theme="dark"] .main {
+  color: #f1f5f9 !important;
+}
+[data-theme="dark"] .main-inner {
+  color: #f1f5f9 !important;
+}
+
   </style>
 </head>
 <body>
@@ -449,8 +466,8 @@
     <div class="main-inner">
       <div class="header-row">
         <div>
-          <div class="page-title" id="pageTitle">Dashboard</div>
-          <div class="page-subtitle" style="font-size:11px;margin-top:2px" id="pageSubtitle">Live employee monitoring</div>
+          <div class="page-title" id="pageTitle" style="color:var(--text)">Dashboard</div>
+          <div class="page-subtitle" style="font-size:11px;margin-top:2px;color:var(--text2)" id="pageSubtitle">Live employee monitoring</div>
         </div>
         <div class="header-right" style="position:relative">
           <span id="lastSync" style="font-size:11px;color:var(--muted)"></span><span id="liveTimer" style="font-size:11px;color:var(--green);display:none">🟢 Live</span>
@@ -845,7 +862,7 @@ function doLogout(){clearSession();document.getElementById("mainApp").style.disp
 function showDashboard(){document.getElementById("loginPage").style.display="none";document.getElementById("mainApp").style.display="block";const name=SESSION.email?SESSION.email.split("@")[0]:"Admin";document.getElementById("sidebarName").textContent=name;document.getElementById("sidebarAvatar").textContent=(name||"A")[0].toUpperCase();loadAll();startAutoRefresh();startLiveTimer();requestNotifPermission()}
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.getElementById("loginPage").style.display!=="none")doLogin()});
 const pages=["dashboard","team","attendance","screenshots","settings","sync"];
-function showPage(name,el){pages.forEach(p=>{const pg=document.getElementById("page-"+p);if(pg)pg.style.display=p===name?"block":"none"});document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));if(el)el.classList.add("active");const titles={dashboard:"Dashboard",team:"Team",attendance:"Attendance",screenshots:"Screenshots",settings:"Settings",sync:"Sync to Bitrix24"},subs={dashboard:"Live employee monitoring",team:"All team members",attendance:"Check-in & check-out records",screenshots:"Activity captures",settings:"Company configuration",sync:"Push data to Bitrix24 Drive"};document.getElementById("pageTitle").textContent=titles[name]||name;document.getElementById("pageSubtitle").textContent=subs[name]||"";if(name==="team")renderTeamGrid(allMembers);if(name==="attendance")loadAttendance();if(name==="screenshots")loadScreenshots();if(name==="settings")loadSettings()}
+function showPage(name,el){pages.forEach(p=>{const pg=document.getElementById("page-"+p);if(pg)pg.style.display=p===name?"block":"none"});document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));if(el)el.classList.add("active");const titles={dashboard:"Dashboard",team:"Team",attendance:"Attendance",screenshots:"Screenshots",settings:"Settings",sync:"Sync to Bitrix24"},subs={dashboard:"Live employee monitoring",team:"All team members",attendance:"Check-in & check-out records",screenshots:"Activity captures",settings:"Company configuration",sync:"Push data to Bitrix24 Drive"};const pt=document.getElementById("pageTitle");pt.textContent=titles[name]||name;pt.style.color="var(--text)";document.getElementById("pageSubtitle").textContent=subs[name]||"";if(name==="team")renderTeamGrid(allMembers);if(name==="attendance")loadAttendance();if(name==="screenshots")loadScreenshots();if(name==="settings")loadSettings()}
 let _tt;
 function toast(msg,type="ok"){const el=document.getElementById("toast");el.textContent=msg;el.className="show "+type;clearTimeout(_tt);_tt=setTimeout(()=>el.className="",4000)}
 const avatarColors=["#5b5ef4","#06b6d4","#f59e0b","#ef4444","#8b5cf6","#10b981","#f97316","#3b82f6","#ec4899"];
