@@ -213,7 +213,11 @@ def get_configuration(base_url: str, token: str) -> dict:
         r = requests.get(url, headers=headers, timeout=10)
         if r.status_code == 200:
             data = r.json()
-            return data.get("config") or data
+            cfg = data.get("config") or data
+            # Normalize field names
+            cfg["screenshot_interval"] = cfg.get("screenshot_interval_minutes") or cfg.get("screenshot_interval") or "—"
+            cfg["idle_timeout"] = cfg.get("idle_timeout_minutes") or cfg.get("idle_timeout") or "—"
+            return cfg
     except Exception as e:
         print(f"[config] Failed: {e}")
     return {}
