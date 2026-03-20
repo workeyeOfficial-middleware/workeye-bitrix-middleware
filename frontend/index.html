@@ -1215,12 +1215,12 @@ async function loadSettings(){
     if(ohBody)ohBody.innerHTML=`
       <div style="background:var(--surface2);border-radius:12px;padding:18px;border:1px solid var(--border);text-align:center">
         <div style="font-size:28px;margin-bottom:8px">📸</div>
-        <div style="font-family:'DM Mono',monospace;font-size:28px;font-weight:500;color:var(--accent)">${cfg.screenshot_interval||20}</div>
+        <div style="font-family:'DM Mono',monospace;font-size:28px;font-weight:500;color:var(--accent)">${cfg.screenshot_interval||cfg.screenshot_time||cfg.screenshotInterval||'—'}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.5px">Screenshot Interval (min)</div>
       </div>
       <div style="background:var(--surface2);border-radius:12px;padding:18px;border:1px solid var(--border);text-align:center">
         <div style="font-size:28px;margin-bottom:8px">💤</div>
-        <div style="font-family:'DM Mono',monospace;font-size:28px;font-weight:500;color:var(--amber)">${cfg.idle_timeout||30}</div>
+        <div style="font-family:'DM Mono',monospace;font-size:28px;font-weight:500;color:var(--amber)">${cfg.idle_timeout||cfg.idle_time||cfg.idleTimeout||'—'}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.5px">Idle Timeout (min)</div>
       </div>
       <div style="background:var(--surface2);border-radius:12px;padding:18px;border:1px solid var(--border);text-align:center">
