@@ -237,7 +237,7 @@
   /* ── WorkEye-matching 3D enhancements ── */
 
 /* Background */
-:root { --bg: #f0f2f8 !important; }
+
 
 /* Top stat cards - bigger icons, no border */
 .top-stat {
@@ -407,6 +407,12 @@
   
 /* Nuclear fix for page title */
 #pageTitle { color: var(--text) !important; }
+
+  
+/* Fix bg - only for light mode */
+:root:not([data-theme="dark"]) { --bg: #f0f2f8; }
+[data-theme="dark"] { --bg: #0b0e18 !important; }
+[data-theme="dark"] body { background: #0b0e18 !important; }
 
   </style>
 </head>
