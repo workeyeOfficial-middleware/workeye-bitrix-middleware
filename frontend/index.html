@@ -2170,14 +2170,30 @@ async function loadDetailScreenshots() {
   try {
     let memberSS = [];
 
-    // Use the cached member-screenshots endpoint (SQLite cache, fast)
-    // Falls back to live fetch if cache is empty
-    if (memberId) {
+    // Fetch screenshots for this member + date
+    try {
       const res = await apiFetch('/get-member-screenshots', { member_id: memberId, date: dateStr });
       memberSS = res.data || [];
+    } catch(fetchErr) {
+      console.warn('get-member-screenshots failed, trying fallback:', fetchErr.message);
     }
 
-    // Fallback: filter from allScreenshots in memory if endpoint fails
+    // Fallback: filter from allScreenshots in memory by name or id + date
+    if (!memberSS.length) {
+      // Try fetching all screenshots with date filter
+      try {
+        const res2 = await apiFetch('/get-screenshots', { date: dateStr });
+        const all = res2.data || [];
+        memberSS = all.filter(s => {
+          const sn = s.member_name || s.name || '';
+          const matchMember = sn === name || String(s.member_id) === String(memberId);
+          const matchDate = !dateStr || (s.timestamp || '').startsWith(dateStr);
+          return matchMember && matchDate;
+        });
+      } catch(e2) {}
+    }
+
+    // Last resort: use in-memory cache
     if (!memberSS.length && allScreenshots && allScreenshots.length > 0) {
       memberSS = allScreenshots.filter(s => {
         const sn = s.member_name || s.name || '';

@@ -147,15 +147,42 @@ async def get_activity_logs(workeye_url: str, token: str, member_id: int, date: 
 async def get_member_screenshots(workeye_url: str, token: str, member_id: int, date: str = None):
     try:
         import screenshot_cache
+
         # Try cache first
         cached = screenshot_cache.get_screenshots_by_member_date(member_id, date)
         if cached:
             return {"success": True, "data": cached, "source": "cache"}
-        # Fallback: fetch fresh from WorkEye and save to cache
-        data = ws.get_screenshots(workeye_url, token, date)
-        # Filter by member
-        member_ss = [s for s in data if str(s.get("member_id","")) == str(member_id)]
-        return {"success": True, "data": member_ss, "source": "live"}
+
+        # Cache empty — fetch fresh directly from WorkEye API for this member
+        headers = {"Authorization": f"Bearer {token}"}
+        import requests as req
+        params = {"limit": 200, "offset": 0}
+        if date:
+            params["date"] = date
+            params["start_date"] = date
+            params["end_date"] = date
+
+        url = f"{workeye_url}/api/screenshots/{member_id}"
+        r = req.get(url, headers=headers, params=params, timeout=15)
+
+        screenshots = []
+        if r.status_code == 200:
+            data = r.json()
+            screenshots = data.get("screenshots") or data.get("data") or []
+            # Enrich with member_id
+            for s in screenshots:
+                s["member_id"] = member_id
+                if s.get("screenshot_url"):
+                    s["image_url"] = s["screenshot_url"]
+            # Save to cache for next time
+            if screenshots:
+                screenshot_cache.save_screenshots(screenshots)
+
+        # Filter by date client-side as safety net
+        if date and screenshots:
+            screenshots = [s for s in screenshots if (s.get("timestamp") or "").startswith(date)]
+
+        return {"success": True, "data": screenshots, "source": "live"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
