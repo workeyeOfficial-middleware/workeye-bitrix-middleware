@@ -289,13 +289,22 @@
   .top-stat-val { font-size: 52px; font-weight: 300; line-height: 1; color: var(--neu-text-primary); letter-spacing: -3px; margin: 6px 0 4px; }
   .top-stat-change { font-size: 13px; color: var(--neu-green); font-weight: 500; display: flex; align-items: center; gap: 4px; }
   .top-stat-icon {
-    position: absolute; right: 24px; top: 24px;
-    width: 56px; height: 56px; border-radius: 16px;
-    display: flex; align-items: center; justify-content: center; font-size: 24px;
+    position: absolute; right: 22px; top: 22px;
+    width: 62px; height: 62px; border-radius: 18px;
+    display: flex; align-items: center; justify-content: center;
   }
-  .tsi-blue { background: linear-gradient(145deg, #a78bfa, #6366f1); box-shadow: 4px 4px 12px rgba(99,102,241,.4), -2px -2px 8px rgba(255,255,255,.15); }
-  .tsi-teal { background: linear-gradient(145deg, #6ee7b7, #10b981); box-shadow: 4px 4px 12px rgba(16,185,129,.4), -2px -2px 8px rgba(255,255,255,.15); }
-  .tsi-purple { background: linear-gradient(145deg, #67e8f9, #0ea5e9); box-shadow: 4px 4px 12px rgba(14,165,233,.4), -2px -2px 8px rgba(255,255,255,.15); }
+  .tsi-blue {
+    background: linear-gradient(145deg, #a78bfa, #6366f1);
+    box-shadow: 5px 5px 14px rgba(99,102,241,.5), -3px -3px 8px rgba(255,255,255,.25);
+  }
+  .tsi-teal {
+    background: linear-gradient(145deg, #6ee7b7, #10b981);
+    box-shadow: 5px 5px 14px rgba(16,185,129,.5), -3px -3px 8px rgba(255,255,255,.25);
+  }
+  .tsi-purple {
+    background: linear-gradient(145deg, #67e8f9, #0ea5e9);
+    box-shadow: 5px 5px 14px rgba(14,165,233,.5), -3px -3px 8px rgba(255,255,255,.25);
+  }
 
   /* ── Small Stats ── */
   .small-stats { display: grid; grid-template-columns: repeat(6,1fr); gap: 14px; margin-bottom: 20px; }
@@ -308,7 +317,7 @@
   .small-stat:hover { transform: translateY(-2px); box-shadow: 8px 8px 16px var(--neu-shadow-dark), -8px -8px 16px var(--neu-shadow-light); }
   [data-theme="dark"] .small-stat { box-shadow: 4px 4px 10px rgba(0,0,0,.5), -2px -2px 6px rgba(255,255,255,.03); }
   .small-stat-top { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
-  .ss-icon-wrap { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .ss-icon-wrap { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
   .ss-icon { display: none; }
   .ss-val { font-size: 28px; font-weight: 300; color: var(--neu-text-primary); letter-spacing: -.5px; line-height: 1; }
   .ss-lbl { font-size: 11px; color: var(--neu-text-secondary); font-weight: 500; }
@@ -652,17 +661,71 @@
       </div>
       <div id="page-dashboard" class="page on">
         <div class="top-stats">
-          <div class="top-stat"><div class="top-stat-lbl">Total Employees</div><div class="top-stat-val" id="vTotal">—</div><div class="top-stat-change" id="vChange">↑ Loading...</div><div class="top-stat-icon tsi-blue" style="color:white">👥</div></div>
-          <div class="top-stat"><div class="top-stat-lbl">Active Rate</div><div class="top-stat-val" id="vActiveRate">—</div><div class="top-stat-change" id="vActiveChange">↑ Loading...</div><div class="top-stat-icon tsi-teal" style="color:white">📈</div></div>
-          <div class="top-stat"><div class="top-stat-lbl">Avg Productivity</div><div class="top-stat-val" id="vProd">—</div><div class="top-stat-change" id="vProdChange">↑ Loading...</div><div class="top-stat-icon tsi-purple" style="color:white">⚙️</div></div>
+          <div class="top-stat"><div class="top-stat-lbl">Total Employees</div><div class="top-stat-val" id="vTotal">—</div><div class="top-stat-change" id="vChange">↑ Loading...</div><div class="top-stat-icon tsi-blue" style="color:white">
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+    <circle cx="9" cy="7" r="4"/>
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+  </svg>
+</div></div>
+          <div class="top-stat"><div class="top-stat-lbl">Active Rate</div><div class="top-stat-val" id="vActiveRate">—</div><div class="top-stat-change" id="vActiveChange">↑ Loading...</div><div class="top-stat-icon tsi-teal" style="color:white">
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+  </svg>
+</div></div>
+          <div class="top-stat"><div class="top-stat-lbl">Avg Productivity</div><div class="top-stat-val" id="vProd">—</div><div class="top-stat-change" id="vProdChange">↑ Loading...</div><div class="top-stat-icon tsi-purple" style="color:white">
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="3"/>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+  </svg>
+</div></div>
         </div>
         <div class="small-stats">
-          <div class="small-stat"><div class="small-stat-top"><div class="ss-icon-wrap" style="background:linear-gradient(135deg,#c084fc,#9333ea)">👤</div><div class="ss-val" id="vActive">—</div></div><div class="ss-lbl">Active users</div></div>
-          <div class="small-stat"><div class="small-stat-top"><div class="ss-icon-wrap" style="background:linear-gradient(135deg,#67e8f9,#0891b2)">⏱</div><div class="ss-val" id="vScreenTime">—</div></div><div class="ss-lbl">Avg screen time</div></div>
-          <div class="small-stat"><div class="small-stat-top"><div class="ss-icon-wrap" style="background:linear-gradient(135deg,#6ee7b7,#059669)">👥</div><div class="ss-val" id="vTeamSize">—</div></div><div class="ss-lbl">Team size</div></div>
-          <div class="small-stat"><div class="small-stat-top"><div class="ss-icon-wrap" style="background:linear-gradient(135deg,#fca5a5,#e11d48)">💤</div><div class="ss-val" id="vIdle">—</div></div><div class="ss-lbl">Idle</div></div>
-          <div class="small-stat"><div class="small-stat-top"><div class="ss-icon-wrap" style="background:linear-gradient(135deg,#fdba74,#ea580c)">📸</div><div class="ss-val" id="vScreenshots">—</div></div><div class="ss-lbl">Screenshots</div></div>
-          <div class="small-stat"><div class="small-stat-top"><div class="ss-icon-wrap" style="background:linear-gradient(135deg,#a78bfa,#7c3aed)">⚫</div><div class="ss-val" id="vOffline">—</div></div><div class="ss-lbl">Offline</div></div>
+          <div class="small-stat"><div class="small-stat-top"><div class="ss-icon-wrap" style="background:linear-gradient(145deg,#c084fc,#9333ea);box-shadow:3px 3px 8px rgba(147,51,234,.4),-2px -2px 6px rgba(255,255,255,.15)">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+    <circle cx="12" cy="7" r="4"/>
+  </svg>
+</div><div class="ss-val" id="vActive">—</div></div><div class="ss-lbl">Active users</div></div>
+          <div class="small-stat"><div class="small-stat-top"><div class="ss-icon-wrap" style="background:linear-gradient(145deg,#67e8f9,#0891b2);box-shadow:3px 3px 8px rgba(8,145,178,.4),-2px -2px 6px rgba(255,255,255,.15)">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="10"/>
+    <polyline points="12 6 12 12 16 14"/>
+  </svg>
+</div><div class="ss-val" id="vScreenTime">—</div></div><div class="ss-lbl">Avg screen time</div></div>
+          <div class="small-stat"><div class="small-stat-top"><div class="ss-icon-wrap" style="background:linear-gradient(145deg,#6ee7b7,#059669);box-shadow:3px 3px 8px rgba(5,150,105,.4),-2px -2px 6px rgba(255,255,255,.15)">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+    <circle cx="9" cy="7" r="4"/>
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+  </svg>
+</div><div class="ss-val" id="vTeamSize">—</div></div><div class="ss-lbl">Team size</div></div>
+          <div class="small-stat"><div class="small-stat-top"><div class="ss-icon-wrap" style="background:linear-gradient(145deg,#fca5a5,#e11d48);box-shadow:3px 3px 8px rgba(225,29,72,.4),-2px -2px 6px rgba(255,255,255,.15)">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+    <circle cx="9" cy="7" r="4"/>
+    <line x1="17" y1="11" x2="23" y2="11"/>
+  </svg>
+</div><div class="ss-val" id="vIdle">—</div></div><div class="ss-lbl">Idle</div></div>
+          <div class="small-stat"><div class="small-stat-top"><div class="ss-icon-wrap" style="background:linear-gradient(145deg,#fdba74,#ea580c);box-shadow:3px 3px 8px rgba(234,88,12,.4),-2px -2px 6px rgba(255,255,255,.15)">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+    <circle cx="12" cy="13" r="4"/>
+  </svg>
+</div><div class="ss-val" id="vScreenshots">—</div></div><div class="ss-lbl">Screenshots</div></div>
+          <div class="small-stat"><div class="small-stat-top"><div class="ss-icon-wrap" style="background:linear-gradient(145deg,#a78bfa,#7c3aed);box-shadow:3px 3px 8px rgba(124,58,237,.4),-2px -2px 6px rgba(255,255,255,.15)">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="1" y1="1" x2="23" y2="23"/>
+    <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/>
+    <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/>
+    <path d="M10.71 5.05A16 16 0 0 1 22.56 9"/>
+    <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/>
+    <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+    <line x1="12" y1="20" x2="12.01" y2="20"/>
+  </svg>
+</div><div class="ss-val" id="vOffline">—</div></div><div class="ss-lbl">Offline</div></div>
         </div>
         <div id="alertCards"></div>
         <div class="mid-row">
