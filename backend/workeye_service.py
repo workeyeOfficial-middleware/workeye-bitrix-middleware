@@ -151,6 +151,8 @@ def get_screenshots(base_url: str, token: str, date: str = None) -> list:
             params = {"limit": 100, "offset": 0}
             if date:
                 params["date"] = date
+                params["start_date"] = date
+                params["end_date"] = date
 
             url = f"{base_url}/api/screenshots/{member_id}"
             r = requests.get(url, headers=headers, params=params, timeout=15)
@@ -185,6 +187,10 @@ def get_screenshots(base_url: str, token: str, date: str = None) -> list:
         except Exception as e:
             print(f"Failed to get screenshots for member {member_id}: {e}")
             continue
+
+    # Filter by date on our side too as safety net
+    if date:
+        all_screenshots = [s for s in all_screenshots if (s.get("timestamp") or "").startswith(date)]
 
     all_screenshots.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
     # Save to local cache
