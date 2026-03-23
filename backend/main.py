@@ -131,6 +131,16 @@ async def get_attendance_member(workeye_url: str, token: str, member_id: int, st
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# ── Activity Logs ─────────────────────────────────────────
+@app.get("/get-activity-logs")
+async def get_activity_logs(workeye_url: str, token: str, member_id: int, date: str = None):
+    try:
+        data = ws.get_activity_logs(workeye_url, token, member_id, date)
+        return {"success": True, "data": data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ── Sync ─────────────────────────────────────────────────
 @app.post("/sync-dashboard")
 async def sync_dashboard(workeye_url: str, token: str):

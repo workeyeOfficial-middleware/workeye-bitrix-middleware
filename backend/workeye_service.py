@@ -236,3 +236,46 @@ def get_attendance_member(base_url: str, token: str, member_id: int, start_date:
     except Exception as e:
         print(f"[attendance_member] Failed: {e}")
     return {}
+
+def get_activity_logs(base_url: str, token: str, member_id: int, date: str = None) -> list:
+    """
+    Fetch activity logs (app usage) for a specific member.
+    Tries multiple known WorkEye API endpoints.
+    Returns list of: {title, process_name, timestamp, duration_seconds}
+    """
+    headers = {"Authorization": f"Bearer {token}"}
+    endpoints = [
+        f"{base_url}/api/activity/{member_id}",
+        f"{base_url}/api/dashboard/member/{member_id}/activity",
+        f"{base_url}/api/members/{member_id}/activity-logs",
+        f"{base_url}/api/activity-logs/{member_id}",
+        f"{base_url}/api/dashboard/member/{member_id}/app-usage",
+    ]
+    params = {}
+    if date:
+        params["date"] = date
+
+    for url in endpoints:
+        try:
+            r = requests.get(url, headers=headers, params=params, timeout=10)
+            print(f"[activity] {url} -> {r.status_code}")
+            if r.status_code == 200:
+                data = r.json()
+                # Try various response shapes
+                logs = (
+                    data.get("activity_logs") or
+                    data.get("logs") or
+                    data.get("data") or
+                    data.get("activities") or
+                    data.get("app_usage") or
+                    []
+                )
+                if isinstance(logs, list) and logs:
+                    print(f"[activity] Got {len(logs)} logs from {url}")
+                    return logs
+        except Exception as e:
+            print(f"[activity] {url} failed: {e}")
+            continue
+
+    print(f"[activity] No activity logs found for member {member_id}")
+    return []
