@@ -632,6 +632,8 @@
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span> Attendance</div>
       <div class="nav-item" id="nav-screenshots" onclick="showPage('screenshots',this)">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></span> Screenshots</div>
+      <div class="nav-item" id="nav-activity" onclick="showPage('activity',this)">
+        <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span> Activity Log</div>
       <div class="nav-item" id="nav-settings" onclick="showPage('settings',this)">
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Settings</div>
 
@@ -861,7 +863,184 @@
         </div>
       </div>
       
-      <div id="page-settings" class="page">
+      <!-- ══ Activity Log Page ══ -->
+      <div id="page-activity" class="page">
+        <!-- List View -->
+        <div id="activityListView">
+          <div class="table-card">
+            <div class="table-head">
+              <div>
+                <div class="table-title">Activity Log</div>
+                <div class="table-sub" id="activityCount">— employees</div>
+              </div>
+              <div class="tbl-actions">
+                <span class="badge" id="activityBadge">0</span>
+                <button class="action-btn btn-green" onclick="exportActivityCSV()">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Export CSV
+                </button>
+              </div>
+            </div>
+            <div class="search-bar">
+              <input id="activitySearch" class="search-input" type="text" placeholder="Search by name or email..." oninput="filterActivityLog()"/>
+              <select id="activityFilter" class="filter-select" onchange="filterActivityLog()">
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="idle">Idle</option>
+                <option value="offline">Offline</option>
+              </select>
+              <span id="activityResultCount" style="font-size:11px;color:var(--muted);white-space:nowrap;margin-left:4px"></span>
+            </div>
+            <div class="tbl-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="cursor:pointer" onclick="sortActivityLog('name')">Employee <span style="opacity:.5">↕</span></th>
+                    <th style="cursor:pointer" onclick="sortActivityLog('status')">Status <span style="opacity:.5">↕</span></th>
+                    <th style="cursor:pointer" onclick="sortActivityLog('screen_time')">Screen Time <span style="opacity:.5">↕</span></th>
+                    <th style="cursor:pointer" onclick="sortActivityLog('active_time')">Active Time <span style="opacity:.5">↕</span></th>
+                    <th style="cursor:pointer" onclick="sortActivityLog('idle_time')">Idle Time <span style="opacity:.5">↕</span></th>
+                    <th style="cursor:pointer" onclick="sortActivityLog('productivity')">Productivity <span style="opacity:.5">↕</span></th>
+                    <th style="cursor:pointer" onclick="sortActivityLog('screenshots_count')">Screenshots <span style="opacity:.5">↕</span></th>
+                    <th>Last Activity</th>
+                  </tr>
+                </thead>
+                <tbody id="activityBody">
+                  <tr><td colspan="8" class="empty">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Employee Detail View -->
+        <div id="activityDetailView" style="display:none">
+          <!-- Back button -->
+          <div style="margin-bottom:18px">
+            <button onclick="closeActivityDetail()" style="display:inline-flex;align-items:center;gap:8px;background:var(--neu-surface);border:none;border-radius:10px;padding:9px 16px;font-family:inherit;font-size:13px;font-weight:600;color:var(--neu-text-secondary);cursor:pointer;box-shadow:4px 4px 8px var(--neu-shadow-dark),-4px -4px 8px var(--neu-shadow-light);transition:all .2s" onmouseover="this.style.color='var(--neu-accent)'" onmouseout="this.style.color='var(--neu-text-secondary)'">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              Activity Log
+            </button>
+          </div>
+
+          <!-- Employee Header -->
+          <div class="table-card" style="margin-bottom:18px">
+            <div style="padding:22px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px">
+              <div style="display:flex;align-items:center;gap:18px">
+                <div id="detailAvatar" style="width:60px;height:60px;border-radius:50%;background:linear-gradient(145deg,#7477ff,#5558d9);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:white;box-shadow:5px 5px 12px var(--neu-shadow-dark),-3px -3px 8px var(--neu-shadow-light)">A</div>
+                <div>
+                  <div id="detailName" style="font-size:20px;font-weight:700;color:var(--neu-text-primary);letter-spacing:-.3px">—</div>
+                  <div id="detailEmail" style="font-size:12px;color:var(--neu-text-secondary);margin-top:2px">—</div>
+                  <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+                    <span id="detailStatusBadge"></span>
+                    <span id="detailLastSeen" style="font-size:12px;color:var(--neu-text-secondary)"></span>
+                  </div>
+                </div>
+              </div>
+              <button onclick="viewAnalyticsForEmployee()" style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(145deg,#7477ff,#5558d9);border:none;border-radius:12px;padding:11px 20px;font-family:inherit;font-size:13px;font-weight:700;color:white;cursor:pointer;box-shadow:5px 5px 12px rgba(99,102,241,.4),-3px -3px 8px rgba(255,255,255,.15);transition:all .2s">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                View Analytics
+              </button>
+            </div>
+          </div>
+
+          <!-- 5 Stat Cards -->
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:18px" id="detailStatCards">
+            <!-- Screen Time -->
+            <div class="card" style="padding:20px 18px">
+              <div style="color:#7477ff;margin-bottom:12px">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              </div>
+              <div style="font-size:11px;font-weight:700;color:var(--neu-text-secondary);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Screen Time</div>
+              <div id="detailScreenTime" style="font-size:26px;font-weight:700;color:var(--neu-text-primary);letter-spacing:-.5px">—</div>
+              <div style="font-size:11px;color:var(--neu-text-secondary);margin-top:4px">Total today</div>
+            </div>
+            <!-- Active Time -->
+            <div class="card" style="padding:20px 18px">
+              <div style="color:#10b981;margin-bottom:12px">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              </div>
+              <div style="font-size:11px;font-weight:700;color:var(--neu-text-secondary);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Active Time</div>
+              <div id="detailActiveTime" style="font-size:26px;font-weight:700;color:var(--neu-text-primary);letter-spacing:-.5px">—</div>
+              <div style="font-size:11px;color:var(--neu-text-secondary);margin-top:4px">Productive hours</div>
+            </div>
+            <!-- Idle Time -->
+            <div class="card" style="padding:20px 18px">
+              <div style="color:#f59e0b;margin-bottom:12px">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+              </div>
+              <div style="font-size:11px;font-weight:700;color:var(--neu-text-secondary);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Idle Time</div>
+              <div id="detailIdleTime" style="font-size:26px;font-weight:700;color:var(--neu-text-primary);letter-spacing:-.5px">—</div>
+              <div style="font-size:11px;color:var(--neu-text-secondary);margin-top:4px">Inactive periods</div>
+            </div>
+            <!-- Productivity -->
+            <div class="card" style="padding:20px 18px">
+              <div style="color:#f97316;margin-bottom:12px">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+              </div>
+              <div style="font-size:11px;font-weight:700;color:var(--neu-text-secondary);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Productivity</div>
+              <div id="detailProductivity" style="font-size:26px;font-weight:700;color:var(--neu-text-primary);letter-spacing:-.5px">—</div>
+              <div style="font-size:11px;color:var(--neu-text-secondary);margin-top:4px">Efficiency score</div>
+            </div>
+            <!-- Screenshots -->
+            <div class="card" style="padding:20px 18px">
+              <div style="color:#ea580c;margin-bottom:12px">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </div>
+              <div style="font-size:11px;font-weight:700;color:var(--neu-text-secondary);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px">Screenshots</div>
+              <div id="detailScreenshots" style="font-size:26px;font-weight:700;color:var(--neu-text-primary);letter-spacing:-.5px">—</div>
+              <div style="font-size:11px;color:var(--neu-text-secondary);margin-top:4px">Captured today</div>
+            </div>
+          </div>
+
+          <!-- Date Selector -->
+          <div class="table-card" style="margin-bottom:18px">
+            <div style="padding:18px 24px;display:flex;align-items:center;justify-content:space-between">
+              <div>
+                <div style="font-size:14px;font-weight:700;color:var(--neu-text-primary)">Select Date</div>
+                <div style="font-size:12px;color:var(--neu-text-secondary);margin-top:2px">View activity for specific date</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px">
+                <button onclick="changeDetailDate(-1)" style="width:32px;height:32px;border-radius:8px;border:none;background:var(--neu-surface);color:var(--neu-text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:3px 3px 6px var(--neu-shadow-dark),-3px -3px 6px var(--neu-shadow-light);font-size:14px;transition:all .2s">‹</button>
+                <div style="text-align:center">
+                  <div id="detailDateLabel" style="font-size:15px;font-weight:700;color:var(--neu-text-primary)">—</div>
+                  <div id="detailDateSub" style="font-size:11px;color:var(--neu-text-secondary)">Today</div>
+                </div>
+                <button onclick="changeDetailDate(1)" style="width:32px;height:32px;border-radius:8px;border:none;background:var(--neu-surface);color:var(--neu-text-secondary);cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:3px 3px 6px var(--neu-shadow-dark),-3px -3px 6px var(--neu-shadow-light);font-size:14px;transition:all .2s">›</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Screenshots / Activity Logs Tabs -->
+          <div class="table-card">
+            <div style="display:flex;border-bottom:1px solid var(--neu-border)">
+              <button id="detailTabScreenshots" onclick="switchDetailTab('screenshots')" style="flex:1;padding:14px 20px;border:none;background:transparent;font-family:inherit;font-size:13px;font-weight:700;color:var(--neu-accent);cursor:pointer;border-bottom:2px solid var(--neu-accent);display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                Screenshots
+              </button>
+              <button id="detailTabActivity" onclick="switchDetailTab('actlogs')" style="flex:1;padding:14px 20px;border:none;background:transparent;font-family:inherit;font-size:13px;font-weight:600;color:var(--neu-text-secondary);cursor:pointer;border-bottom:2px solid transparent;display:flex;align-items:center;justify-content:center;gap:8px;transition:all .2s">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Activity Logs
+              </button>
+            </div>
+            <!-- Screenshots tab content -->
+            <div id="detailTabContentScreenshots">
+              <div class="ss-grid" id="detailSSGrid">
+                <p style="color:var(--neu-text-secondary);text-align:center;padding:40px;grid-column:1/-1">Loading screenshots…</p>
+              </div>
+            </div>
+            <!-- Activity Logs tab content -->
+            <div id="detailTabContentActlogs" style="display:none">
+              <div class="timeline-wrap" id="detailActivityTimeline" style="padding:20px 24px">
+                <p style="color:var(--neu-text-secondary);text-align:center;padding:20px">Loading activity logs…</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- ══ End Activity Log Page ══ -->
+
+            <div id="page-settings" class="page">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
           <div class="table-card">
             <div class="table-head"><div><div class="table-title">⚙️ Current Configuration</div><div class="table-sub">Active settings for your company</div></div></div>
@@ -1094,8 +1273,8 @@ function closeProfile(){document.getElementById("profileModal").style.display="n
 function doLogout(){clearSession();document.getElementById("mainApp").style.display="none";document.getElementById("loginPage").style.display="flex";document.getElementById("loginPassword").value="";if(autoRefreshTimer)clearInterval(autoRefreshTimer)}
 function showDashboard(){document.getElementById("loginPage").style.display="none";document.getElementById("mainApp").style.display="block";const name=SESSION.email?SESSION.email.split("@")[0]:"Admin";document.getElementById("sidebarName").textContent=name;document.getElementById("sidebarAvatar").textContent=(name||"A")[0].toUpperCase();loadAll();startAutoRefresh();startLiveTimer();requestNotifPermission()}
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.getElementById("loginPage").style.display!=="none")doLogin()});
-const pages=["dashboard","team","attendance","screenshots","settings","sync"];
-function showPage(name,el){pages.forEach(p=>{const pg=document.getElementById("page-"+p);if(pg)pg.style.display=p===name?"block":"none"});document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));if(el)el.classList.add("active");const titles={dashboard:"Dashboard",team:"Team",attendance:"Attendance",screenshots:"Screenshots",settings:"Settings",sync:"Sync to Bitrix24"},subs={dashboard:"Live employee monitoring",team:"All team members",attendance:"Check-in & check-out records",screenshots:"Activity captures",settings:"Company configuration",sync:"Push data to Bitrix24 Drive"};const pt=document.getElementById("pageTitle");pt.textContent=titles[name]||name;pt.style.color="var(--text)";document.getElementById("pageSubtitle").textContent=subs[name]||"";fixTitleColor();if(name==="team")renderTeamGrid(allMembers);if(name==="attendance")loadAttendance();if(name==="screenshots")loadScreenshots();if(name==="settings")loadSettings()}
+const pages=["dashboard","team","attendance","screenshots","activity","settings","sync"];
+function showPage(name,el){pages.forEach(p=>{const pg=document.getElementById("page-"+p);if(pg)pg.style.display=p===name?"block":"none"});document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));if(el)el.classList.add("active");const titles={dashboard:"Dashboard",team:"Team",attendance:"Attendance",screenshots:"Screenshots",activity:"Activity Log",settings:"Settings",sync:"Sync to Bitrix24"},subs={dashboard:"Live employee monitoring",team:"All team members",attendance:"Check-in & check-out records",screenshots:"Activity captures",activity:"Monitor team activity and screen time",settings:"Company configuration",sync:"Push data to Bitrix24 Drive"};const pt=document.getElementById("pageTitle");pt.textContent=titles[name]||name;pt.style.color="var(--text)";document.getElementById("pageSubtitle").textContent=subs[name]||"";fixTitleColor();if(name==="team")renderTeamGrid(allMembers);if(name==="attendance")loadAttendance();if(name==="screenshots")loadScreenshots();if(name==="settings")loadSettings();if(name==="activity")loadActivityLog()}
 let _tt;
 function toast(msg,type="ok"){const el=document.getElementById("toast");el.textContent=msg;el.className="show "+type;clearTimeout(_tt);_tt=setTimeout(()=>el.className="",4000)}
 const avatarColors=["#5b5ef4","#06b6d4","#f59e0b","#ef4444","#8b5cf6","#10b981","#f97316","#3b82f6","#ec4899"];
@@ -1772,6 +1951,340 @@ async function loadAttDetail(){
   }catch(e){tbody.innerHTML=`<tr><td colspan="6" class="empty" style="color:var(--red)">Error: ${e.message}</div>`;}
 }
 
+
+// ══════════════════════════════════════════════
+//  ACTIVITY LOG  
+// ══════════════════════════════════════════════
+let activitySortCol = 'name';
+let activitySortDir = 1; // 1=asc, -1=desc
+let currentDetailMember = null;
+let currentDetailDate = new Date();
+let currentDetailTab = 'screenshots';
+
+function fmtSecShort(sec) {
+  sec = parseInt(sec) || 0;
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+  if (h > 0) return h + '.' + Math.round(m / 6) + 'h';
+  return m + 'm';
+}
+
+function loadActivityLog() {
+  if (!allMembers.length) {
+    // trigger a refresh if no data
+    loadStats().then(() => renderActivityTable(allMembers));
+    return;
+  }
+  renderActivityTable(allMembers);
+}
+
+function renderActivityTable(members) {
+  const tbody = document.getElementById('activityBody');
+  if (!members || !members.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty">No employee data. Please refresh.</td></tr>';
+    return;
+  }
+  document.getElementById('activityBadge').textContent = members.length;
+  document.getElementById('activityCount').textContent = members.length + ' employees';
+  document.getElementById('activityResultCount').textContent = members.length + ' result(s)';
+
+  tbody.innerHTML = members.map((m, i) => {
+    const screenSec = parseInt(m.screen_time) || 0;
+    const activeSec = parseInt(m.active_time) || 0;
+    const idleSec = parseInt(m.idle_time) || 0;
+    const prod = parseInt(m.productivity) || 0;
+    const ss = parseInt(m.screenshots_count) || 0;
+    const lastAct = m.last_activity ? m.last_activity : '—';
+    const statusClass = (m.status||'').toLowerCase() === 'active' ? 'status-active' :
+                        (m.status||'').toLowerCase() === 'idle' ? 'status-idle' : 'status-offline';
+    const prodColor = prod >= 70 ? '#7477ff' : prod >= 40 ? '#f59e0b' : '#ef4444';
+    return `<tr style="cursor:pointer" onclick="openActivityDetail(${i})" onmouseover="this.style.background='rgba(99,102,241,.05)'" onmouseout="this.style.background=''">
+      <td>
+        <div class="name-with-avatar">
+          <div class="avatar" style="background:${avatarColor(i)}">${(m.name||'?')[0].toUpperCase()}</div>
+          <div>
+            <div class="name-cell">${m.name || '—'}</div>
+            <div class="email-cell">${m.email || ''}</div>
+          </div>
+        </div>
+      </td>
+      <td><span class="status-badge ${statusClass}">${(m.status||'—')}</span></td>
+      <td style="font-weight:600;color:var(--neu-text-primary)">${fmtSecShort(screenSec)}</td>
+      <td style="font-weight:600;color:var(--neu-text-primary)">${fmtSecShort(activeSec)}</td>
+      <td style="color:${idleSec > 0 ? '#f59e0b' : 'var(--neu-text-secondary)'};font-weight:600">${fmtSecShort(idleSec)}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:10px;min-width:120px">
+          <div style="flex:1;height:6px;border-radius:6px;background:var(--neu-shadow-dark);overflow:hidden;box-shadow:inset 2px 2px 4px var(--neu-shadow-dark),inset -1px -1px 3px var(--neu-shadow-light)">
+            <div style="height:100%;border-radius:6px;width:${Math.min(prod,100)}%;background:${prodColor};transition:width .6s"></div>
+          </div>
+        </div>
+      </td>
+      <td>
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:var(--neu-surface);border-radius:8px;font-size:13px;font-weight:700;color:var(--neu-text-primary);box-shadow:3px 3px 6px var(--neu-shadow-dark),-3px -3px 6px var(--neu-shadow-light)">${ss}</span>
+      </td>
+      <td style="font-size:12px;color:var(--neu-text-secondary)">${lastAct}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterActivityLog() {
+  const q = (document.getElementById('activitySearch').value || '').toLowerCase().trim();
+  const f = document.getElementById('activityFilter').value;
+  const filtered = allMembers.filter(m => {
+    const nameMatch = !q || (m.name||'').toLowerCase().includes(q) || (m.email||'').toLowerCase().includes(q);
+    const statusMatch = f === 'all' || (m.status||'').toLowerCase() === f;
+    return nameMatch && statusMatch;
+  });
+  document.getElementById('activityResultCount').textContent = filtered.length + ' result(s)';
+  renderActivityTable(filtered);
+}
+
+function sortActivityLog(col) {
+  if (activitySortCol === col) activitySortDir *= -1;
+  else { activitySortCol = col; activitySortDir = 1; }
+  const sorted = [...allMembers].sort((a, b) => {
+    let va = a[col] || 0, vb = b[col] || 0;
+    if (col === 'name') { va = (a.name||'').toLowerCase(); vb = (b.name||'').toLowerCase(); }
+    if (va < vb) return -1 * activitySortDir;
+    if (va > vb) return 1 * activitySortDir;
+    return 0;
+  });
+  renderActivityTable(sorted);
+}
+
+function openActivityDetail(idx) {
+  const m = allMembers[idx];
+  if (!m) return;
+  currentDetailMember = { ...m, _idx: idx };
+  currentDetailDate = new Date();
+  
+  // Set header
+  document.getElementById('detailAvatar').textContent = (m.name||'?')[0].toUpperCase();
+  document.getElementById('detailAvatar').style.background = avatarColor(idx);
+  document.getElementById('detailName').textContent = m.name || '—';
+  document.getElementById('detailEmail').textContent = (m.email||'') + (m.department ? ' · ' + m.department : '') + (m.position ? ' · ' + m.position : '');
+  document.getElementById('detailStatusBadge').innerHTML = statusBadge(m.status);
+  document.getElementById('detailLastSeen').textContent = m.last_activity ? 'Last seen: ' + m.last_activity : 'Last seen: Never';
+
+  // Set stat cards
+  const screenSec = parseInt(m.screen_time) || 0;
+  const activeSec = parseInt(m.active_time) || 0;
+  const idleSec = parseInt(m.idle_time) || 0;
+  const prod = parseInt(m.productivity) || 0;
+  const ss = parseInt(m.screenshots_count) || 0;
+  const h = (s) => { const hh=Math.floor(s/3600), mm=Math.floor((s%3600)/60); return hh>0?`${hh}.${Math.round(mm/6)}h`:`${mm}m`; };
+  document.getElementById('detailScreenTime').textContent = h(screenSec);
+  document.getElementById('detailActiveTime').textContent = h(activeSec);
+  document.getElementById('detailIdleTime').textContent = h(idleSec);
+  document.getElementById('detailProductivity').textContent = prod + '%';
+  document.getElementById('detailScreenshots').textContent = ss;
+
+  // Set date
+  updateDetailDateLabel();
+
+  // Switch to detail view
+  document.getElementById('activityListView').style.display = 'none';
+  document.getElementById('activityDetailView').style.display = 'block';
+
+  // Load screenshots tab
+  currentDetailTab = 'screenshots';
+  switchDetailTab('screenshots');
+  loadDetailScreenshots();
+}
+
+function closeActivityDetail() {
+  document.getElementById('activityDetailView').style.display = 'none';
+  document.getElementById('activityListView').style.display = 'block';
+}
+
+function updateDetailDateLabel() {
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  const d = new Date(currentDetailDate);
+  d.setHours(0,0,0,0);
+  const label = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  document.getElementById('detailDateLabel').textContent = label;
+  const diff = Math.round((d - today) / 86400000);
+  document.getElementById('detailDateSub').textContent = diff === 0 ? 'Today' : diff === -1 ? 'Yesterday' : diff === 1 ? 'Tomorrow' : '';
+}
+
+function changeDetailDate(dir) {
+  currentDetailDate.setDate(currentDetailDate.getDate() + dir);
+  updateDetailDateLabel();
+  if (currentDetailTab === 'screenshots') loadDetailScreenshots();
+  else loadDetailActivityLogs();
+}
+
+function switchDetailTab(tab) {
+  currentDetailTab = tab;
+  const ssBtn = document.getElementById('detailTabScreenshots');
+  const alBtn = document.getElementById('detailTabActivity');
+  const ssCont = document.getElementById('detailTabContentScreenshots');
+  const alCont = document.getElementById('detailTabContentActlogs');
+  if (tab === 'screenshots') {
+    ssBtn.style.color = 'var(--neu-accent)';
+    ssBtn.style.borderBottomColor = 'var(--neu-accent)';
+    ssBtn.style.fontWeight = '700';
+    alBtn.style.color = 'var(--neu-text-secondary)';
+    alBtn.style.borderBottomColor = 'transparent';
+    alBtn.style.fontWeight = '600';
+    ssCont.style.display = 'block';
+    alCont.style.display = 'none';
+    loadDetailScreenshots();
+  } else {
+    alBtn.style.color = 'var(--neu-accent)';
+    alBtn.style.borderBottomColor = 'var(--neu-accent)';
+    alBtn.style.fontWeight = '700';
+    ssBtn.style.color = 'var(--neu-text-secondary)';
+    ssBtn.style.borderBottomColor = 'transparent';
+    ssBtn.style.fontWeight = '600';
+    alCont.style.display = 'block';
+    ssCont.style.display = 'none';
+    loadDetailActivityLogs();
+  }
+}
+
+async function loadDetailScreenshots() {
+  const grid = document.getElementById('detailSSGrid');
+  if (!currentDetailMember) return;
+  grid.innerHTML = '<p style="color:var(--neu-text-secondary);text-align:center;padding:40px;grid-column:1/-1">Loading screenshots…</p>';
+  
+  try {
+    let memberSS = [];
+    const name = currentDetailMember.name || '';
+    const id = currentDetailMember.id;
+    
+    // Try from cached allScreenshots first
+    if (allScreenshots && allScreenshots.length > 0) {
+      memberSS = allScreenshots.filter(s => {
+        const sn = s.member_name || s.name || '';
+        return sn === name || String(s.member_id) === String(id);
+      });
+    }
+    // Fetch fresh if empty
+    if (!memberSS.length) {
+      const res = await apiFetch('/get-screenshots');
+      allScreenshots = res.data || [];
+      memberSS = allScreenshots.filter(s => {
+        const sn = s.member_name || s.name || '';
+        return sn === name || String(s.member_id) === String(id);
+      });
+    }
+
+    if (!memberSS.length) {
+      grid.innerHTML = '<p style="color:var(--neu-text-secondary);text-align:center;padding:40px;grid-column:1/-1"><svg width=32 height=32 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 8px;display:block;opacity:.4"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>No screenshots found</p>';
+      return;
+    }
+
+    grid.innerHTML = memberSS.map(s => {
+      const ts = s.timestamp || '';
+      const date = ts.substring(0,10) || '—';
+      const time = ts.substring(11,16) || '—';
+      const valid = s.is_valid;
+      return `<div class="ss-card" id="dsscard-${s.id}">
+        <div class="ss-img-wrap" id="dssimg-${s.id}" style="height:110px">
+          <div class="ss-no-img"><span style="font-size:26px">🖥</span><span>Loading…</span></div>
+        </div>
+        <div class="ss-info">
+          <div class="ss-name">${date}</div>
+          <div class="ss-time">${time}</div>
+          <span class="ss-valid ${valid ? 'ss-valid-ok' : 'ss-valid-bad'}">${valid ? '✓ Valid' : '✗ Invalid'}</span>
+        </div>
+      </div>`;
+    }).join('');
+
+    // Load images
+    for (const s of memberSS) {
+      if (!s.id) continue;
+      try {
+        const directUrl = s.image_url && (s.image_url.startsWith('http') || s.image_url.startsWith('https')) ? s.image_url : null;
+        const ts = s.timestamp||'', date=ts.substring(0,10), time=ts.substring(11,16);
+        if (directUrl) {
+          const wrap = document.getElementById('dssimg-' + s.id);
+          const card = document.getElementById('dsscard-' + s.id);
+          if (wrap) wrap.innerHTML = `<img src="${directUrl}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML='<div class=ss-no-img><span style=font-size:26px>🖥</span><span>No Preview</span></div>'">`;
+          if (card) card.onclick = () => openModal(directUrl, name, date + ' ' + time);
+          continue;
+        }
+        const imgUrl = `${API}/proxy-image?workeye_url=${encodeURIComponent(SESSION.workeye_url)}&token=${encodeURIComponent(SESSION.token)}&screenshot_id=${s.id}&email=${encodeURIComponent(SESSION.email||'')}&password=${encodeURIComponent(SESSION.password||'')}`;
+        const r = await fetch(imgUrl, { headers: { 'ngrok-skip-browser-warning': '1' } });
+        if (!r.ok) continue;
+        const blob = await r.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const wrap = document.getElementById('dssimg-' + s.id);
+        const card = document.getElementById('dsscard-' + s.id);
+        if (wrap) wrap.innerHTML = `<img src="${blobUrl}" style="width:100%;height:100%;object-fit:cover">`;
+        if (card) card.onclick = () => openModal(blobUrl, name, date + ' ' + time);
+      } catch(e) {}
+    }
+  } catch(e) {
+    grid.innerHTML = `<p style="color:var(--neu-red);text-align:center;padding:40px;grid-column:1/-1">Error: ${e.message}</p>`;
+  }
+}
+
+async function loadDetailActivityLogs() {
+  const tl = document.getElementById('detailActivityTimeline');
+  if (!currentDetailMember) return;
+  tl.innerHTML = '<p style="color:var(--neu-text-secondary);text-align:center;padding:20px">Loading activity…</p>';
+  
+  // Build activity from member data since there's no separate activity endpoint
+  const m = currentDetailMember;
+  const screenSec = parseInt(m.screen_time) || 0;
+  const activeSec = parseInt(m.active_time) || 0;
+  const idleSec = parseInt(m.idle_time) || 0;
+  const prod = parseInt(m.productivity) || 0;
+  
+  const items = [];
+  if (m.last_activity) items.push({ type: 'active', label: 'Last Active', detail: m.last_activity, time: m.last_activity });
+  if (screenSec > 0) items.push({ type: 'screen', label: 'Screen Time', detail: fmtSec(screenSec) + ' recorded today', time: '' });
+  if (activeSec > 0) items.push({ type: 'active', label: 'Active Time', detail: fmtSec(activeSec) + ' productive work', time: '' });
+  if (idleSec > 0) items.push({ type: 'idle', label: 'Idle Time', detail: fmtSec(idleSec) + ' inactive periods', time: '' });
+  items.push({ type: 'prod', label: 'Productivity Score', detail: prod + '% efficiency rate', time: '' });
+  if (m.screenshots_count) items.push({ type: 'screen', label: 'Screenshots', detail: m.screenshots_count + ' captures taken today', time: '' });
+
+  if (!items.length) {
+    tl.innerHTML = '<p style="color:var(--neu-text-secondary);text-align:center;padding:20px">No activity data available.</p>';
+    return;
+  }
+  
+  const colorMap = { active: 'var(--neu-green)', screen: 'var(--neu-accent)', idle: 'var(--neu-amber)', prod: '#f97316' };
+  tl.innerHTML = items.map(it => `
+    <div class="timeline-item">
+      <div class="timeline-dot" style="background:${colorMap[it.type]||'var(--neu-accent)'};box-shadow:0 0 8px ${colorMap[it.type]||'var(--neu-accent)'}"></div>
+      <div class="timeline-content">
+        <div class="timeline-name">${it.label}</div>
+        <div class="timeline-meta">${it.detail}</div>
+      </div>
+      ${it.time ? `<div class="timeline-hours">${it.time.substring(11,16)||''}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function viewAnalyticsForEmployee() {
+  if (!currentDetailMember) return;
+  toast('Analytics view: opening employee detail…', 'ok');
+  openEmpDetail(currentDetailMember, currentDetailMember._idx || 0);
+}
+
+function exportActivityCSV() {
+  if (!allMembers.length) { toast('No data to export!', 'err'); return; }
+  const today = new Date().toISOString().substring(0, 10);
+  const headers = ['#','Name','Email','Status','Screen Time','Active Time','Idle Time','Productivity','Screenshots','Last Activity'];
+  const rows = allMembers.map((m, i) => [
+    i + 1, m.name || '—', m.email || '—', m.status || '—',
+    fmtSec(m.screen_time), fmtSec(m.active_time || 0), fmtSec(m.idle_time || 0),
+    (m.productivity || 0) + '%', m.screenshots_count || 0, m.last_activity || '—'
+  ]);
+  const csv = [headers, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url; link.download = `ActivityLog_${today}.csv`; link.click();
+  URL.revokeObjectURL(url);
+  toast('✓ Activity Log exported!', 'ok');
+}
+// ══════════════════════════════════════════════
+//  END ACTIVITY LOG  
+// ══════════════════════════════════════════════
 </script>
 </body>
 </html>
