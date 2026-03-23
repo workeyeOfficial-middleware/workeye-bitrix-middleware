@@ -141,6 +141,24 @@ async def get_activity_logs(workeye_url: str, token: str, member_id: int, date: 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# ── Member Screenshots (cached) ───────────────────────────
+@app.get("/get-member-screenshots")
+async def get_member_screenshots(workeye_url: str, token: str, member_id: int, date: str = None):
+    try:
+        import screenshot_cache
+        # Try cache first
+        cached = screenshot_cache.get_screenshots_by_member_date(member_id, date)
+        if cached:
+            return {"success": True, "data": cached, "source": "cache"}
+        # Fallback: fetch fresh from WorkEye and save to cache
+        data = ws.get_screenshots(workeye_url, token, date)
+        # Filter by member
+        member_ss = [s for s in data if str(s.get("member_id","")) == str(member_id)]
+        return {"success": True, "data": member_ss, "source": "live"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ── Sync ─────────────────────────────────────────────────
 @app.post("/sync-dashboard")
 async def sync_dashboard(workeye_url: str, token: str):

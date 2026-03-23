@@ -2174,36 +2174,21 @@ async function loadDetailScreenshots() {
   try {
     let memberSS = [];
 
-    // Always fetch fresh with date filter when a specific date is selected
-    const today = new Date(); today.setHours(0,0,0,0);
-    const sel = new Date(currentDetailDate); sel.setHours(0,0,0,0);
-    const isToday = sel.getTime() === today.getTime();
-
-    if (isToday && allScreenshots && allScreenshots.length > 0) {
-      // Use cache for today
-      memberSS = allScreenshots.filter(s => {
-        const sn = s.member_name || s.name || '';
-        return sn === name || String(s.member_id) === String(memberId);
-      });
+    // Use the cached member-screenshots endpoint (SQLite cache, fast)
+    // Falls back to live fetch if cache is empty
+    if (memberId) {
+      const res = await apiFetch('/get-member-screenshots', { member_id: memberId, date: dateStr });
+      memberSS = res.data || [];
     }
 
-    // For non-today dates OR if cache is empty, fetch fresh with date param
-    if (!memberSS.length) {
-      const fetchParams = { date: dateStr };
-      const res = await apiFetch('/get-screenshots', fetchParams);
-      const fetched = res.data || [];
-      // Filter by member
-      memberSS = fetched.filter(s => {
+    // Fallback: filter from allScreenshots in memory if endpoint fails
+    if (!memberSS.length && allScreenshots && allScreenshots.length > 0) {
+      memberSS = allScreenshots.filter(s => {
         const sn = s.member_name || s.name || '';
-        return sn === name || String(s.member_id) === String(memberId);
+        const matchMember = sn === name || String(s.member_id) === String(memberId);
+        const matchDate = (s.timestamp || '').startsWith(dateStr);
+        return matchMember && matchDate;
       });
-      // Also filter by date from timestamp if API doesn't filter
-      if (memberSS.length) {
-        memberSS = memberSS.filter(s => {
-          const ts = s.timestamp || '';
-          return ts.startsWith(dateStr);
-        });
-      }
     }
 
     if (!memberSS.length) {
