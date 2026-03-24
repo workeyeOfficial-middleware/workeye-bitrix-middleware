@@ -1125,17 +1125,77 @@
   </div>
 </div>
 <div id="profileModal" onclick="if(event.target===this)closeProfile()">
-  <div class="emp-modal-box">
-    <button class="modal-close-btn" onclick="closeProfile()">✕</button>
-    <div class="emp-modal-header">
-      <div class="emp-modal-avatar" id="profileAvatar" style="background:linear-gradient(135deg,#5b5ef4,#a855f7)">—</div>
-      <div><div class="emp-modal-name" id="profileName">—</div><div class="emp-modal-pos">Admin</div></div>
+  <div style="background:var(--surface);border-radius:20px;width:min(680px,96vw);max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.35);position:relative;font-family:inherit">
+
+    <!-- Close button -->
+    <button onclick="closeProfile()" style="position:absolute;top:16px;right:16px;z-index:10;background:rgba(255,255,255,0.2);border:none;border-radius:50%;width:34px;height:34px;font-size:18px;cursor:pointer;color:#fff;display:flex;align-items:center;justify-content:center;line-height:1;backdrop-filter:blur(4px)">✕</button>
+
+    <!-- Purple banner header -->
+    <div style="background:linear-gradient(135deg,#5b5ef4 0%,#7c3aed 100%);border-radius:20px 20px 0 0;padding:32px 32px 28px;display:flex;align-items:center;gap:20px">
+      <div id="profileAvatar" style="width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:700;color:#fff;flex-shrink:0;border:3px solid rgba(255,255,255,0.4)">A</div>
+      <div>
+        <div id="profileName" style="font-size:26px;font-weight:800;color:#fff;letter-spacing:-.5px">Admin</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.75);margin-top:3px;font-weight:500">admin</div>
+      </div>
     </div>
-    <div style="font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">Account Info</div>
-    <div class="emp-modal-row"><span class="emp-modal-row-key">Email</span><span class="emp-modal-row-val" id="profileEmail">—</span></div>
-    <div class="emp-modal-row"><span class="emp-modal-row-key">Role</span><span class="emp-modal-row-val">Administrator</span></div>
-    
-    <button onclick="doLogout()" style="width:100%;padding:10px;background:#fee2e2;color:#b91c1c;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;margin-top:16px">↩ Logout</button>
+
+    <!-- Body -->
+    <div style="padding:28px 32px 32px;display:flex;flex-direction:column;gap:20px">
+
+      <!-- Company Information card -->
+      <div style="background:var(--surface2);border-radius:14px;border:1px solid var(--border);overflow:hidden">
+        <div style="padding:16px 20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)">
+          <div style="width:36px;height:36px;background:linear-gradient(135deg,#5b5ef4,#7c3aed);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px">🏢</div>
+          <span style="font-size:15px;font-weight:700;color:var(--fg)">Company Information</span>
+        </div>
+        <div style="padding:6px 0">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:13px 20px">
+            <span style="font-size:13px;color:var(--muted);font-weight:500">Company Name:</span>
+            <span id="profileCompanyName" style="font-size:13px;font-weight:700;color:var(--fg)">—</span>
+          </div>
+          <div style="height:1px;background:var(--border);margin:0 20px"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:13px 20px">
+            <span style="font-size:13px;color:var(--muted);font-weight:500">Company Username:</span>
+            <span id="profileCompanyUsername" style="font-size:13px;font-weight:700;color:var(--fg)">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Personal Information card -->
+      <div style="background:var(--surface2);border-radius:14px;border:1px solid var(--border);overflow:hidden">
+        <div style="padding:16px 20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)">
+          <div style="width:36px;height:36px;background:linear-gradient(135deg,#a855f7,#7c3aed);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px">👤</div>
+          <span style="font-size:15px;font-weight:700;color:var(--fg)">Personal Information</span>
+        </div>
+        <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px">
+          <div>
+            <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Full Name</div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;font-size:13px;font-weight:600;color:var(--fg)" id="profileFullName">—</div>
+          </div>
+          <div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+              <span style="font-size:12px">✉️</span>
+              <span style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Email Address</span>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;font-size:13px;font-weight:600;color:var(--fg)" id="profileEmail">—</div>
+          </div>
+          <div>
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+              <span style="font-size:12px">💼</span>
+              <span style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">Position</span>
+            </div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;font-size:13px;font-weight:600;color:var(--fg)">admin</div>
+          </div>
+          <div>
+            <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Role</div>
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;font-size:13px;font-weight:600;color:var(--fg)">Administrator</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Logout button -->
+      <button onclick="doLogout()" style="width:100%;padding:13px;background:#fee2e2;color:#b91c1c;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s" onmouseenter="this.style.background='#fecaca'" onmouseleave="this.style.background='#fee2e2'">↩ Logout</button>
+    </div>
   </div>
 </div>
 
@@ -1357,7 +1417,7 @@ function clearSession(){SESSION={token:null,workeye_url:null};try{localStorage.r
 function toggleTheme(){const h=document.documentElement,d=h.getAttribute("data-theme")==="dark";h.setAttribute("data-theme",d?"light":"dark");try{localStorage.setItem("we_theme",d?"light":"dark")}catch(x){}}
 (function(){try{const t=localStorage.getItem("we_theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(x){}})();
 async function doLogin(){const url="https://backend-35m2.onrender.com",email=document.getElementById("loginEmail").value.trim(),password=document.getElementById("loginPassword").value.trim(),btn=document.getElementById("loginBtn"),err=document.getElementById("loginError");if(!email||!password){err.textContent="Please fill in all fields.";err.classList.add("show");return}btn.disabled=true;btn.textContent="Logging in…";err.classList.remove("show");try{const r=await fetch(API+"/login",{method:"POST",headers:{...HEADERS,"Content-Type":"application/json"},body:JSON.stringify({email,password,workeye_url:url})}),data=await r.json();if(!r.ok||!data.success)throw new Error(data.detail||"Login failed");saveSession(data.token,url,email,password);showDashboard()}catch(e){err.textContent=e.message||"Login failed.";err.classList.add("show")}finally{btn.disabled=false;btn.textContent="Login to WorkEye →"}}
-function showProfile(){const email=SESSION.email||"—",name=email.split("@")[0];document.getElementById("profileName").textContent=name;document.getElementById("profileAvatar").textContent=(email||"?")[0].toUpperCase();document.getElementById("profileEmail").textContent=email;document.getElementById("profileModal").style.display="flex"}
+function showProfile(){const email=SESSION.email||"—",name=email.split("@")[0],initial=(email||"?")[0].toUpperCase(),domain=email.includes("@")?email.split("@")[1].split(".")[0].toUpperCase():name.toUpperCase();document.getElementById("profileAvatar").textContent=initial;document.getElementById("profileName").textContent=name.toUpperCase();document.getElementById("profileFullName").textContent=name.toUpperCase();document.getElementById("profileEmail").textContent=email;document.getElementById("profileCompanyName").textContent=domain;document.getElementById("profileCompanyUsername").textContent=domain.toLowerCase();document.getElementById("profileModal").style.display="flex"}
 function closeProfile(){document.getElementById("profileModal").style.display="none"}
 function doLogout(){clearSession();document.getElementById("mainApp").style.display="none";document.getElementById("loginPage").style.display="flex";document.getElementById("loginPassword").value="";if(autoRefreshTimer)clearInterval(autoRefreshTimer)}
 function showDashboard(){document.getElementById("loginPage").style.display="none";document.getElementById("mainApp").style.display="block";const name=SESSION.email?SESSION.email.split("@")[0]:"Admin";document.getElementById("sidebarName").textContent=name;document.getElementById("sidebarAvatar").textContent=(name||"A")[0].toUpperCase();loadAll();startAutoRefresh();startLiveTimer();requestNotifPermission()}
