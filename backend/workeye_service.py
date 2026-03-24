@@ -245,10 +245,9 @@ def get_attendance_member(base_url: str, token: str, member_id: int,
 
     records = inner.get("daily_records") or inner.get("records") or []
 
-    cleaned = []
-
+    # ✅ Inject punch fields into records (without breaking structure)
     for rec in records:
-        punch_in = (
+        rec["punch_in_time"] = (
             rec.get("punch_in_time") or
             rec.get("punch_in") or
             rec.get("check_in") or
@@ -257,7 +256,7 @@ def get_attendance_member(base_url: str, token: str, member_id: int,
             rec.get("login_time")
         )
 
-        punch_out = (
+        rec["punch_out_time"] = (
             rec.get("punch_out_time") or
             rec.get("punch_out") or
             rec.get("check_out") or
@@ -266,29 +265,38 @@ def get_attendance_member(base_url: str, token: str, member_id: int,
             rec.get("logout_time")
         )
 
-        duration = rec.get("duration") or rec.get("hours") or rec.get("total_hours") or 0
+        print(f"[DETAIL DEBUG] {rec.get('date')} | IN: {rec['punch_in_time']} | OUT: {rec['punch_out_time']}")
 
-        # ✅ Decide status ONLY from real data
-        if punch_in:
-            status = "Present"
-        elif rec.get("status"):
-            status = rec.get("status")
-        else:
-            status = "Absent"
+    # ✅ Keep SAME response structure (important)
+    inner["records"] = records
 
-        cleaned.append({
-            "date": rec.get("date"),
-            "punch_in_time": punch_in,
-            "punch_out_time": punch_out,
-            "hours": duration,
-            "status": status
-        })
+    return inner
 
-        print(f"[DETAIL] {rec.get('date')} | in:{punch_in} | out:{punch_out}")
 
-    return {
-        "records": cleaned
-    }
+# =========================
+# CONFIGURATION
+# =========================
+def get_configuration(base_url: str, token: str) -> dict:
+    headers = {"Authorization": f"Bearer {token}"}
+    url = f"{base_url}/api/configuration"
+    r = requests.get(url, headers=headers, timeout=15)
+    if r.status_code != 200:
+        raise Exception(f"Configuration failed: {r.status_code} - {r.text}")
+    data = r.json()
+    cfg = data.get("config") or data.get("configuration") or data.get("data") or data
+
+    for key in ("office_start_time", "office_end_time"):
+        val = cfg.get(key, "")
+        if val and len(val) > 5:
+            cfg[key] = val[:5]
+
+    wd = cfg.get("working_days")
+    if not isinstance(wd, list):
+        cfg["working_days"] = [1, 2, 3, 4, 5]
+
+    cfg["updated_at"] = cfg.get("last_modified_at") or cfg.get("updated_at")
+    return cfg
+
 
 # =========================
 # ACTIVITY LOGS
