@@ -94,9 +94,33 @@ def get_member_live(base_url: str, token: str, member_id: int) -> dict:
 def get_stats(base_url: str, token: str) -> dict:
     headers = {"Authorization": f"Bearer {token}"}
     url = f"{base_url}/api/dashboard/stats"
-    r = requests.get(url, headers=headers, timeout=15)
-    if r.status_code != 200:
-        raise Exception(f"Stats failed: {r.status_code} - {r.text}")
+
+    # Retry up to 3 times — Render free tier sleeps and needs a warm-up request
+    import time
+    last_error = None
+    for attempt in range(3):
+        try:
+            r = requests.get(url, headers=headers, timeout=30)
+            if r.status_code == 200:
+                break
+            elif r.status_code == 503:
+                print(f"[stats] WorkEye backend sleeping (503), retrying in 5s... attempt {attempt+1}/3")
+                time.sleep(5)
+                last_error = f"WorkEye backend is waking up (503). Please wait 30 seconds and try again."
+                continue
+            elif r.status_code == 401:
+                raise Exception("Token expired or invalid. Please log in again.")
+            else:
+                raise Exception(f"Stats failed: {r.status_code} - {r.text[:200]}")
+        except requests.exceptions.Timeout:
+            print(f"[stats] Timeout on attempt {attempt+1}/3")
+            last_error = "WorkEye backend timed out. It may be waking up — please try again."
+            time.sleep(3)
+            continue
+        except Exception as e:
+            raise e
+    else:
+        raise Exception(last_error or "WorkEye backend unavailable after 3 attempts.")
 
     data = r.json()
     stats   = data.get("stats", {})
@@ -280,6 +304,18 @@ def get_activity_logs(base_url: str, token: str, member_id: int, date: str = Non
         raise Exception(f"Activity logs failed: {r.status_code} - {r.text}")
     data = r.json()
     return data.get("activities") or data.get("logs") or data.get("data") or []
+
+
+# =========================
+# ACTIVITY TRENDS
+# =========================
+def get_activity_trends(base_url: str, token: str) -> dict:
+    headers = {"Authorization": f"Bearer {token}"}
+    url = f"{base_url}/api/dashboard/activity-trends"
+    r = requests.get(url, headers=headers, timeout=15)
+    if r.status_code != 200:
+        raise Exception(f"Trends failed: {r.status_code} - {r.text[:200]}")
+    return r.json()
 
 
 # =========================
