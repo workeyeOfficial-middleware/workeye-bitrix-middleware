@@ -1,13 +1,16 @@
 import requests
 from datetime import datetime, timedelta
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 # =========================
 # AUTH
 # =========================
 def get_token(base_url: str, email: str, password: str) -> str:
-    endpoints = ["/auth/admin/login", "/auth/login", "/api/auth/login"]
+    endpoints = [
+        "/auth/admin/login",
+        "/auth/login",
+        "/api/auth/login"
+    ]
     payload = {"email": email, "password": password}
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
@@ -17,20 +20,28 @@ def get_token(base_url: str, email: str, password: str) -> str:
             print(f"[LOGIN] Trying: {url}")
             response = requests.post(url, json=payload, headers=headers, timeout=15)
             print(f"[LOGIN] Status: {response.status_code}")
-            print(f"[LOGIN] Raw: '{response.text[:300]}'")
+            print(f"[LOGIN] Raw Response: '{response.text[:300]}'")
 
             if not response.text.strip():
+                print("[LOGIN] Empty response → wrong endpoint")
                 continue
+
             try:
                 data = response.json()
             except Exception:
+                print("[LOGIN] Not JSON → probably HTML")
                 continue
 
+            # Try every possible token key
             token = (
-                data.get("token") or data.get("access_token") or
-                data.get("auth_token") or data.get("authToken") or
-                data.get("accessToken") or data.get("jwt")
+                data.get("token") or
+                data.get("access_token") or
+                data.get("auth_token") or
+                data.get("authToken") or
+                data.get("accessToken") or
+                data.get("jwt")
             )
+            # Try nested
             if not token and isinstance(data.get("data"), dict):
                 token = data["data"].get("token") or data["data"].get("access_token")
             if not token and isinstance(data.get("result"), dict):
@@ -43,6 +54,7 @@ def get_token(base_url: str, email: str, password: str) -> str:
                 return token
             else:
                 print(f"[LOGIN] Token missing. Keys: {list(data.keys())}")
+
         except Exception as e:
             print(f"[LOGIN] Error: {e}")
 
@@ -69,6 +81,8 @@ def get_member_live(base_url: str, token: str, member_id: int) -> dict:
                 "status":        member.get("status"),
                 "is_punched_in": member.get("is_punched_in", False),
             }
+        else:
+            print(f"[live] Member {member_id} → HTTP {r.status_code}")
     except Exception as e:
         print(f"[live] Member {member_id} failed: {e}")
     return {}
@@ -124,178 +138,90 @@ def get_stats(base_url: str, token: str) -> dict:
 
 
 # =========================
-# FETCH TODAY'S PUNCH TIMES FOR ONE MEMBER
-# Uses /api/attendance/member/{id} with today's date
+# ATTENDANCE — with punch times
 # =========================
-def _fetch_member_punch(base_url: str, token: str, member: dict) -> dict:
-    """Fetch today's punch in/out for a single member and merge into their dict."""
-    member_id = member.get("id")
-    if not member_id:
-        return member
-
-    today = datetime.now().strftime("%Y-%m-%d")
+def get_attendance(base_url: str, token: str, date: str = None) -> list:
     headers = {"Authorization": f"Bearer {token}"}
 
     try:
-        url = f"{base_url}/api/attendance/member/{member_id}"
-        params = {"start_date": today, "end_date": today}
-        r = requests.get(url, headers=headers, params=params, timeout=10)
-
-        if r.status_code == 200:
-            data = r.json()
-            # The response shape: { data: { daily_records: [...], statistics: {...} } }
-            inner = data.get("data") or data
-            records = inner.get("daily_records") or inner.get("records") or []
-
-            # Find today's record
-            today_record = None
-            for rec in records:
-                if rec.get("date") == today:
-                    today_record = rec
-                    break
-            # Fallback: use first record if only one
-            if not today_record and len(records) == 1:
-                today_record = records[0]
-
-            if today_record:
-                punch_in  = today_record.get("punch_in_time") or today_record.get("punch_in") or today_record.get("in_time")
-                punch_out = today_record.get("punch_out_time") or today_record.get("punch_out") or today_record.get("out_time")
-                hours     = today_record.get("duration") or today_record.get("hours") or today_record.get("total_hours") or 0
-
-                member["punch_in_time"]  = punch_in
-                member["punch_out_time"] = punch_out
-                member["today_hours"]    = _parse_duration_to_hours(hours)
-                member["is_punched_in"]  = punch_in is not None and punch_out is None
-
-                print(f"[attendance] {member.get('name')} | in:{punch_in} | out:{punch_out}")
-            else:
-                member.setdefault("punch_in_time",  None)
-                member.setdefault("punch_out_time", None)
-                member.setdefault("today_hours",    0)
-        else:
-            print(f"[attendance] Member {member_id} → HTTP {r.status_code}")
-            member.setdefault("punch_in_time",  None)
-            member.setdefault("punch_out_time", None)
-            member.setdefault("today_hours",    0)
-
-    except Exception as e:
-        print(f"[attendance] Member {member_id} fetch failed: {e}")
-        member.setdefault("punch_in_time",  None)
-        member.setdefault("punch_out_time", None)
-        member.setdefault("today_hours",    0)
-
-    return member
-
-
-def _parse_duration_to_hours(duration) -> float:
-    """Parse '4h 17m' or '4:17:00' or seconds int to float hours."""
-    if not duration:
-        return 0.0
-    if isinstance(duration, (int, float)):
-        return round(float(duration) / 3600, 1) if float(duration) > 100 else round(float(duration), 1)
-    s = str(duration)
-    # "4h 17m" format
-    import re
-    hm = re.match(r'(\d+)h\s*(\d*)m?', s)
-    if hm:
-        return round(int(hm.group(1)) + int(hm.group(2) or 0) / 60, 1)
-    # "4:17:00" format
-    colon = re.match(r'(\d+):(\d+):(\d+)', s)
-    if colon:
-        return round(int(colon.group(1)) + int(colon.group(2)) / 60, 1)
-    return 0.0
-
-
-# =========================
-# ATTENDANCE LIST — fetches punch times per member
-# =========================
-def get_attendance(base_url: str, token: str, date: str = None) -> list:
-    headers_req = {"Authorization": f"Bearer {token}"}
-
-    # Step 1: Try /api/attendance/members for the list
-    members_list = []
-    try:
         url = f"{base_url}/api/attendance/members"
         params = {"date": date} if date else {}
-        r = requests.get(url, headers=headers_req, params=params, timeout=15)
+        r = requests.get(url, headers=headers, params=params, timeout=15)
+
         if r.status_code == 200:
             data = r.json()
-            print(f"[attendance/members] Keys: {list(data.keys())}")
-            members_list = (
+            print(f"[attendance] Raw keys: {list(data.keys())}")
+
+            # WorkEye returns key 'attendance', 'members', or 'data'
+            members = (
                 data.get("attendance") or
                 data.get("members") or
                 data.get("data") or
                 []
             )
+
+            if members:
+                # Normalize punch times — try multiple possible key names
+                result = []
+                for m in members:
+                    punch_in  = (
+                        m.get("punch_in_time") or
+                        m.get("punch_in") or
+                        m.get("check_in") or
+                        m.get("check_in_time") or
+                        m.get("in_time") or
+                        m.get("login_time") or
+                        None
+                    )
+                    punch_out = (
+                        m.get("punch_out_time") or
+                        m.get("punch_out") or
+                        m.get("check_out") or
+                        m.get("check_out_time") or
+                        m.get("out_time") or
+                        m.get("logout_time") or
+                        None
+                    )
+                    is_punched_in = m.get("is_punched_in", False)
+                    today_hours   = m.get("today_hours") or m.get("hours_worked") or m.get("total_hours") or 0
+
+                    print(f"[attendance] Member: {m.get('name')} | punch_in: {punch_in} | punch_out: {punch_out} | keys: {list(m.keys())[:10]}")
+
+                    result.append({
+                        "id":             m.get("id"),
+                        "name":           m.get("name"),
+                        "email":          m.get("email"),
+                        "position":       m.get("position"),
+                        "department":     m.get("department"),
+                        "status":         m.get("status"),
+                        "punch_in_time":  punch_in,
+                        "punch_out_time": punch_out,
+                        "today_hours":    round(float(today_hours or 0), 1),
+                        "is_punched_in":  is_punched_in,
+                    })
+                return result
+
     except Exception as e:
-        print(f"[attendance/members] Failed: {e}")
+        print(f"[attendance] Primary failed: {e}")
 
-    # Step 2: If no list, fall back to stats members
-    if not members_list:
-        try:
-            stats = get_stats(base_url, token)
-            members_list = stats.get("members", [])
-        except Exception as e:
-            print(f"[attendance] Stats fallback failed: {e}")
-            return []
-
-    # Step 3: For each member, fetch today's punch times individually
-    # Use threads for speed (parallel requests)
-    result = []
-    target_date = date or datetime.now().strftime("%Y-%m-%d")
-
-    def fetch_one(m):
-        mid = m.get("id")
-        if not mid:
-            m.setdefault("punch_in_time", None)
-            m.setdefault("punch_out_time", None)
-            m.setdefault("today_hours", 0)
-            return m
-        try:
-            url = f"{base_url}/api/attendance/member/{mid}"
-            params = {"start_date": target_date, "end_date": target_date}
-            r = requests.get(url, headers={"Authorization": f"Bearer {token}"}, params=params, timeout=10)
-            if r.status_code == 200:
-                data = r.json()
-                inner = data.get("data") or data
-                records = inner.get("daily_records") or inner.get("records") or []
-
-                today_rec = next((rec for rec in records if rec.get("date") == target_date), None)
-                if not today_rec and len(records) == 1:
-                    today_rec = records[0]
-
-                if today_rec:
-                    punch_in  = (today_rec.get("punch_in_time") or today_rec.get("punch_in") or today_rec.get("in_time"))
-                    punch_out = (today_rec.get("punch_out_time") or today_rec.get("punch_out") or today_rec.get("out_time"))
-                    dur       = today_rec.get("duration") or today_rec.get("hours") or 0
-                    m["punch_in_time"]  = punch_in
-                    m["punch_out_time"] = punch_out
-                    m["today_hours"]    = _parse_duration_to_hours(dur)
-                    m["is_punched_in"]  = bool(punch_in and not punch_out)
-                    print(f"[att] {m.get('name')} in={punch_in} out={punch_out}")
-                else:
-                    m.setdefault("punch_in_time", None)
-                    m.setdefault("punch_out_time", None)
-                    m.setdefault("today_hours", 0)
-        except Exception as e:
-            print(f"[att] Member {mid} error: {e}")
-            m.setdefault("punch_in_time", None)
-            m.setdefault("punch_out_time", None)
-            m.setdefault("today_hours", 0)
-        return m
-
-    # Parallel fetch — up to 10 at a time
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        futures = {executor.submit(fetch_one, m): m for m in members_list}
-        for future in as_completed(futures):
-            try:
-                result.append(future.result())
-            except Exception:
-                result.append(futures[future])
-
-    # Sort by name for consistent display
-    result.sort(key=lambda x: (x.get("name") or "").lower())
-    return result
+    # Fallback — derive from stats
+    try:
+        stats = get_stats(base_url, token)
+        members = stats.get("members", [])
+        return [{
+            "id":             m.get("id"),
+            "name":           m.get("name"),
+            "email":          m.get("email"),
+            "position":       m.get("position"),
+            "department":     m.get("department"),
+            "status":         m.get("status"),
+            "punch_in_time":  None,
+            "punch_out_time": None,
+            "today_hours":    round((m.get("screen_time") or 0) / 3600, 1),
+            "is_punched_in":  m.get("is_punched_in", False),
+        } for m in members]
+    except Exception:
+        return []
 
 
 # =========================
