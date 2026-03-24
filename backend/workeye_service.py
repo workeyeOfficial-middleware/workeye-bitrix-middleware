@@ -228,7 +228,7 @@ def get_attendance(base_url: str, token: str, date: str = None) -> list:
 # ATTENDANCE MEMBER DETAIL
 # =========================
 def get_attendance_member(base_url: str, token: str, member_id: int,
-                           start_date: str = None, end_date: str = None) -> dict:
+                           start_date: str = None, end_date: str = None) -> list:
     headers = {"Authorization": f"Bearer {token}"}
     params = {}
     if start_date: params["start_date"] = start_date
@@ -236,10 +236,49 @@ def get_attendance_member(base_url: str, token: str, member_id: int,
 
     url = f"{base_url}/api/attendance/member/{member_id}"
     r = requests.get(url, headers=headers, params=params, timeout=15)
+
     if r.status_code != 200:
         raise Exception(f"Attendance member failed: {r.status_code} - {r.text}")
-    return r.json()
 
+    data = r.json()
+    print("[DEBUG RAW MEMBER DATA]", data)  # 👈 keep this for debugging
+
+    inner = data.get("data") or data
+    records = inner.get("daily_records") or inner.get("records") or []
+
+    result = []
+    for rec in records:
+        punch_in = (
+            rec.get("punch_in_time") or
+            rec.get("punch_in") or
+            rec.get("check_in") or
+            rec.get("check_in_time") or
+            rec.get("in_time") or
+            rec.get("login_time") or
+            None
+        )
+
+        punch_out = (
+            rec.get("punch_out_time") or
+            rec.get("punch_out") or
+            rec.get("check_out") or
+            rec.get("check_out_time") or
+            rec.get("out_time") or
+            rec.get("logout_time") or
+            None
+        )
+
+        result.append({
+            "date": rec.get("date"),
+            "punch_in_time": punch_in,
+            "punch_out_time": punch_out,
+            "hours": rec.get("duration") or rec.get("hours") or rec.get("total_hours") or 0,
+            "status": rec.get("status")
+        })
+
+    print("[DEBUG FORMATTED DATA]", result[:3])  # 👈 check output
+
+    return result
 
 # =========================
 # CONFIGURATION
