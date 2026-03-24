@@ -10,9 +10,13 @@ def get_token(base_url: str, email: str, password: str) -> str:
     if response.status_code != 200:
         raise Exception("Invalid email or password")
     data = response.json()
-    token = data.get("token") or data.get("access_token")
+    print("Login Response Keys:", list(data.keys()))
+    print("Login Response Data:", data)
+    token = (data.get("token") or data.get("access_token") or 
+             data.get("auth_token") or data.get("authToken") or
+             data.get("data", {}).get("token") if isinstance(data.get("data"), dict) else None)
     if not token:
-        raise Exception("Token not found in response")
+        raise Exception(f"Token not found in response. Keys received: {list(data.keys())}")
     return token
 
 
