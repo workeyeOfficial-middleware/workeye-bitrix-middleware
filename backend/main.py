@@ -60,6 +60,43 @@ async def get_stats(workeye_url: str, token: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# ── Debug: show raw fields WorkEye returns for members ───
+@app.get("/debug-member-fields")
+async def debug_member_fields(workeye_url: str, token: str):
+    """Returns the raw keys and values of the first member from WorkEye's stats API,
+    plus the raw response from every candidate members/users endpoint.
+    Use this to find the real department field name."""
+    import requests as req
+    headers = {"Authorization": f"Bearer {token}"}
+    result = {}
+
+    # 1. Raw first member from dashboard/stats
+    try:
+        r = req.get(f"{workeye_url}/api/dashboard/stats", headers=headers, timeout=15)
+        if r.status_code == 200:
+            members = r.json().get("members", [])
+            result["stats_first_member"] = members[0] if members else {}
+            result["stats_member_keys"] = list(members[0].keys()) if members else []
+    except Exception as e:
+        result["stats_error"] = str(e)
+
+    # 2. Try every candidate endpoint and show raw response
+    candidates = [
+        "/api/members", "/api/users", "/api/employees",
+        "/api/team", "/api/admin/members", "/api/admin/users",
+        "/api/dashboard/members", "/api/member/list",
+    ]
+    endpoint_results = {}
+    for path in candidates:
+        try:
+            r = req.get(f"{workeye_url}{path}", headers=headers, timeout=8)
+            endpoint_results[path] = {"status": r.status_code, "body": r.json() if r.status_code == 200 else r.text[:200]}
+        except Exception as e:
+            endpoint_results[path] = {"error": str(e)}
+    result["candidate_endpoints"] = endpoint_results
+
+    return result
+
 # ── Trends ───────────────────────────────────────────────
 @app.get("/get-trends")
 async def get_trends(workeye_url: str, token: str):
