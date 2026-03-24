@@ -6,21 +6,13 @@ from datetime import datetime, timedelta
 # AUTH
 # =========================
 def get_token(base_url: str, email: str, password: str) -> str:
-    """
-    WorkEye admin login endpoint: POST /auth/admin/login
-    Returns: { token, refresh_token, admin: {...} }
-    """
     endpoints = [
         "/auth/admin/login",
         "/auth/login",
         "/api/auth/login"
     ]
-
     payload = {"email": email, "password": password}
-    headers = {
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-    }
+    headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
     for ep in endpoints:
         url = f"{base_url}{ep}"
@@ -28,37 +20,49 @@ def get_token(base_url: str, email: str, password: str) -> str:
             print(f"[LOGIN] Trying: {url}")
             response = requests.post(url, json=payload, headers=headers, timeout=15)
             print(f"[LOGIN] Status: {response.status_code}")
-            print(f"[LOGIN] Raw Response: '{response.text[:200]}'")
+            print(f"[LOGIN] Raw Response: '{response.text[:300]}'")
 
             if not response.text.strip():
-                print("[LOGIN] Empty response → likely wrong endpoint")
+                print("[LOGIN] Empty response → wrong endpoint")
                 continue
 
             try:
                 data = response.json()
             except Exception:
-                print("[LOGIN] Not JSON → probably HTML response")
+                print("[LOGIN] Not JSON → probably HTML")
                 continue
 
-            token = data.get("token") or data.get("access_token")
+            # Try every possible token key
+            token = (
+                data.get("token") or
+                data.get("access_token") or
+                data.get("auth_token") or
+                data.get("authToken") or
+                data.get("accessToken") or
+                data.get("jwt")
+            )
+            # Try nested
+            if not token and isinstance(data.get("data"), dict):
+                token = data["data"].get("token") or data["data"].get("access_token")
+            if not token and isinstance(data.get("result"), dict):
+                token = data["result"].get("token")
+            if not token and isinstance(data.get("user"), dict):
+                token = data["user"].get("token")
 
             if token:
                 print("[LOGIN] ✅ Success")
                 return token
             else:
-                print("[LOGIN] Token missing")
+                print(f"[LOGIN] Token missing. Keys: {list(data.keys())}")
 
         except Exception as e:
             print(f"[LOGIN] Error: {e}")
 
-    raise Exception("Login failed: API not returning valid JSON/token")
+    raise Exception("Login failed: No valid token returned from WorkEye API")
 
 
 # =========================
 # MEMBER LIVE COUNTERS
-# Endpoint: GET /api/dashboard/member/<member_id>/live
-# Response: { success, member: {...}, live_counters: { screen_time_seconds,
-#             active_time_seconds, idle_time_seconds, productivity_percentage, ... } }
 # =========================
 def get_member_live(base_url: str, token: str, member_id: int) -> dict:
     headers = {"Authorization": f"Bearer {token}"}
@@ -68,8 +72,7 @@ def get_member_live(base_url: str, token: str, member_id: int) -> dict:
         if r.status_code == 200:
             data = r.json()
             counters = data.get("live_counters", {})
-            member   = data.get("member", {})
-            # Normalise keys to match what get_stats() expects
+            member = data.get("member", {})
             return {
                 "screen_time":   counters.get("screen_time_seconds", 0),
                 "active_time":   counters.get("active_time_seconds", 0),
@@ -87,26 +90,18 @@ def get_member_live(base_url: str, token: str, member_id: int) -> dict:
 
 # =========================
 # DASHBOARD STATS
-# Endpoint: GET /api/dashboard/stats
-# Response: { success, stats: { total_members, active_now, idle_now, offline,
-#             average_productivity }, members: [...], date, timestamp }
 # =========================
 def get_stats(base_url: str, token: str) -> dict:
     headers = {"Authorization": f"Bearer {token}"}
     url = f"{base_url}/api/dashboard/stats"
-
     r = requests.get(url, headers=headers, timeout=15)
-
     if r.status_code != 200:
         raise Exception(f"Stats failed: {r.status_code} - {r.text}")
 
     data = r.json()
-
-    # WorkEye returns { success, stats: {...}, members: [...] }
     stats   = data.get("stats", {})
     members = data.get("members", [])
 
-    # Enrich each member with live counters
     enriched = []
     for m in members:
         member_id = m.get("id")
@@ -121,59 +116,29 @@ def get_stats(base_url: str, token: str) -> dict:
                     "status":        live.get("status") or m.get("status"),
                     "is_punched_in": live.get("is_punched_in", m.get("is_punched_in", False)),
                 })
-        # Normalize department field — WorkEye may use different key names
         m["department"] = (
-            m.get("department") or
-            m.get("department_name") or
-            m.get("dept") or
-            m.get("dept_name") or
-            m.get("team") or
-            m.get("team_name") or
-            m.get("group") or
-            m.get("group_name") or
-            None
+            m.get("department") or m.get("department_name") or
+            m.get("dept") or m.get("team") or m.get("group") or None
         )
         enriched.append(m)
 
-    # Recalculate aggregate counts from enriched data (live statuses may differ)
     total   = len(enriched)
     active  = sum(1 for m in enriched if (m.get("status") or "").lower() == "active")
     idle    = sum(1 for m in enriched if (m.get("status") or "").lower() == "idle")
     offline = total - active - idle
-
     all_prod = [m.get("productivity", 0) for m in enriched]
     avg_prod = int(sum(all_prod) / len(all_prod)) if all_prod else 0
 
     stats.update({
-        "total_members":        total,
-        "active_now":           active,
-        "idle_now":             idle,
-        "offline":              offline,
-        "average_productivity": avg_prod,
+        "total_members": total, "active_now": active,
+        "idle_now": idle, "offline": offline, "average_productivity": avg_prod,
     })
-
     print(f"[stats] Members:{total} Active:{active} Idle:{idle} Offline:{offline} Avg:{avg_prod}%")
-
     return {"stats": stats, "members": enriched}
 
 
 # =========================
-# ACTIVITY TRENDS (7-day chart)
-# Endpoint: GET /api/dashboard/activity-trends
-# =========================
-def get_activity_trends(base_url: str, token: str) -> dict:
-    headers = {"Authorization": f"Bearer {token}"}
-    url = f"{base_url}/api/dashboard/activity-trends"
-    r = requests.get(url, headers=headers, timeout=15)
-    if r.status_code != 200:
-        raise Exception(f"Trends failed: {r.status_code} - {r.text}")
-    return r.json()
-
-
-# =========================
-# ATTENDANCE (members list)
-# Endpoint: GET /api/attendance/members
-# Response: { success, attendance: [...] }
+# ATTENDANCE — with punch times
 # =========================
 def get_attendance(base_url: str, token: str, date: str = None) -> list:
     headers = {"Authorization": f"Bearer {token}"}
@@ -181,35 +146,79 @@ def get_attendance(base_url: str, token: str, date: str = None) -> list:
     try:
         url = f"{base_url}/api/attendance/members"
         params = {"date": date} if date else {}
-
         r = requests.get(url, headers=headers, params=params, timeout=15)
 
         if r.status_code == 200:
             data = r.json()
-            # WorkEye returns key 'attendance', fallback to 'members' / 'data'
+            print(f"[attendance] Raw keys: {list(data.keys())}")
+
+            # WorkEye returns key 'attendance', 'members', or 'data'
             members = (
-                data.get("attendance")
-                or data.get("members")
-                or data.get("data")
-                or []
+                data.get("attendance") or
+                data.get("members") or
+                data.get("data") or
+                []
             )
+
             if members:
-                return members
+                # Normalize punch times — try multiple possible key names
+                result = []
+                for m in members:
+                    punch_in  = (
+                        m.get("punch_in_time") or
+                        m.get("punch_in") or
+                        m.get("check_in") or
+                        m.get("check_in_time") or
+                        m.get("in_time") or
+                        m.get("login_time") or
+                        None
+                    )
+                    punch_out = (
+                        m.get("punch_out_time") or
+                        m.get("punch_out") or
+                        m.get("check_out") or
+                        m.get("check_out_time") or
+                        m.get("out_time") or
+                        m.get("logout_time") or
+                        None
+                    )
+                    is_punched_in = m.get("is_punched_in", False)
+                    today_hours   = m.get("today_hours") or m.get("hours_worked") or m.get("total_hours") or 0
+
+                    print(f"[attendance] Member: {m.get('name')} | punch_in: {punch_in} | punch_out: {punch_out} | keys: {list(m.keys())[:10]}")
+
+                    result.append({
+                        "id":             m.get("id"),
+                        "name":           m.get("name"),
+                        "email":          m.get("email"),
+                        "position":       m.get("position"),
+                        "department":     m.get("department"),
+                        "status":         m.get("status"),
+                        "punch_in_time":  punch_in,
+                        "punch_out_time": punch_out,
+                        "today_hours":    round(float(today_hours or 0), 1),
+                        "is_punched_in":  is_punched_in,
+                    })
+                return result
 
     except Exception as e:
         print(f"[attendance] Primary failed: {e}")
 
-    # Fallback — derive attendance from stats
+    # Fallback — derive from stats
     try:
         stats = get_stats(base_url, token)
         members = stats.get("members", [])
         return [{
-            "name":          m.get("name"),
-            "email":         m.get("email"),
-            "position":      m.get("position"),
-            "status":        m.get("status"),
-            "today_hours":   round((m.get("screen_time") or 0) / 3600, 1),
-            "is_punched_in": m.get("is_punched_in", False),
+            "id":             m.get("id"),
+            "name":           m.get("name"),
+            "email":          m.get("email"),
+            "position":       m.get("position"),
+            "department":     m.get("department"),
+            "status":         m.get("status"),
+            "punch_in_time":  None,
+            "punch_out_time": None,
+            "today_hours":    round((m.get("screen_time") or 0) / 3600, 1),
+            "is_punched_in":  m.get("is_punched_in", False),
         } for m in members]
     except Exception:
         return []
@@ -217,31 +226,23 @@ def get_attendance(base_url: str, token: str, date: str = None) -> list:
 
 # =========================
 # ATTENDANCE MEMBER DETAIL
-# Endpoint: GET /api/attendance/member/<member_id>
-# Response: { success, member, statistics, daily_records }
 # =========================
 def get_attendance_member(base_url: str, token: str, member_id: int,
                            start_date: str = None, end_date: str = None) -> dict:
     headers = {"Authorization": f"Bearer {token}"}
     params = {}
-    if start_date:
-        params["start_date"] = start_date
-    if end_date:
-        params["end_date"] = end_date
+    if start_date: params["start_date"] = start_date
+    if end_date:   params["end_date"]   = end_date
 
     url = f"{base_url}/api/attendance/member/{member_id}"
     r = requests.get(url, headers=headers, params=params, timeout=15)
-
     if r.status_code != 200:
         raise Exception(f"Attendance member failed: {r.status_code} - {r.text}")
-
     return r.json()
 
 
 # =========================
 # CONFIGURATION
-# Endpoint: GET /api/configuration
-# Response: { success, configuration: {...} }
 # =========================
 def get_configuration(base_url: str, token: str) -> dict:
     headers = {"Authorization": f"Bearer {token}"}
@@ -250,59 +251,42 @@ def get_configuration(base_url: str, token: str) -> dict:
     if r.status_code != 200:
         raise Exception(f"Configuration failed: {r.status_code} - {r.text}")
     data = r.json()
-
-    # WorkEye returns: { success, config: { id, company_id, screenshot_interval_minutes,
-    #   idle_timeout_minutes, office_start_time, office_end_time, working_days,
-    #   last_modified_by, last_modified_at, created_at } }
     cfg = data.get("config") or data.get("configuration") or data.get("data") or data
 
-    # office_start_time and office_end_time come as "HH:MM:SS" — trim to "HH:MM"
     for key in ("office_start_time", "office_end_time"):
         val = cfg.get(key, "")
         if val and len(val) > 5:
-            cfg[key] = val[:5]  # "09:00:00" → "09:00"
+            cfg[key] = val[:5]
 
-    # working_days is JSONB list of ints [1,2,3,4,5] already — just ensure it's a list
     wd = cfg.get("working_days")
     if not isinstance(wd, list):
         cfg["working_days"] = [1, 2, 3, 4, 5]
 
-    # Map last_modified_at → updated_at (what frontend uses)
     cfg["updated_at"] = cfg.get("last_modified_at") or cfg.get("updated_at")
-
     return cfg
 
 
 # =========================
 # ACTIVITY LOGS
-# Endpoint: GET /api/activity-logs/<member_id>
-# Response: { success, member, activities: [...], pagination, date }
 # =========================
 def get_activity_logs(base_url: str, token: str, member_id: int, date: str = None) -> list:
     headers = {"Authorization": f"Bearer {token}"}
     params = {}
-    if date:
-        params["date"] = date
+    if date: params["date"] = date
 
     url = f"{base_url}/api/activity-logs/{member_id}"
     r = requests.get(url, headers=headers, params=params, timeout=15)
-
     if r.status_code != 200:
         raise Exception(f"Activity logs failed: {r.status_code} - {r.text}")
-
     data = r.json()
-    # WorkEye returns key 'activities'
     return data.get("activities") or data.get("logs") or data.get("data") or []
 
 
 # =========================
 # SCREENSHOTS
-# Endpoint: GET /api/screenshots/<member_id>
-# Response: { success, screenshots: [...] }
 # =========================
 def get_screenshots(base_url: str, token: str, date: str = None) -> list:
     headers = {"Authorization": f"Bearer {token}"}
-
     try:
         stats = get_stats(base_url, token)
         members = stats.get("members", [])
@@ -310,49 +294,46 @@ def get_screenshots(base_url: str, token: str, date: str = None) -> list:
         return []
 
     all_screenshots = []
-
     for member in members:
-        member_id = member.get("id")
+        member_id   = member.get("id")
+        member_name = member.get("name", "Unknown")
         if not member_id:
             continue
-
         try:
             url = f"{base_url}/api/screenshots/{member_id}"
             params = {"limit": 100, "offset": 0}
             if date:
                 params.update({"date": date, "start_date": date, "end_date": date})
-
             r = requests.get(url, headers=headers, params=params, timeout=15)
-
             if r.status_code == 200:
                 data = r.json()
-                # WorkEye returns key 'screenshots'
                 screenshots = data.get("screenshots") or []
                 for s in screenshots:
+                    s["member_name"]  = member_name
+                    s["member_email"] = member.get("email", "")
                     s["image_url"] = (
-                        s.get("screenshot_url")
-                        or f"/proxy-image?screenshot_id={s['id']}"
+                        s.get("screenshot_url") or
+                        f"/proxy-image?workeye_url={base_url}&token={token}&screenshot_id={s['id']}"
                     )
-                    all_screenshots.append(s)
-
+                all_screenshots.extend(screenshots)
         except Exception as e:
             print(f"[screenshots] Member {member_id} failed: {e}")
+            continue
 
+    if date:
+        all_screenshots = [s for s in all_screenshots if (s.get("timestamp") or "").startswith(date)]
+    all_screenshots.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
     return all_screenshots
 
 
 # =========================
 # IMAGE FETCH
-# Endpoint: GET /api/screenshots/image/<screenshot_id>
 # =========================
 def get_screenshot_image(base_url: str, token: str, screenshot_id: int) -> bytes:
     headers = {"Authorization": f"Bearer {token}"}
     url = f"{base_url}/api/screenshots/image/{screenshot_id}"
-
     r = requests.get(url, headers=headers, timeout=15)
     print(f"[image] Status: {r.status_code} id:{screenshot_id}")
-
     if r.status_code != 200:
         raise Exception(f"Image failed: {r.status_code} - {r.text[:100]}")
-
     return r.content
