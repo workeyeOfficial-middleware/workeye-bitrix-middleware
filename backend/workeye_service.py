@@ -228,7 +228,7 @@ def get_attendance(base_url: str, token: str, date: str = None) -> list:
 # ATTENDANCE MEMBER DETAIL
 # =========================
 def get_attendance_member(base_url: str, token: str, member_id: int,
-                           start_date: str = None, end_date: str = None) -> list:
+                           start_date: str = None, end_date: str = None) -> dict:
     headers = {"Authorization": f"Bearer {token}"}
     params = {}
     if start_date: params["start_date"] = start_date
@@ -241,12 +241,12 @@ def get_attendance_member(base_url: str, token: str, member_id: int,
         raise Exception(f"Attendance member failed: {r.status_code} - {r.text}")
 
     data = r.json()
-    print("[DEBUG RAW MEMBER DATA]", data)  # 👈 keep this for debugging
-
     inner = data.get("data") or data
+
     records = inner.get("daily_records") or inner.get("records") or []
 
-    result = []
+    cleaned = []
+
     for rec in records:
         punch_in = (
             rec.get("punch_in_time") or
@@ -254,8 +254,7 @@ def get_attendance_member(base_url: str, token: str, member_id: int,
             rec.get("check_in") or
             rec.get("check_in_time") or
             rec.get("in_time") or
-            rec.get("login_time") or
-            None
+            rec.get("login_time")
         )
 
         punch_out = (
@@ -264,46 +263,32 @@ def get_attendance_member(base_url: str, token: str, member_id: int,
             rec.get("check_out") or
             rec.get("check_out_time") or
             rec.get("out_time") or
-            rec.get("logout_time") or
-            None
+            rec.get("logout_time")
         )
 
-        result.append({
+        duration = rec.get("duration") or rec.get("hours") or rec.get("total_hours") or 0
+
+        # ✅ Decide status ONLY from real data
+        if punch_in:
+            status = "Present"
+        elif rec.get("status"):
+            status = rec.get("status")
+        else:
+            status = "Absent"
+
+        cleaned.append({
             "date": rec.get("date"),
             "punch_in_time": punch_in,
             "punch_out_time": punch_out,
-            "hours": rec.get("duration") or rec.get("hours") or rec.get("total_hours") or 0,
-            "status": rec.get("status")
+            "hours": duration,
+            "status": status
         })
 
-    print("[DEBUG FORMATTED DATA]", result[:3])  # 👈 check output
+        print(f"[DETAIL] {rec.get('date')} | in:{punch_in} | out:{punch_out}")
 
-    return result
-
-# =========================
-# CONFIGURATION
-# =========================
-def get_configuration(base_url: str, token: str) -> dict:
-    headers = {"Authorization": f"Bearer {token}"}
-    url = f"{base_url}/api/configuration"
-    r = requests.get(url, headers=headers, timeout=15)
-    if r.status_code != 200:
-        raise Exception(f"Configuration failed: {r.status_code} - {r.text}")
-    data = r.json()
-    cfg = data.get("config") or data.get("configuration") or data.get("data") or data
-
-    for key in ("office_start_time", "office_end_time"):
-        val = cfg.get(key, "")
-        if val and len(val) > 5:
-            cfg[key] = val[:5]
-
-    wd = cfg.get("working_days")
-    if not isinstance(wd, list):
-        cfg["working_days"] = [1, 2, 3, 4, 5]
-
-    cfg["updated_at"] = cfg.get("last_modified_at") or cfg.get("updated_at")
-    return cfg
-
+    return {
+        "records": cleaned
+    }
 
 # =========================
 # ACTIVITY LOGS
