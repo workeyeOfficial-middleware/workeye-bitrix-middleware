@@ -238,7 +238,27 @@ def get_configuration(base_url: str, token: str) -> dict:
     if r.status_code != 200:
         raise Exception(f"Configuration failed: {r.status_code} - {r.text}")
     data = r.json()
-    return data.get("configuration") or data.get("data") or data
+
+    # WorkEye returns: { success, config: { id, company_id, screenshot_interval_minutes,
+    #   idle_timeout_minutes, office_start_time, office_end_time, working_days,
+    #   last_modified_by, last_modified_at, created_at } }
+    cfg = data.get("config") or data.get("configuration") or data.get("data") or data
+
+    # office_start_time and office_end_time come as "HH:MM:SS" — trim to "HH:MM"
+    for key in ("office_start_time", "office_end_time"):
+        val = cfg.get(key, "")
+        if val and len(val) > 5:
+            cfg[key] = val[:5]  # "09:00:00" → "09:00"
+
+    # working_days is JSONB list of ints [1,2,3,4,5] already — just ensure it's a list
+    wd = cfg.get("working_days")
+    if not isinstance(wd, list):
+        cfg["working_days"] = [1, 2, 3, 4, 5]
+
+    # Map last_modified_at → updated_at (what frontend uses)
+    cfg["updated_at"] = cfg.get("last_modified_at") or cfg.get("updated_at")
+
+    return cfg
 
 
 # =========================
