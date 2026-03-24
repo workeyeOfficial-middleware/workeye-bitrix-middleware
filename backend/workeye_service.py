@@ -4,12 +4,26 @@ from datetime import datetime, timedelta
 def get_token(base_url: str, email: str, password: str) -> str:
     url = f"{base_url}/auth/admin/login"
     payload = {"email": email, "password": password}
-    headers = {"Content-Type": "application/json"}
-    response = requests.post(url, json=payload, headers=headers, timeout=15)
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "User-Agent": "WorkEye-Integration/1.0",
+    }
+    response = requests.post(url, json=payload, headers=headers, timeout=30)
     print("Login Status:", response.status_code)
     print("Login Response:", response.text[:500])
+
+    if response.status_code == 403:
+        raise Exception("License not active or account disabled")
+    if response.status_code == 429:
+        raise Exception("Too many login attempts. Please wait and try again")
     if response.status_code != 200:
-        raise Exception("Invalid email or password")
+        raise Exception(f"Invalid email or password (HTTP {response.status_code})")
+
+    raw = response.text.strip()
+    if not raw:
+        raise Exception("WorkEye server returned empty response. Please check server logs.")
+
     data = response.json()
 
     # Check top-level and one level deep for any common token key
