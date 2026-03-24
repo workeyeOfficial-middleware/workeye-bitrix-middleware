@@ -2,13 +2,46 @@ import requests
 from datetime import datetime, timedelta
 
 def get_token(base_url: str, email: str, password: str) -> str:
-    url = f"{base_url}/auth/admin/login"
+    # Try multiple common login endpoint paths
+    login_endpoints = [
+        "/auth/admin/login",
+        "/api/auth/login",
+        "/api/auth/admin/login",
+        "/api/login",
+        "/auth/login",
+        "/login",
+        "/api/v1/auth/login",
+        "/api/v1/login",
+        "/user/login",
+        "/api/user/login",
+    ]
+
     payload = {"email": email, "password": password}
     headers = {"Content-Type": "application/json"}
-    response = requests.post(url, json=payload, headers=headers, timeout=15)
-    print("Login Status:", response.status_code)
-    if response.status_code != 200:
-        raise Exception("Invalid email or password")
+
+    last_status = None
+    last_body = ""
+    response = None
+
+    for endpoint in login_endpoints:
+        url = f"{base_url}{endpoint}"
+        try:
+            response = requests.post(url, json=payload, headers=headers, timeout=15)
+            print(f"Login attempt [{endpoint}]: {response.status_code}")
+            last_status = response.status_code
+            last_body = response.text[:300]
+            if response.status_code == 200:
+                print(f"Login succeeded at: {endpoint}")
+                break
+        except Exception as e:
+            print(f"Login attempt [{endpoint}] error: {e}")
+            continue
+    else:
+        raise Exception(f"Login failed on all endpoints. Last status: {last_status}. Response: {last_body}")
+
+    if response is None or response.status_code != 200:
+        raise Exception(f"Login failed. Status: {last_status}. Response: {last_body}")
+
     data = response.json()
     print("Login Response Keys:", list(data.keys()))
     print("Login Response Data:", str(data)[:500])
