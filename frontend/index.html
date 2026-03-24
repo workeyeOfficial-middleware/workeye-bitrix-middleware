@@ -2080,18 +2080,69 @@ async function loadAttDetail(){
   document.getElementById('attDetailRangeLabel').textContent=start&&end?`Showing data from ${start} to ${end}`:'';
   try{
     const res=await apiFetch('/get-attendance-member',{member_id:currentAttMember.id,start_date:start,end_date:end});
-    const data=res.data||res||{},stats=data.statistics||{},records=data.daily_records||[];
+    const data=res.data||res||{},stats=data.statistics||{};
+    let records=data.daily_records||[];
+
+    // ── Client-side date range filter ──
+    // If start/end are set, filter records to only show dates within the range
+    // This handles APIs that don't respect date range params
+    if(start && end && records.length) {
+      const startMs = new Date(start).getTime();
+      const endMs = new Date(end).getTime();
+      records = records.filter(r => {
+        if(!r.date) return false;
+        const d = new Date(r.date).getTime();
+        return d >= startMs && d <= endMs;
+      });
+    }
+
+    // ── If API returned no records for this range, build empty calendar grid ──
+    if(!records.length && start && end) {
+      const dayNames=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+      const cur = new Date(start);
+      const endD = new Date(end);
+      while(cur <= endD) {
+        const dateStr = cur.toISOString().substring(0,10);
+        const isWknd = cur.getDay()===0||cur.getDay()===6;
+        records.push({
+          date: dateStr,
+          punch_in_time: null,
+          punch_out_time: null,
+          duration: '0h 0m',
+          status: isWknd ? 'Holiday/Weekend' : 'Absent'
+        });
+        cur.setDate(cur.getDate()+1);
+      }
+    }
+
     attDetailRecords=records;
-    const wd=stats.working_days||stats.total_working_days||0;
-    const dp=stats.days_present||0;
-    const th=stats.total_hours?parseFloat(stats.total_hours).toFixed(1):'0.0';
-    const pct=stats.attendance_percentage?parseFloat(stats.attendance_percentage).toFixed(1):'0.0';
+
+    // ── Recalculate stats from filtered records (not API stats) ──
+    function parseDurToH(dur){
+      if(!dur||dur==='—')return 0;
+      const hm=dur.match(/(\d+)h\s*(\d*)m?/);
+      const mo=dur.match(/(\d+)m/);
+      if(hm)return parseInt(hm[1])+(hm[2]?parseInt(hm[2])/60:0);
+      if(mo)return parseInt(mo[1])/60;
+      return 0;
+    }
     const totalDays=records.length||0;
-    const absent=totalDays-dp;
-    const avgH=dp>0?(parseFloat(th)/dp).toFixed(1):'0.0';
-    document.getElementById('attDetailWorkingDays').textContent=wd||'—';
+    const workDays=records.filter(r=>r.status!=='Holiday/Weekend'&&!r.date?.let?.(d=>new Date(d).getDay()===0||new Date(d).getDay()===6));
+    // Recalculate working days: non-weekend days
+    const wdCount=records.filter(r=>{if(!r.date)return false;const d=new Date(r.date);return d.getDay()!==0&&d.getDay()!==6}).length;
+    const presentRecords=records.filter(r=>r.status==='Present'||(r.punch_in_time&&r.punch_in_time!=='N/A'));
+    const dp=presentRecords.length;
+    // Sum hours from duration field
+    const totalHoursNum=records.reduce((sum,r)=>sum+parseDurToH(r.duration||''),0);
+    const th=totalHoursNum.toFixed(1);
+    const pct=wdCount>0?((dp/wdCount)*100).toFixed(1):'0.0';
+    const absent=wdCount-dp;
+    const avgH=dp>0?(totalHoursNum/dp).toFixed(1):'0.0';
+    // Use API stats for working_days if API returns them; else use recalculated
+    const wd=stats.working_days||stats.total_working_days||wdCount;
+    document.getElementById('attDetailWorkingDays').textContent=wd||wdCount||'—';
     document.getElementById('attDetailTotalDaysLabel').textContent='of '+totalDays+' total days';
-    document.getElementById('attDetailPresent').textContent=dp||'—';
+    document.getElementById('attDetailPresent').textContent=dp>=0?dp:'—';
     document.getElementById('attDetailAbsentLabel').textContent=(absent>=0?absent:'—')+' days absent';
     document.getElementById('attDetailHours').textContent=th+'h';
     document.getElementById('attDetailPct').textContent=pct+'%';
