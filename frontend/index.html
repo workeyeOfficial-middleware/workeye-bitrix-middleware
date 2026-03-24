@@ -1426,8 +1426,36 @@ function toast(msg,type="ok"){const el=document.getElementById("toast");el.textC
 const avatarColors=["#5b5ef4","#06b6d4","#f59e0b","#ef4444","#8b5cf6","#10b981","#f97316","#3b82f6","#ec4899"];
 function avatarColor(i){return avatarColors[i%avatarColors.length]}
 function statusBadge(s){s=(s||"").toLowerCase();const cls=s==="active"?"status-active":s==="idle"?"status-idle":"status-offline",dot=s==="active"?"🟢":s==="idle"?"🟡":"⚫";return`<span class="status-badge ${cls}">${dot} ${s||"—"}</span>`}
-function fmtTime(iso){return iso?iso.substring(11,16):"—"}
-function fmtTime12(iso){if(!iso)return'—';try{const d=new Date(iso);let h=d.getHours(),m=d.getMinutes();const ampm=h>=12?'PM':'AM';h=h%12||12;return m===0?`${h} ${ampm}`:`${h}:${String(m).padStart(2,'0')} ${ampm}`}catch(e){return'—'}}
+function _parseTimeVal(val){
+  if(!val)return null;
+  val=String(val).trim();
+  // Already "HH:MM" or "HH:MM:SS" plain time
+  let m=val.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if(m)return{h:+m[1],min:+m[2]};
+  // ISO datetime with T separator e.g. "2026-03-23T09:45:00" or with Z/offset
+  m=val.match(/T(\d{2}):(\d{2})/);
+  if(m)return{h:+m[1],min:+m[2]};
+  // space-separated datetime e.g. "2026-03-23 09:45:00"
+  m=val.match(/\d{4}-\d{2}-\d{2}\s+(\d{2}):(\d{2})/);
+  if(m)return{h:+m[1],min:+m[2]};
+  // Fallback: try native Date (works for RFC strings)
+  const d=new Date(val);
+  if(!isNaN(d.getTime()))return{h:d.getHours(),min:d.getMinutes()};
+  return null;
+}
+function fmtTime(val){
+  const t=_parseTimeVal(val);
+  if(!t)return'—';
+  return `${String(t.h).padStart(2,'0')}:${String(t.min).padStart(2,'0')}`;
+}
+function fmtTime12(val){
+  if(!val)return'—';
+  const t=_parseTimeVal(val);
+  if(!t)return'—';
+  const ampm=t.h>=12?'PM':'AM';
+  const h12=t.h%12||12;
+  return t.min===0?`${h12} ${ampm}`:`${h12}:${String(t.min).padStart(2,'0')} ${ampm}`;
+}
 function calcHours(inTime,outTime){if(!inTime||!outTime)return'—';try{const diff=(new Date(outTime)-new Date(inTime))/1000;if(diff<=0)return'—';const h=Math.floor(diff/3600),m=Math.floor((diff%3600)/60);return h>0?`${h}h ${m}m`:`${m}m`}catch(e){return'—'}}
 function fmtHour(t){if(!t)return'—';const parts=t.split(':');let h=parseInt(parts[0]),m=parseInt(parts[1]||0);const ampm=h>=12?'PM':'AM';h=h%12||12;return m===0?`${h} ${ampm}`:`${h}:${String(m).padStart(2,'0')} ${ampm}`}
 
