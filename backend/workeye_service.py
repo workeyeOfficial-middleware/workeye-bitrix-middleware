@@ -60,6 +60,16 @@ def get_stats(base_url: str, token: str) -> dict:
     stats   = data.get("stats", {})
     members = data.get("members", [])
 
+    # Try to enrich members with department from a dedicated members/users endpoint
+    dept_map = _fetch_department_map(base_url, headers)
+    if dept_map:
+        for m in members:
+            if not m.get("department"):
+                mid = m.get("id")
+                email = m.get("email", "")
+                m["department"] = dept_map.get(mid) or dept_map.get(email) or None
+        print(f"[stats] Enriched {sum(1 for m in members if m.get('department'))} members with department")
+
     total   = len(members)
     active  = sum(1 for m in members if (m.get("status") or "").lower() == "active")
     idle    = sum(1 for m in members if (m.get("status") or "").lower() == "idle")
@@ -74,6 +84,60 @@ def get_stats(base_url: str, token: str) -> dict:
 
     print(f"[stats] Members:{total} Active:{active} Idle:{idle} Offline:{offline} Avg:{avg_prod}%")
     return {"stats": stats, "members": members}
+
+
+def _fetch_department_map(base_url: str, headers: dict) -> dict:
+    """
+    Try several common endpoints to find department info.
+    Returns a dict keyed by member id (int) and email (str) -> department name.
+    """
+    dept_map = {}
+    candidate_urls = [
+        f"{base_url}/api/members",
+        f"{base_url}/api/users",
+        f"{base_url}/api/employees",
+        f"{base_url}/api/team",
+        f"{base_url}/api/admin/members",
+        f"{base_url}/api/admin/users",
+    ]
+    for url in candidate_urls:
+        try:
+            r = requests.get(url, headers=headers, timeout=10)
+            if r.status_code != 200:
+                continue
+            raw = r.json()
+            # Support {"members":[...]}, {"users":[...]}, {"data":[...]}, or a plain list
+            items = (
+                raw if isinstance(raw, list) else
+                raw.get("members") or raw.get("users") or
+                raw.get("employees") or raw.get("data") or []
+            )
+            if not items:
+                continue
+            print(f"[dept_map] Found {len(items)} items from {url}")
+            for item in items:
+                dept = (
+                    item.get("department") or
+                    item.get("department_name") or
+                    item.get("dept") or
+                    item.get("group") or
+                    item.get("team") or
+                    item.get("division") or
+                    None
+                )
+                if dept:
+                    if item.get("id"):
+                        dept_map[item["id"]] = dept
+                    if item.get("email"):
+                        dept_map[item["email"]] = dept
+            if dept_map:
+                print(f"[dept_map] Built map with {len(dept_map)} entries from {url}")
+                return dept_map
+        except Exception as e:
+            print(f"[dept_map] {url} failed: {e}")
+            continue
+    print("[dept_map] No department data found from any endpoint")
+    return dept_map
 
 
 # =========================
