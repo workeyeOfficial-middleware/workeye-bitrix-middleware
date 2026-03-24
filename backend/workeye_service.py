@@ -174,7 +174,98 @@ def get_attendance_member(base_url: str, token: str, member_id: int,
     r = requests.get(url, headers=headers, params=params, timeout=15)
     if r.status_code != 200:
         raise Exception(f"Attendance member failed: {r.status_code} - {r.text}")
-    return r.json()
+
+    data = r.json()
+    print(f"[attendance_member] Raw keys: {list(data.keys())}")
+
+    # Grab daily records from whatever key the API uses
+    records_raw = (
+        data.get("daily_records") or
+        data.get("attendance_records") or
+        data.get("records") or
+        data.get("attendance") or
+        data.get("data") or
+        []
+    )
+
+    def _extract_time(rec, *keys):
+        """Return first non-empty value from any of the given keys."""
+        for k in keys:
+            v = rec.get(k)
+            if v and str(v).strip() not in ("", "null", "None", "N/A"):
+                return str(v).strip()
+        return None
+
+    def _calc_duration(punch_in, punch_out):
+        if not punch_in or not punch_out:
+            return ""
+        try:
+            def _parse(t):
+                for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%SZ",
+                            "%Y-%m-%d %H:%M:%S", "%H:%M:%S", "%H:%M"):
+                    try:
+                        return datetime.strptime(t, fmt)
+                    except ValueError:
+                        continue
+                return None
+            dt_in  = _parse(punch_in)
+            dt_out = _parse(punch_out)
+            if dt_in and dt_out and dt_out > dt_in:
+                total_minutes = int((dt_out - dt_in).total_seconds() / 60)
+                return f"{total_minutes // 60}h {total_minutes % 60}m"
+        except Exception:
+            pass
+        return ""
+
+    normalized = []
+    for rec in records_raw:
+        print(f"[attendance_member] Record keys: {list(rec.keys())}")
+
+        punch_in = _extract_time(
+            rec,
+            # All known field name variants WorkEye might use
+            "punch_in_time", "punch_in", "check_in_time", "check_in",
+            "login_time", "first_punch", "in_time", "start_time",
+            "clockin_time", "clock_in", "clock_in_time", "time_in",
+            "punchIn", "checkIn", "loginTime", "firstPunch",
+        )
+        punch_out = _extract_time(
+            rec,
+            "punch_out_time", "punch_out", "check_out_time", "check_out",
+            "logout_time", "last_punch", "out_time", "end_time",
+            "clockout_time", "clock_out", "clock_out_time", "time_out",
+            "punchOut", "checkOut", "logoutTime", "lastPunch",
+        )
+
+        duration = (
+            rec.get("duration") or
+            rec.get("hours_worked") or
+            rec.get("working_hours") or
+            rec.get("total_hours") or
+            _calc_duration(punch_in, punch_out) or
+            ""
+        )
+
+        status = (
+            rec.get("status") or
+            rec.get("attendance_status") or
+            ("Present" if punch_in else "Absent")
+        )
+
+        normalized.append({
+            "date":           rec.get("date") or rec.get("attendance_date") or rec.get("day"),
+            "punch_in_time":  punch_in,
+            "punch_out_time": punch_out,
+            "duration":       str(duration),
+            "status":         status,
+        })
+
+    print(f"[attendance_member] Normalized {len(normalized)} records. "
+          f"Sample punch_in: {normalized[0].get('punch_in_time') if normalized else 'N/A'}")
+
+    # Preserve original response but replace daily_records with normalized data
+    data["daily_records"] = normalized
+    return data
 
 
 # =========================
