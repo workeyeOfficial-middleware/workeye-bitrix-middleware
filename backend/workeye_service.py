@@ -236,41 +236,9 @@ def get_attendance_member(base_url: str, token: str, member_id: int,
 
     url = f"{base_url}/api/attendance/member/{member_id}"
     r = requests.get(url, headers=headers, params=params, timeout=15)
-
     if r.status_code != 200:
         raise Exception(f"Attendance member failed: {r.status_code} - {r.text}")
-
-    data = r.json()
-    inner = data.get("data") or data
-
-    records = inner.get("daily_records") or inner.get("records") or []
-
-    # ✅ Inject punch fields into records (without breaking structure)
-    for rec in records:
-        rec["punch_in_time"] = (
-            rec.get("punch_in_time") or
-            rec.get("punch_in") or
-            rec.get("check_in") or
-            rec.get("check_in_time") or
-            rec.get("in_time") or
-            rec.get("login_time")
-        )
-
-        rec["punch_out_time"] = (
-            rec.get("punch_out_time") or
-            rec.get("punch_out") or
-            rec.get("check_out") or
-            rec.get("check_out_time") or
-            rec.get("out_time") or
-            rec.get("logout_time")
-        )
-
-        print(f"[DETAIL DEBUG] {rec.get('date')} | IN: {rec['punch_in_time']} | OUT: {rec['punch_out_time']}")
-
-    # ✅ Keep SAME response structure (important)
-    inner["records"] = records
-
-    return inner
+    return r.json()
 
 
 # =========================
