@@ -6,12 +6,6 @@ from datetime import datetime, timedelta
 # AUTH
 # =========================
 def get_token(base_url: str, email: str, password: str) -> str:
-    """
-    Authenticate with WorkEye and return token.
-    Includes detailed debugging for Render logs.
-    """
-
-    # Try multiple possible login endpoints (VERY IMPORTANT FIX)
     endpoints = [
         "/auth/admin/login",
         "/auth/login",
@@ -19,9 +13,10 @@ def get_token(base_url: str, email: str, password: str) -> str:
     ]
 
     payload = {"email": email, "password": password}
-    headers = {"Content-Type": "application/json"}
-
-    last_error = None
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json"  # 🔥 IMPORTANT FIX
+    }
 
     for ep in endpoints:
         url = f"{base_url}{ep}"
@@ -31,56 +26,32 @@ def get_token(base_url: str, email: str, password: str) -> str:
             response = requests.post(url, json=payload, headers=headers, timeout=15)
 
             print(f"[LOGIN] Status: {response.status_code}")
-            print(f"[LOGIN] Response: {response.text[:300]}")
+            print(f"[LOGIN] Raw Response: '{response.text[:200]}'")
 
-            if response.status_code == 200:
+            # 🔥 FIX: handle empty response
+            if not response.text.strip():
+                print("[LOGIN] Empty response → likely wrong endpoint")
+                continue
+
+            # 🔥 SAFE JSON PARSE
+            try:
                 data = response.json()
-                token = data.get("token") or data.get("access_token")
+            except Exception:
+                print("[LOGIN] Not JSON → probably HTML response")
+                continue
 
-                if token:
-                    print("[LOGIN] ✅ Success")
-                    return token
-                else:
-                    print("[LOGIN] ❌ Token missing in response")
+            token = data.get("token") or data.get("access_token")
 
+            if token:
+                print("[LOGIN] ✅ Success")
+                return token
             else:
-                last_error = f"{response.status_code} - {response.text}"
+                print("[LOGIN] Token missing")
 
         except Exception as e:
-            last_error = str(e)
             print(f"[LOGIN] Error: {e}")
 
-    raise Exception(f"Login failed on all endpoints. Last error: {last_error}")
-
-
-# =========================
-# LIVE MEMBER DATA
-# =========================
-def get_member_live(base_url: str, token: str, member_id: int) -> dict:
-    try:
-        headers = {"Authorization": f"Bearer {token}"}
-        url = f"{base_url}/api/dashboard/member/{member_id}/live"
-
-        r = requests.get(url, headers=headers, timeout=10)
-
-        if r.status_code == 200:
-            data = r.json()
-            counters = data.get("live_counters") or {}
-            member_info = data.get("member") or {}
-
-            return {
-                "screen_time": counters.get("screen_time_seconds", 0),
-                "active_time": counters.get("active_time_seconds", 0),
-                "idle_time": counters.get("idle_time_seconds", 0),
-                "productivity": counters.get("productivity_percentage", 0),
-                "status": member_info.get("status"),
-                "is_punched_in": member_info.get("is_punched_in", False),
-            }
-
-    except Exception as e:
-        print(f"[live] Failed for member {member_id}: {e}")
-
-    return {}
+    raise Exception("Login failed: API not returning valid JSON/token")
 
 
 # =========================
