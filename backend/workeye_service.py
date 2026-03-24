@@ -121,6 +121,18 @@ def get_stats(base_url: str, token: str) -> dict:
                     "status":        live.get("status") or m.get("status"),
                     "is_punched_in": live.get("is_punched_in", m.get("is_punched_in", False)),
                 })
+        # Normalize department field — WorkEye may use different key names
+        m["department"] = (
+            m.get("department") or
+            m.get("department_name") or
+            m.get("dept") or
+            m.get("dept_name") or
+            m.get("team") or
+            m.get("team_name") or
+            m.get("group") or
+            m.get("group_name") or
+            None
+        )
         enriched.append(m)
 
     # Recalculate aggregate counts from enriched data (live statuses may differ)
