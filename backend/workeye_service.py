@@ -1,68 +1,83 @@
 import requests
 from datetime import datetime, timedelta
+import time
 
 
 # =========================
 # AUTH
 # =========================
 def get_token(base_url: str, email: str, password: str) -> str:
-    endpoints = [
-        "/auth/admin/login",
-        "/auth/login",
-        "/api/auth/login"
-    ]
+    url = f"{base_url}/auth/admin/login"
     payload = {"email": email, "password": password}
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
-    for ep in endpoints:
-        url = f"{base_url}{ep}"
-        try:
-            print(f"[LOGIN] Trying: {url}")
-            response = requests.post(url, json=payload, headers=headers, timeout=15)
-            print(f"[LOGIN] Status: {response.status_code}")
-            print(f"[LOGIN] Raw Response: '{response.text[:300]}'")
+    response = requests.post(url, json=payload, headers=headers, timeout=30)
+    print(f"[LOGIN] Status: {response.status_code}")
+    print(f"[LOGIN] Body: '{response.text[:300]}'")
 
-            if not response.text.strip():
-                print("[LOGIN] Empty response → wrong endpoint")
-                continue
+    if not response.text.strip():
+        raise Exception("WorkEye server returned empty response on login.")
 
-            try:
-                data = response.json()
-            except Exception:
-                print("[LOGIN] Not JSON → probably HTML")
-                continue
+    data = response.json()
 
-            # Try every possible token key
-            token = (
-                data.get("token") or
-                data.get("access_token") or
-                data.get("auth_token") or
-                data.get("authToken") or
-                data.get("accessToken") or
-                data.get("jwt")
-            )
-            # Try nested
-            if not token and isinstance(data.get("data"), dict):
-                token = data["data"].get("token") or data["data"].get("access_token")
-            if not token and isinstance(data.get("result"), dict):
-                token = data["result"].get("token")
-            if not token and isinstance(data.get("user"), dict):
-                token = data["user"].get("token")
+    token_keys = ["token", "access_token", "auth_token", "authToken", "accessToken", "jwt"]
+    token = next((data[k] for k in token_keys if data.get(k)), None)
+    if not token:
+        for val in data.values():
+            if isinstance(val, dict):
+                token = next((val[k] for k in token_keys if val.get(k)), None)
+                if token:
+                    break
 
-            if token:
-                print("[LOGIN] ✅ Success")
-                return token
-            else:
-                print(f"[LOGIN] Token missing. Keys: {list(data.keys())}")
+    if not token:
+        raise Exception(f"Login failed ({response.status_code}): {str(data)[:200]}")
 
-        except Exception as e:
-            print(f"[LOGIN] Error: {e}")
-
-    raise Exception("Login failed: No valid token returned from WorkEye API")
+    print("[LOGIN] ✅ Success")
+    return token
 
 
 # =========================
-# MEMBER LIVE COUNTERS
+# DASHBOARD STATS
+# No per-member /live calls — stats endpoint already has all needed data
+# =========================
+def get_stats(base_url: str, token: str) -> dict:
+    headers = {"Authorization": f"Bearer {token}"}
+    url = f"{base_url}/api/dashboard/stats"
+
+    try:
+        r = requests.get(url, headers=headers, timeout=30)
+    except requests.exceptions.Timeout:
+        raise Exception("WorkEye backend timed out. It may be waking up — please wait 30s and try again.")
+
+    if r.status_code == 401:
+        raise Exception("Token expired. Please log in again.")
+    if r.status_code == 503:
+        raise Exception("WorkEye backend is sleeping. Please wait 30 seconds and refresh.")
+    if r.status_code != 200:
+        raise Exception(f"Stats failed: {r.status_code} - {r.text[:200]}")
+
+    data = r.json()
+    stats   = data.get("stats", {})
+    members = data.get("members", [])
+
+    total   = len(members)
+    active  = sum(1 for m in members if (m.get("status") or "").lower() == "active")
+    idle    = sum(1 for m in members if (m.get("status") or "").lower() == "idle")
+    offline = total - active - idle
+    all_prod = [m.get("productivity", 0) for m in members]
+    avg_prod = int(sum(all_prod) / len(all_prod)) if all_prod else 0
+
+    stats.update({
+        "total_members": total, "active_now": active,
+        "idle_now": idle, "offline": offline, "average_productivity": avg_prod,
+    })
+
+    print(f"[stats] Members:{total} Active:{active} Idle:{idle} Offline:{offline} Avg:{avg_prod}%")
+    return {"stats": stats, "members": members}
+
+
+# =========================
+# MEMBER LIVE COUNTERS (only called when viewing individual member)
 # =========================
 def get_member_live(base_url: str, token: str, member_id: int) -> dict:
     headers = {"Authorization": f"Bearer {token}"}
@@ -72,7 +87,7 @@ def get_member_live(base_url: str, token: str, member_id: int) -> dict:
         if r.status_code == 200:
             data = r.json()
             counters = data.get("live_counters", {})
-            member = data.get("member", {})
+            member   = data.get("member", {})
             return {
                 "screen_time":   counters.get("screen_time_seconds", 0),
                 "active_time":   counters.get("active_time_seconds", 0),
@@ -81,88 +96,13 @@ def get_member_live(base_url: str, token: str, member_id: int) -> dict:
                 "status":        member.get("status"),
                 "is_punched_in": member.get("is_punched_in", False),
             }
-        else:
-            print(f"[live] Member {member_id} → HTTP {r.status_code}")
     except Exception as e:
         print(f"[live] Member {member_id} failed: {e}")
     return {}
 
 
 # =========================
-# DASHBOARD STATS
-# =========================
-def get_stats(base_url: str, token: str) -> dict:
-    headers = {"Authorization": f"Bearer {token}"}
-    url = f"{base_url}/api/dashboard/stats"
-
-    # Retry up to 3 times — Render free tier sleeps and needs a warm-up request
-    import time
-    last_error = None
-    for attempt in range(3):
-        try:
-            r = requests.get(url, headers=headers, timeout=30)
-            if r.status_code == 200:
-                break
-            elif r.status_code == 503:
-                print(f"[stats] WorkEye backend sleeping (503), retrying in 5s... attempt {attempt+1}/3")
-                time.sleep(5)
-                last_error = f"WorkEye backend is waking up (503). Please wait 30 seconds and try again."
-                continue
-            elif r.status_code == 401:
-                raise Exception("Token expired or invalid. Please log in again.")
-            else:
-                raise Exception(f"Stats failed: {r.status_code} - {r.text[:200]}")
-        except requests.exceptions.Timeout:
-            print(f"[stats] Timeout on attempt {attempt+1}/3")
-            last_error = "WorkEye backend timed out. It may be waking up — please try again."
-            time.sleep(3)
-            continue
-        except Exception as e:
-            raise e
-    else:
-        raise Exception(last_error or "WorkEye backend unavailable after 3 attempts.")
-
-    data = r.json()
-    stats   = data.get("stats", {})
-    members = data.get("members", [])
-
-    enriched = []
-    for m in members:
-        member_id = m.get("id")
-        if member_id:
-            live = get_member_live(base_url, token, member_id)
-            if live:
-                m.update({
-                    "screen_time":   live.get("screen_time",   m.get("screen_time", 0)),
-                    "active_time":   live.get("active_time",   m.get("active_time", 0)),
-                    "idle_time":     live.get("idle_time",     m.get("idle_time", 0)),
-                    "productivity":  live.get("productivity",  m.get("productivity", 0)),
-                    "status":        live.get("status") or m.get("status"),
-                    "is_punched_in": live.get("is_punched_in", m.get("is_punched_in", False)),
-                })
-        m["department"] = (
-            m.get("department") or m.get("department_name") or
-            m.get("dept") or m.get("team") or m.get("group") or None
-        )
-        enriched.append(m)
-
-    total   = len(enriched)
-    active  = sum(1 for m in enriched if (m.get("status") or "").lower() == "active")
-    idle    = sum(1 for m in enriched if (m.get("status") or "").lower() == "idle")
-    offline = total - active - idle
-    all_prod = [m.get("productivity", 0) for m in enriched]
-    avg_prod = int(sum(all_prod) / len(all_prod)) if all_prod else 0
-
-    stats.update({
-        "total_members": total, "active_now": active,
-        "idle_now": idle, "offline": offline, "average_productivity": avg_prod,
-    })
-    print(f"[stats] Members:{total} Active:{active} Idle:{idle} Offline:{offline} Avg:{avg_prod}%")
-    return {"stats": stats, "members": enriched}
-
-
-# =========================
-# ATTENDANCE — with punch times
+# ATTENDANCE
 # =========================
 def get_attendance(base_url: str, token: str, date: str = None) -> list:
     headers = {"Authorization": f"Bearer {token}"}
@@ -170,58 +110,31 @@ def get_attendance(base_url: str, token: str, date: str = None) -> list:
     try:
         url = f"{base_url}/api/attendance/members"
         params = {"date": date} if date else {}
-        r = requests.get(url, headers=headers, params=params, timeout=15)
+        r = requests.get(url, headers=headers, params=params, timeout=20)
 
         if r.status_code == 200:
             data = r.json()
             print(f"[attendance] Raw keys: {list(data.keys())}")
-
-            # WorkEye returns key 'attendance', 'members', or 'data'
-            members = (
-                data.get("attendance") or
-                data.get("members") or
-                data.get("data") or
-                []
-            )
+            members = data.get("attendance") or data.get("members") or data.get("data") or []
 
             if members:
-                # Normalize punch times — try multiple possible key names
                 result = []
                 for m in members:
-                    punch_in  = (
-                        m.get("punch_in_time") or
-                        m.get("punch_in") or
-                        m.get("check_in") or
-                        m.get("check_in_time") or
-                        m.get("in_time") or
-                        m.get("login_time") or
-                        None
-                    )
-                    punch_out = (
-                        m.get("punch_out_time") or
-                        m.get("punch_out") or
-                        m.get("check_out") or
-                        m.get("check_out_time") or
-                        m.get("out_time") or
-                        m.get("logout_time") or
-                        None
-                    )
-                    is_punched_in = m.get("is_punched_in", False)
-                    today_hours   = m.get("today_hours") or m.get("hours_worked") or m.get("total_hours") or 0
-
-                    print(f"[attendance] Member: {m.get('name')} | punch_in: {punch_in} | punch_out: {punch_out} | keys: {list(m.keys())[:10]}")
-
+                    punch_in  = (m.get("punch_in_time") or m.get("punch_in") or
+                                 m.get("check_in") or m.get("check_in_time") or None)
+                    punch_out = (m.get("punch_out_time") or m.get("punch_out") or
+                                 m.get("check_out") or m.get("check_out_time") or None)
+                    today_hours = m.get("today_hours") or m.get("hours_worked") or 0
                     result.append({
                         "id":             m.get("id"),
                         "name":           m.get("name"),
                         "email":          m.get("email"),
                         "position":       m.get("position"),
-                        "department":     m.get("department"),
                         "status":         m.get("status"),
                         "punch_in_time":  punch_in,
                         "punch_out_time": punch_out,
                         "today_hours":    round(float(today_hours or 0), 1),
-                        "is_punched_in":  is_punched_in,
+                        "is_punched_in":  m.get("is_punched_in", False),
                     })
                 return result
 
@@ -237,7 +150,6 @@ def get_attendance(base_url: str, token: str, date: str = None) -> list:
             "name":           m.get("name"),
             "email":          m.get("email"),
             "position":       m.get("position"),
-            "department":     m.get("department"),
             "status":         m.get("status"),
             "punch_in_time":  None,
             "punch_out_time": None,
