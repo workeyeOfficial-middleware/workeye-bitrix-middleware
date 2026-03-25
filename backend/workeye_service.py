@@ -99,6 +99,7 @@ def _fetch_department_map(base_url: str, headers: dict) -> dict:
         f"{base_url}/api/team",
         f"{base_url}/api/admin/members",
         f"{base_url}/api/admin/users",
+        f"{base_url}/admin/members",
     ]
     for url in candidate_urls:
         try:
