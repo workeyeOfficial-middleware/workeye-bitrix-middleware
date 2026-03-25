@@ -789,9 +789,10 @@
             <input id="teamSearch" class="search-input" type="text" placeholder="Search members..." oninput="filterTeam()" style="padding-left:36px;width:100%;max-width:420px"/>
           </div>
           <div style="display:flex;align-items:center;gap:10px;margin-left:auto">
-
-
-
+            <button class="action-btn btn-green" onclick="exportTeamCSV()" style="background:linear-gradient(145deg,#6ee7b7,#059669);color:white;border:none;border-radius:10px;padding:9px 16px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:7px;box-shadow:4px 4px 10px rgba(5,150,105,.4),-2px -2px 6px rgba(255,255,255,.15);transition:all .2s">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export CSV
+            </button>
           </div>
         </div>
 
@@ -1482,6 +1483,30 @@ async function syncOne(type){try{const res=await apiPost(syncPaths[type]),ok=!!r
 async function syncAll(){const btn=document.querySelector(".sync-all-btn");if(btn){btn.disabled=true;btn.textContent="Syncing\u2026"}const types=["dashboard","employees","attendance","screenshots"],results=await Promise.allSettled(types.map(t=>apiPost(syncPaths[t])));let ok=0;results.forEach((r,i)=>{const s=r.status==="fulfilled"&&r.value?.success;if(s)ok++;addSyncHistory(syncLabels[types[i]],s,s?"File saved":r.reason?.message||"Error")});toast(ok===4?"\u2713 All 4 synced to Bitrix24!":"⚠ "+ok+"/4 syncs completed",ok===4?"ok":"err");if(btn){btn.disabled=false;btn.textContent="\u2b06 Sync All"}}
 function updateAlertCards(stats,members){const container=document.getElementById("alertCards");if(!container)return;const alerts=[],total=stats.total_members||0,active=stats.active_now||0,offline=stats.offline||0,prod=stats.average_productivity||0,idle=stats.idle_now||0;if(active===0&&total>0)alerts.push({bg:"#fee2e2",border:"#ef4444",icon:"\u26a0\ufe0f",text:`All ${total} employees are offline`,color:"#b91c1c"});if(idle>0)alerts.push({bg:"#fef9c3",border:"#f59e0b",icon:"😴",text:`${idle} employee${idle>1?"s are":" is"} idle`,color:"#854d0e"});if(prod<30&&total>0)alerts.push({bg:"#fee2e2",border:"#ef4444",icon:"📉",text:`Low productivity alert \u2014 average is ${prod}%`,color:"#b91c1c"});if(active>0)alerts.push({bg:"#dcfce7",border:"#10b981",icon:"\u2705",text:`${active} employee${active>1?"s are":" is"} actively working`,color:"#166534"});container.innerHTML=alerts.map(a=>`<div class="alert-card" style="background:${a.bg};border-left:3px solid ${a.border}"><span style="font-size:16px">${a.icon}</span><span style="font-size:12px;font-weight:500;color:${a.color}">${a.text}</span></div>`).join("")}
 function setServerStatus(online){const el=document.getElementById("serverStatus");if(!el)return;el.innerHTML=`<span class="dot ${online?'dot-online':'dot-offline'}"></span><span style="color:${online?'var(--green)':'var(--red)'}">${online?'Connected':'Offline'}</span>`}
+function exportTeamCSV(){
+  if(!allMembers.length){toast('No team data to export!','err');return;}
+  const today=new Date().toISOString().substring(0,10);
+  const headers=['#','Name','Email','Position','Department','Status','Screen Time','Productivity'];
+  const rows=allMembers.map((m,i)=>[
+    i+1,
+    m.name||'—',
+    m.email||'—',
+    m.position||'—',
+    m.department||'—',
+    m.status||'—',
+    fmtSec(m.screen_time),
+    (m.productivity||0)+'%'
+  ]);
+  const csv=[headers,...rows].map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const link=document.createElement('a');
+  link.href=url;
+  link.download=`Team_${today}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+  toast('✓ Team exported!','ok');
+}
 function exportEmployeesCSV(){if(!allMembers.length){toast("No employee data to export!","err");return}const today=new Date().toISOString().substring(0,10),headers=["#","Name","Email","Position","Department","Status","Screen Time","Productivity","Last Activity"],rows=allMembers.map((m,i)=>[i+1,m.name||"\u2014",m.email||"\u2014",m.position||"\u2014",m.department||"\u2014",m.status||"\u2014",fmtSec(m.screen_time),(m.productivity||0)+"%",m.last_activity||"\u2014"]),csv=[headers,...rows].map(r=>r.map(c=>`"${c}"`).join(",")).join("\n"),blob=new Blob([csv],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=`Employees_${today}.csv`;link.click();URL.revokeObjectURL(url);toast("\u2713 Employees exported!","ok")}
 function exportAttendanceCSV(){if(!attendanceData.length){toast("No attendance data!","err");return}const today=new Date().toISOString().substring(0,10),headers=["#","Name","Email","Position","Punch In","Punch Out","Hours","Status"],rows=attendanceData.map((a,i)=>[i+1,a.name||"\u2014",a.email||"\u2014",a.position||"\u2014",fmtTime(a.punch_in_time),fmtTime(a.punch_out_time),a.today_hours!=null?a.today_hours+"h":"\u2014",a.status||"\u2014"]),csv=[headers,...rows].map(r=>r.map(c=>`"${c}"`).join(",")).join("\n"),blob=new Blob([csv],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=`Attendance_${today}.csv`;link.click();URL.revokeObjectURL(url);toast("\u2713 Attendance exported!","ok")}
 let currentChartMode="productivity";
