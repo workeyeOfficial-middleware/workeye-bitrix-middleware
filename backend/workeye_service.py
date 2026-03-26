@@ -435,6 +435,37 @@ def get_screenshots(base_url: str, token: str, date: str = None) -> list:
 # =========================
 # IMAGE FETCH
 # =========================
+# =========================
+# ADMIN PROFILE
+# =========================
+def get_admin_profile(base_url: str, token: str) -> dict:
+    headers = {"Authorization": f"Bearer {token}"}
+    candidates = [
+        f"{base_url}/api/admin/profile",
+        f"{base_url}/api/admin/me",
+        f"{base_url}/api/profile",
+        f"{base_url}/api/me",
+        f"{base_url}/auth/admin/profile",
+        f"{base_url}/api/account",
+        f"{base_url}/api/admin/account",
+        f"{base_url}/api/settings/profile",
+        f"{base_url}/api/admin/settings",
+    ]
+    for url in candidates:
+        try:
+            r = requests.get(url, headers=headers, timeout=10)
+            if r.status_code == 200:
+                data = r.json()
+                profile = data.get("admin") or data.get("user") or data.get("profile") or data.get("data") or data
+                if isinstance(profile, dict) and (profile.get("name") or profile.get("email") or profile.get("company_name")):
+                    print(f"[profile] Found profile at {url}")
+                    return profile
+        except Exception:
+            continue
+    print("[profile] No profile endpoint found")
+    return {}
+
+
 def get_screenshot_image(base_url: str, token: str, screenshot_id: int) -> bytes:
     headers = {"Authorization": f"Bearer {token}"}
     url = f"{base_url}/api/screenshots/image/{screenshot_id}"

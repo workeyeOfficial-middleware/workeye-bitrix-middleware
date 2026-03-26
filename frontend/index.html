@@ -1408,7 +1408,34 @@ function toggleTheme(){const h=document.documentElement,d=h.getAttribute("data-t
 (function(){try{const t=localStorage.getItem("we_theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(x){}})();
 function togglePwd(){const inp=document.getElementById("loginPassword"),eye=document.getElementById("pwdEyeIcon"),eyeOff=document.getElementById("pwdEyeOffIcon");if(inp.type==="password"){inp.type="text";eye.style.display="none";eyeOff.style.display=""}else{inp.type="password";eye.style.display="";eyeOff.style.display="none"}}
 async function doLogin(){const url="https://backend-35m2.onrender.com",email=document.getElementById("loginEmail").value.trim(),password=document.getElementById("loginPassword").value.trim(),btn=document.getElementById("loginBtn"),err=document.getElementById("loginError");if(!email||!password){err.textContent="Please fill in all fields.";err.classList.add("show");return}btn.disabled=true;btn.textContent="Logging in…";err.classList.remove("show");try{const r=await fetch(API+"/login",{method:"POST",headers:{...HEADERS,"Content-Type":"application/json"},body:JSON.stringify({email,password,workeye_url:url})}),data=await r.json();if(!r.ok||!data.success)throw new Error(data.detail||"Login failed");saveSession(data.token,url,email,password);showDashboard()}catch(e){err.textContent=e.message||"Login failed.";err.classList.add("show")}finally{btn.disabled=false;btn.textContent="Login to WorkEye →"}}
-function showProfile(){const email=SESSION.email||"—",name=email.split("@")[0],initial=(email||"?")[0].toUpperCase(),domain=email.includes("@")?email.split("@")[1].split(".")[0].toUpperCase():name.toUpperCase();document.getElementById("profileAvatar").textContent=initial;document.getElementById("profileName").textContent=name.toUpperCase();document.getElementById("profileFullName").textContent=name.toUpperCase();document.getElementById("profileEmail").textContent=email;document.getElementById("profileCompanyName").textContent=domain;document.getElementById("profileCompanyUsername").textContent=domain.toLowerCase();document.getElementById("profileModal").style.display="flex"}
+function showProfile(){
+  document.getElementById("profileModal").style.display="flex";
+  const email=SESSION.email||"—";
+  const fallbackName=email.split("@")[0].toUpperCase();
+  const fallbackDomain=email.includes("@")?email.split("@")[1].split(".")[0].toUpperCase():fallbackName;
+  document.getElementById("profileAvatar").textContent=(email||"?")[0].toUpperCase();
+  document.getElementById("profileName").textContent=fallbackName;
+  document.getElementById("profileFullName").textContent=fallbackName;
+  document.getElementById("profileEmail").textContent=email;
+  document.getElementById("profileCompanyName").textContent=fallbackDomain;
+  document.getElementById("profileCompanyUsername").textContent=fallbackDomain.toLowerCase();
+  fetch(API+"/get-admin-profile?workeye_url="+encodeURIComponent(SESSION.workeye_url)+"&token="+encodeURIComponent(SESSION.token))
+    .then(r=>r.json())
+    .then(res=>{
+      if(!res.success||!res.data)return;
+      const d=res.data;
+      const name=d.name||d.full_name||d.admin_name||fallbackName;
+      const company=d.company_name||d.company||d.organisation||fallbackDomain;
+      const username=d.company_username||d.username||(company?company.toLowerCase().replace(/\s+/g,""):fallbackDomain.toLowerCase());
+      const pos=d.position||d.role||"admin";
+      document.getElementById("profileAvatar").textContent=name[0].toUpperCase();
+      document.getElementById("profileName").textContent=name.toUpperCase();
+      document.getElementById("profileFullName").textContent=name.toUpperCase();
+      document.getElementById("profileCompanyName").textContent=company.toUpperCase();
+      document.getElementById("profileCompanyUsername").textContent=username.toLowerCase();
+    })
+    .catch(()=>{});
+}
 function closeProfile(){document.getElementById("profileModal").style.display="none"}
 function doLogout(){clearSession();document.getElementById("mainApp").style.display="none";document.getElementById("loginPage").style.display="flex";document.getElementById("loginPassword").value="";if(autoRefreshTimer)clearInterval(autoRefreshTimer)}
 function showDashboard(){document.getElementById("loginPage").style.display="none";document.getElementById("mainApp").style.display="block";const name=SESSION.email?SESSION.email.split("@")[0]:"Admin";document.getElementById("sidebarName").textContent=name;document.getElementById("sidebarAvatar").textContent=(name||"A")[0].toUpperCase();loadAll();startAutoRefresh();startLiveTimer();requestNotifPermission()}

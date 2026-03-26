@@ -51,6 +51,14 @@ async def login(creds: Creds):
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
 
+@app.get("/get-admin-profile")
+async def get_admin_profile(workeye_url: str, token: str):
+    try:
+        data = ws.get_admin_profile(workeye_url, token)
+        return {"success": True, "data": data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # ── Stats ────────────────────────────────────────────────
 @app.get("/get-stats")
 async def get_stats(workeye_url: str, token: str):
