@@ -179,26 +179,59 @@ def get_member_live(base_url: str, token: str, member_id: int) -> dict:
 # ATTENDANCE
 # =========================
 def get_attendance(base_url: str, token: str, date: str = None) -> list:
+    from datetime import timezone, timedelta
     headers = {"Authorization": f"Bearer {token}"}
+
+    # Determine the target date in IST (default = today IST)
+    IST = timezone(timedelta(hours=5, minutes=30))
+    if date:
+        target_date = date  # YYYY-MM-DD string passed from frontend
+    else:
+        target_date = datetime.now(IST).strftime("%Y-%m-%d")
 
     try:
         url = f"{base_url}/api/attendance/members"
-        params = {"date": date} if date else {}
+        params = {"date": target_date}
         r = requests.get(url, headers=headers, params=params, timeout=20)
 
         if r.status_code == 200:
             data = r.json()
-            print(f"[attendance] Raw keys: {list(data.keys())}")
+            print(f"[attendance] Raw keys: {list(data.keys())} for date={target_date}")
             members = data.get("attendance") or data.get("members") or data.get("data") or []
 
             if members:
                 result = []
                 for m in members:
+                    today_minutes = float(m.get("today_minutes") or m.get("today_hours_raw") or 0)
+                    today_hours   = float(m.get("today_hours") or m.get("hours_worked") or 0)
+                    is_punched_in = m.get("is_punched_in", False)
+
+                    # WorkEye bug: punch_in_time falls back to last_punch_in_at (any day)
+                    # Only use punch times if the employee has actual activity TODAY
+                    # i.e. today_minutes > 0 OR is_punched_in is True
+                    has_today_activity = is_punched_in or today_hours > 0 or today_minutes > 0
+
                     punch_in  = (m.get("punch_in_time") or m.get("punch_in") or
                                  m.get("check_in") or m.get("check_in_time") or None)
                     punch_out = (m.get("punch_out_time") or m.get("punch_out") or
                                  m.get("check_out") or m.get("check_out_time") or None)
-                    today_hours = m.get("today_hours") or m.get("hours_worked") or 0
+
+                    # If no activity today, blank out the stale historical punch times
+                    if not has_today_activity:
+                        punch_in  = None
+                        punch_out = None
+
+                    # Extra safety: if punch_in date doesn't match target_date, blank it
+                    if punch_in and len(str(punch_in)) >= 10:
+                        punch_date = str(punch_in)[:10]
+                        if punch_date != target_date:
+                            punch_in  = None
+                            punch_out = None
+
+                    print(f"[attendance] {m.get('name')} | date={target_date} | "
+                          f"today_h={today_hours} | punched={is_punched_in} | "
+                          f"in={punch_in} | out={punch_out}")
+
                     result.append({
                         "id":             m.get("id"),
                         "name":           m.get("name"),
@@ -208,8 +241,8 @@ def get_attendance(base_url: str, token: str, date: str = None) -> list:
                         "status":         m.get("status"),
                         "punch_in_time":  punch_in,
                         "punch_out_time": punch_out,
-                        "today_hours":    round(float(today_hours or 0), 1),
-                        "is_punched_in":  m.get("is_punched_in", False),
+                        "today_hours":    round(today_hours, 1),
+                        "is_punched_in":  is_punched_in,
                     })
                 return result
 
