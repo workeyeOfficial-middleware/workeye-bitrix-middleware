@@ -448,30 +448,64 @@ def get_screenshots(base_url: str, token: str, date: str = None) -> list:
 # ADMIN PROFILE
 # =========================
 def get_admin_profile(base_url: str, token: str) -> dict:
+    import base64, json as _json
     headers = {"Authorization": f"Bearer {token}"}
-    candidates = [
+
+    # Decode admin_id and company_id from JWT
+    try:
+        payload = token.split(".")[1]
+        padded = payload + "=" * (4 - len(payload) % 4)
+        jwt_data = _json.loads(base64.urlsafe_b64decode(padded))
+        admin_id = jwt_data.get("admin_id") or jwt_data.get("user_id")
+        company_id = jwt_data.get("company_id") or jwt_data.get("tenant_id")
+    except Exception:
+        admin_id = None
+        company_id = None
+
+    # Try dedicated profile/company endpoints first
+    profile_candidates = [
         f"{base_url}/api/admin/profile",
         f"{base_url}/api/admin/me",
-        f"{base_url}/api/profile",
         f"{base_url}/api/me",
+        f"{base_url}/api/profile",
         f"{base_url}/auth/admin/profile",
         f"{base_url}/api/account",
-        f"{base_url}/api/admin/account",
-        f"{base_url}/api/settings/profile",
+        f"{base_url}/api/company/{company_id}" if company_id else None,
+        f"{base_url}/api/admin/{admin_id}" if admin_id else None,
         f"{base_url}/api/admin/settings",
+        f"{base_url}/api/settings/profile",
+        f"{base_url}/api/configuration",
     ]
-    for url in candidates:
+    for url in profile_candidates:
+        if not url:
+            continue
         try:
             r = requests.get(url, headers=headers, timeout=10)
             if r.status_code == 200:
                 data = r.json()
                 profile = data.get("admin") or data.get("user") or data.get("profile") or data.get("data") or data
-                if isinstance(profile, dict) and (profile.get("name") or profile.get("email") or profile.get("company_name")):
-                    print(f"[profile] Found profile at {url}")
+                if isinstance(profile, dict) and (profile.get("name") or profile.get("company_name") or profile.get("company")):
+                    print(f"[profile] Found at {url}: {list(profile.keys())}")
                     return profile
         except Exception:
             continue
-    print("[profile] No profile endpoint found")
+
+    # Fallback: find admin in /admin/members by admin_id
+    if admin_id:
+        try:
+            for path in [f"{base_url}/admin/members", f"{base_url}/api/admin/members"]:
+                r = requests.get(path, headers=headers, timeout=10)
+                if r.status_code == 200:
+                    data = r.json()
+                    members = data if isinstance(data, list) else (data.get("members") or data.get("data") or data.get("users") or [])
+                    for m in members:
+                        if m.get("id") == admin_id or m.get("user_id") == admin_id:
+                            print(f"[profile] Found admin in members list: {list(m.keys())}")
+                            return m
+        except Exception:
+            pass
+
+    print("[profile] No profile data found")
     return {}
 
 
