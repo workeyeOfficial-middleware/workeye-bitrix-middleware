@@ -59,6 +59,15 @@ async def get_admin_profile(workeye_url: str, token: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# ── Debug Login Response ─────────────────────────────────
+@app.post("/debug-login")
+async def debug_login(creds: Creds):
+    import requests as req
+    url = f"{creds.workeye_url}/auth/admin/login"
+    r = req.post(url, json={"email": creds.email, "password": creds.password},
+                 headers={"Content-Type": "application/json"}, timeout=30)
+    return {"status": r.status_code, "body": r.json()}
+
 # ── Stats ────────────────────────────────────────────────
 @app.get("/get-stats")
 async def get_stats(workeye_url: str, token: str):
