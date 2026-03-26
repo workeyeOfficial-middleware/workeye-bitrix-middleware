@@ -33,6 +33,10 @@
         a { color: #5b5ef4; text-decoration: none; }
         a:hover { text-decoration: underline; }
         strong { color: #2d2d2d; }
+        .nav-links { text-align: center; padding: 16px 20px; background: white; border-bottom: 1px solid #e8e8f0; font-size: 13px; }
+        .nav-links a { color: #5b5ef4; text-decoration: none; margin: 0 12px; font-weight: 500; }
+        .nav-links a:hover { text-decoration: underline; }
+        .nav-links a.active { font-weight: 700; border-bottom: 2px solid #5b5ef4; padding-bottom: 2px; }
     </style>
 </head>
 <body>
@@ -45,6 +49,12 @@
 
     <div class="tagline">
         <span>Built for companies using WorkEye — access everything inside Bitrix24, no switching apps</span>
+    </div>
+
+    <div class="nav-links">
+        <a href="/privacy" class="active">🔒 Privacy Policy</a>
+        <a href="/eula">📄 EULA</a>
+        <a href="/contact">📬 Contact</a>
     </div>
 
     <div class="container">
@@ -202,7 +212,11 @@
         <div class="footer">
             <p>© 2026 AESPL — WorkEye for Bitrix24</p>
             <p>Certified Bitrix24 Partner</p>
-            <p style="margin-top:8px"><a href="https://workeye-bitrix-integration.onrender.com">Back to App</a></p>
+            <p style="margin-top:8px">
+                <a href="/eula">EULA</a> &nbsp;·&nbsp;
+                <a href="/contact">Contact</a> &nbsp;·&nbsp;
+                <a href="https://workeye-bitrix-integration.onrender.com">Back to App</a>
+            </p>
         </div>
 
     </div>

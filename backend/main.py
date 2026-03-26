@@ -37,6 +37,34 @@ async def serve_index():
 async def serve_index_html():
     return await serve_index()
 
+def _serve_html(filename: str) -> HTMLResponse:
+    """Helper to serve any HTML file from the project root or frontend folder."""
+    base = os.path.dirname(__file__)
+    # Check project root first, then frontend folder
+    for path in [
+        os.path.join(base, "..", filename),
+        os.path.join(base, "..", "frontend", filename),
+    ]:
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
+                return HTMLResponse(content=f.read())
+    return HTMLResponse(content=f"<h1>Page not found: {filename}</h1>", status_code=404)
+
+@app.get("/privacy")
+@app.get("/privacy.html")
+async def serve_privacy():
+    return _serve_html("privacy.html")
+
+@app.get("/eula")
+@app.get("/eula.html")
+async def serve_eula():
+    return _serve_html("eula.html")
+
+@app.get("/contact")
+@app.get("/contact.html")
+async def serve_contact():
+    return _serve_html("contact.html")
+
 # ── Auth ─────────────────────────────────────────────────
 class Creds(BaseModel):
     email: str
