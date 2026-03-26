@@ -46,8 +46,8 @@ class Creds(BaseModel):
 @app.post("/login")
 async def login(creds: Creds):
     try:
-        token = ws.get_token(creds.workeye_url, creds.email, creds.password)
-        return {"success": True, "token": token, "workeye_url": creds.workeye_url}
+        result = ws.get_token(creds.workeye_url, creds.email, creds.password)
+        return {"success": True, "token": result["token"], "profile": result["profile"], "workeye_url": creds.workeye_url}
     except Exception as e:
         raise HTTPException(status_code=401, detail=str(e))
 
@@ -149,7 +149,7 @@ async def proxy_image(workeye_url: str, token: str, screenshot_id: int, email: s
             image_bytes = ws.get_screenshot_image(workeye_url, token, screenshot_id)
         except Exception as e:
             if ("401" in str(e) or "404" in str(e) or "403" in str(e)) and email and password:
-                new_token = ws.get_token(workeye_url, email, password)
+                new_token = ws.get_token(workeye_url, email, password)["token"]
                 image_bytes = ws.get_screenshot_image(workeye_url, new_token, screenshot_id)
             else:
                 raise e

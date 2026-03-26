@@ -1401,40 +1401,28 @@
 <script>
 const API=window.location.origin,HEADERS={"ngrok-skip-browser-warning":"1"};
 let SESSION={token:null,workeye_url:null};
-function saveSession(t,u,e,p){SESSION={token:t,workeye_url:u,email:e,password:p};try{localStorage.setItem("we_session",JSON.stringify(SESSION))}catch(x){}}
+function saveSession(t,u,e,p,profile){SESSION={token:t,workeye_url:u,email:e,password:p,profile:profile||{}};try{localStorage.setItem("we_session",JSON.stringify(SESSION))}catch(x){}}
 function loadSession(){try{const s=localStorage.getItem("we_session");if(s)SESSION=JSON.parse(s)}catch(x){}}
 function clearSession(){SESSION={token:null,workeye_url:null};try{localStorage.removeItem("we_session")}catch(x){}}
 function toggleTheme(){const h=document.documentElement,d=h.getAttribute("data-theme")==="dark";h.setAttribute("data-theme",d?"light":"dark");try{localStorage.setItem("we_theme",d?"light":"dark")}catch(x){}}
 (function(){try{const t=localStorage.getItem("we_theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(x){}})();
 function togglePwd(){const inp=document.getElementById("loginPassword"),eye=document.getElementById("pwdEyeIcon"),eyeOff=document.getElementById("pwdEyeOffIcon");if(inp.type==="password"){inp.type="text";eye.style.display="none";eyeOff.style.display=""}else{inp.type="password";eye.style.display="";eyeOff.style.display="none"}}
-async function doLogin(){const url="https://backend-35m2.onrender.com",email=document.getElementById("loginEmail").value.trim(),password=document.getElementById("loginPassword").value.trim(),btn=document.getElementById("loginBtn"),err=document.getElementById("loginError");if(!email||!password){err.textContent="Please fill in all fields.";err.classList.add("show");return}btn.disabled=true;btn.textContent="Logging in…";err.classList.remove("show");try{const r=await fetch(API+"/login",{method:"POST",headers:{...HEADERS,"Content-Type":"application/json"},body:JSON.stringify({email,password,workeye_url:url})}),data=await r.json();if(!r.ok||!data.success)throw new Error(data.detail||"Login failed");saveSession(data.token,url,email,password);showDashboard()}catch(e){err.textContent=e.message||"Login failed.";err.classList.add("show")}finally{btn.disabled=false;btn.textContent="Login to WorkEye →"}}
+async function doLogin(){const url="https://backend-35m2.onrender.com",email=document.getElementById("loginEmail").value.trim(),password=document.getElementById("loginPassword").value.trim(),btn=document.getElementById("loginBtn"),err=document.getElementById("loginError");if(!email||!password){err.textContent="Please fill in all fields.";err.classList.add("show");return}btn.disabled=true;btn.textContent="Logging in…";err.classList.remove("show");try{const r=await fetch(API+"/login",{method:"POST",headers:{...HEADERS,"Content-Type":"application/json"},body:JSON.stringify({email,password,workeye_url:url})}),data=await r.json();if(!r.ok||!data.success)throw new Error(data.detail||"Login failed");saveSession(data.token,url,email,password,data.profile||{});showDashboard()}catch(e){err.textContent=e.message||"Login failed.";err.classList.add("show")}finally{btn.disabled=false;btn.textContent="Login to WorkEye →"}}
 function showProfile(){
   document.getElementById("profileModal").style.display="flex";
   const email=SESSION.email||"—";
+  const p=SESSION.profile||{};
   const fallbackName=email.split("@")[0].toUpperCase();
   const fallbackDomain=email.includes("@")?email.split("@")[1].split(".")[0].toUpperCase():fallbackName;
-  document.getElementById("profileAvatar").textContent=(email||"?")[0].toUpperCase();
-  document.getElementById("profileName").textContent=fallbackName;
-  document.getElementById("profileFullName").textContent=fallbackName;
+  const name=(p.name||p.full_name||p.admin_name||fallbackName).toUpperCase();
+  const company=(p.company_name||p.company||p.organisation||fallbackDomain).toUpperCase();
+  const username=(p.company_username||p.username||company.toLowerCase().replace(/\s+/g,""));
+  document.getElementById("profileAvatar").textContent=name[0].toUpperCase();
+  document.getElementById("profileName").textContent=name;
+  document.getElementById("profileFullName").textContent=name;
   document.getElementById("profileEmail").textContent=email;
-  document.getElementById("profileCompanyName").textContent=fallbackDomain;
-  document.getElementById("profileCompanyUsername").textContent=fallbackDomain.toLowerCase();
-  fetch(API+"/get-admin-profile?workeye_url="+encodeURIComponent(SESSION.workeye_url)+"&token="+encodeURIComponent(SESSION.token))
-    .then(r=>r.json())
-    .then(res=>{
-      if(!res.success||!res.data)return;
-      const d=res.data;
-      const name=d.name||d.full_name||d.admin_name||fallbackName;
-      const company=d.company_name||d.company||d.organisation||fallbackDomain;
-      const username=d.company_username||d.username||(company?company.toLowerCase().replace(/\s+/g,""):fallbackDomain.toLowerCase());
-      const pos=d.position||d.role||"admin";
-      document.getElementById("profileAvatar").textContent=name[0].toUpperCase();
-      document.getElementById("profileName").textContent=name.toUpperCase();
-      document.getElementById("profileFullName").textContent=name.toUpperCase();
-      document.getElementById("profileCompanyName").textContent=company.toUpperCase();
-      document.getElementById("profileCompanyUsername").textContent=username.toLowerCase();
-    })
-    .catch(()=>{});
+  document.getElementById("profileCompanyName").textContent=company;
+  document.getElementById("profileCompanyUsername").textContent=username.toLowerCase();
 }
 function closeProfile(){document.getElementById("profileModal").style.display="none"}
 function doLogout(){clearSession();document.getElementById("mainApp").style.display="none";document.getElementById("loginPage").style.display="flex";document.getElementById("loginPassword").value="";if(autoRefreshTimer)clearInterval(autoRefreshTimer)}
@@ -1483,7 +1471,7 @@ function fmtHour(t){if(!t)return'—';const parts=t.split(':');let h=parseInt(pa
 function fmtSec(sec){sec=parseInt(sec)||0;const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60);return h>0?`${h}h ${m}m`:`${m}m`}
 function prodBar(pct){pct=parseInt(pct)||0;const color=pct>=70?"var(--green)":pct>=40?"var(--amber)":"var(--red)";return`<div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div><span class="bar-pct">${pct}%</span></div>`}
 function animateCount(el,target,suffix=""){if(!el)return;const start=parseInt(el.textContent)||0,diff=target-start;if(diff===0){el.textContent=target+suffix;return}const steps=20,step=diff/steps;let cur=start,count=0;const iv=setInterval(()=>{cur+=step;count++;el.textContent=Math.round(cur)+suffix;if(count>=steps){el.textContent=target+suffix;clearInterval(iv)}},20)}
-async function refreshToken(){if(!SESSION.email||!SESSION.password||!SESSION.workeye_url){doLogout();return false}try{const r=await fetch(API+"/login",{method:"POST",headers:{...HEADERS,"Content-Type":"application/json"},body:JSON.stringify({email:SESSION.email,password:SESSION.password,workeye_url:SESSION.workeye_url})}),data=await r.json();if(r.ok&&data.success){saveSession(data.token,SESSION.workeye_url,SESSION.email,SESSION.password);return true}}catch(e){}doLogout();return false}
+async function refreshToken(){if(!SESSION.email||!SESSION.password||!SESSION.workeye_url){doLogout();return false}try{const r=await fetch(API+"/login",{method:"POST",headers:{...HEADERS,"Content-Type":"application/json"},body:JSON.stringify({email:SESSION.email,password:SESSION.password,workeye_url:SESSION.workeye_url})}),data=await r.json();if(r.ok&&data.success){saveSession(data.token,SESSION.workeye_url,SESSION.email,SESSION.password,data.profile||SESSION.profile||{});return true}}catch(e){}doLogout();return false}
 function sessionParams(extra={}){let p=`?workeye_url=${encodeURIComponent(SESSION.workeye_url)}&token=${encodeURIComponent(SESSION.token)}`;Object.entries(extra).forEach(([k,v])=>{if(v)p+=`&${k}=${encodeURIComponent(v)}`});return p}
 async function apiFetch(p,extra={}){let r=await fetch(API+p+sessionParams(extra),{headers:HEADERS});if(r.status===401){const ok=await refreshToken();if(ok)r=await fetch(API+p+sessionParams(),{headers:HEADERS});else throw new Error("Session expired")}if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}
 async function apiPost(p){let r=await fetch(API+p+sessionParams(),{method:"POST",headers:HEADERS});if(r.status===401){const ok=await refreshToken();if(ok)r=await fetch(API+p+sessionParams(),{method:"POST",headers:HEADERS});else throw new Error("Session expired")}if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}

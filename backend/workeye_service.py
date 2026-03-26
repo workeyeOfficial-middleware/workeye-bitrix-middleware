@@ -6,7 +6,7 @@ import time
 # =========================
 # AUTH
 # =========================
-def get_token(base_url: str, email: str, password: str) -> str:
+def get_token(base_url: str, email: str, password: str) -> dict:
     url = f"{base_url}/auth/admin/login"
     payload = {"email": email, "password": password}
     headers = {"Content-Type": "application/json", "Accept": "application/json"}
@@ -32,8 +32,17 @@ def get_token(base_url: str, email: str, password: str) -> str:
     if not token:
         raise Exception(f"Login failed ({response.status_code}): {str(data)[:200]}")
 
-    print("[LOGIN] ✅ Success")
-    return token
+    profile = {}
+    for key in ["admin", "user", "profile", "account", "data"]:
+        if isinstance(data.get(key), dict):
+            profile = data[key]
+            break
+    for field in ["name", "full_name", "company_name", "company", "position", "role"]:
+        if data.get(field) and not profile.get(field):
+            profile[field] = data[field]
+
+    print(f"[LOGIN] Success - profile keys: {list(profile.keys())}")
+    return {"token": token, "profile": profile}
 
 
 # =========================
