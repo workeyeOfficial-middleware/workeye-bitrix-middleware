@@ -1416,9 +1416,10 @@ function showProfile(){
   const jwt=SESSION.token?decodeJWT(SESSION.token):{};
   const fallbackName=email.includes("@")?email.split("@")[0]:"Admin";
   const fallbackDomain=email.includes("@")?email.split("@")[1].split(".")[0]:"";
-  const rawName=String(p.name||p.full_name||p.admin_name||jwt.name||jwt.admin_name||fallbackName||"Admin");
-  const rawCompany=String(p.company_name||p.company||p.organisation||jwt.company_name||jwt.company||fallbackDomain||"—");
-  const rawUsername=String(p.company_username||p.username||jwt.company_username||rawCompany.toLowerCase().replace(/\s+/g,"")||"—");
+  function extractStr(v){if(!v)return null;if(typeof v==="string")return v;if(typeof v==="object")return v.name||v.company_name||v.title||v.username||null;return String(v);}
+  const rawName=extractStr(p.name||p.full_name||p.admin_name||jwt.name||jwt.admin_name)||fallbackName||"Admin";
+  const rawCompany=extractStr(p.company_name||p.company||p.organisation||p.company||jwt.company_name||jwt.company)||fallbackDomain||"—";
+  const rawUsername=extractStr(p.company_username||p.username||jwt.company_username)||rawCompany.toLowerCase().replace(/\s+/g,"")||"—";
   const name=rawName.toUpperCase();
   const company=rawCompany.toUpperCase();
   const username=rawUsername.toLowerCase();
