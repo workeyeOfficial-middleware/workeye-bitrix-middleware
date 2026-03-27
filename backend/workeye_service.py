@@ -79,14 +79,31 @@ def get_stats(base_url: str, token: str) -> dict:
                 m["department"] = dept_map.get(mid) or dept_map.get(email) or None
         print(f"[stats] Enriched {sum(1 for m in members if m.get('department'))} members with department")
 
-    # Normalize devices field — WorkEye may use any of these names
-    _device_keys = ["devices_count", "num_devices", "total_devices", "device_count", "devicesCount"]
+    # Log all keys from first member to help debug field names
+    if members:
+        print(f"[stats] First member keys: {list(members[0].keys())}")
+        print(f"[stats] First member raw: {members[0]}")
+
+    # Normalize devices field — check known names first, then scan all keys for anything device-like
+    _device_keys = [
+        "devices", "devices_count", "num_devices", "total_devices",
+        "device_count", "devicesCount", "deviceCount", "device",
+        "connected_devices", "active_devices", "machine_count", "machines",
+    ]
     for m in members:
         if not m.get("devices"):
+            # Try known keys
             for key in _device_keys:
                 if m.get(key) is not None:
                     m["devices"] = m[key]
                     break
+            # Fallback: scan ALL keys for anything containing "device" or "machine"
+            if not m.get("devices"):
+                for key, val in m.items():
+                    if ("device" in key.lower() or "machine" in key.lower()) and val is not None:
+                        print(f"[stats] Found device field via scan: {key}={val}")
+                        m["devices"] = val
+                        break
 
     total   = len(members)
     active  = sum(1 for m in members if (m.get("status") or "").lower() == "active")

@@ -2164,7 +2164,7 @@ function renderTeamGrid(members){
     const st = (m.status || '').toLowerCase();
     const statusClass = st === 'active' ? 'status-active' : st === 'idle' ? 'status-idle' : 'status-offline';
     const statusDot = st === 'active' ? '#10b981' : st === 'idle' ? '#f59e0b' : '#ef4444';
-    const devices = m.devices_count ?? m.devices ?? m.num_devices ?? m.total_devices ?? m.device_count ?? m.devicesCount ?? '—';
+    const _dk=['devices','devices_count','num_devices','total_devices','device_count','devicesCount','deviceCount','device','connected_devices','machine_count','machines'];let devices=_dk.reduce((v,k)=>v!=null?v:(m[k]!=null?m[k]:null),null);if(devices==null){const fk=Object.keys(m).find(k=>k.toLowerCase().includes('device')||k.toLowerCase().includes('machine'));devices=fk?m[fk]:'—';}
     return `<tr>
       <td style="padding-left:20px">
         <div class="name-with-avatar">
