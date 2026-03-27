@@ -80,11 +80,23 @@ def get_stats(base_url: str, token: str) -> dict:
         print(f"[stats] First member keys: {list(members[0].keys())}")
         print(f"[stats] First member raw: {members[0]}")
 
+    # Fetch department map and merge into members (department is often missing from stats endpoint)
+    dept_map = _fetch_department_map(base_url, headers)
+    if dept_map:
+        for m in members:
+            if not m.get("department"):
+                dept = dept_map.get(m.get("id")) or dept_map.get(m.get("email"))
+                if dept:
+                    m["department"] = dept
+                    print(f"[stats] Assigned department '{dept}' to {m.get('name')}")
+
     # Normalize devices field — check known names first, then scan all keys for anything device-like
     _device_keys = [
         "devices", "devices_count", "num_devices", "total_devices",
         "device_count", "devicesCount", "deviceCount", "device",
         "connected_devices", "active_devices", "machine_count", "machines",
+        "computers", "computer_count", "computersCount", "num_computers",
+        "total_computers", "endpoints", "endpoint_count",
     ]
     for m in members:
         if not m.get("devices"):
@@ -93,10 +105,15 @@ def get_stats(base_url: str, token: str) -> dict:
                 if m.get(key) is not None:
                     m["devices"] = m[key]
                     break
-            # Fallback: scan ALL keys for anything containing "device" or "machine"
+            # Fallback: scan ALL keys for anything containing "device", "machine", or "computer"
             if not m.get("devices"):
                 for key, val in m.items():
-                    if ("device" in key.lower() or "machine" in key.lower()) and val is not None:
+                    if (
+                        "device" in key.lower() or
+                        "machine" in key.lower() or
+                        "computer" in key.lower() or
+                        "endpoint" in key.lower()
+                    ) and val is not None:
                         print(f"[stats] Found device field via scan: {key}={val}")
                         m["devices"] = val
                         break
@@ -174,11 +191,11 @@ def _fetch_department_map(base_url: str, headers: dict) -> dict:
             if r.status_code != 200:
                 continue
             raw = r.json()
-            # Support {"members":[...]}, {"users":[...]}, {"data":[...]}, or a plain list
+            # Support {"members":[...]}, {"users":[...]}, {"data":[...]}, {"team":[...]}, or a plain list
             items = (
                 raw if isinstance(raw, list) else
                 raw.get("members") or raw.get("users") or
-                raw.get("employees") or raw.get("data") or []
+                raw.get("employees") or raw.get("team") or raw.get("data") or []
             )
             if not items:
                 continue
