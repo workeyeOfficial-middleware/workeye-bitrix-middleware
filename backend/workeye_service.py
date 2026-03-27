@@ -69,15 +69,11 @@ def get_stats(base_url: str, token: str) -> dict:
     stats   = data.get("stats", {})
     members = data.get("members", [])
 
-    # Try to enrich members with department from a dedicated members/users endpoint
-    dept_map = _fetch_department_map(base_url, headers)
-    if dept_map:
-        for m in members:
-            if not m.get("department"):
-                mid = m.get("id")
-                email = m.get("email", "")
-                m["department"] = dept_map.get(mid) or dept_map.get(email) or None
-        print(f"[stats] Enriched {sum(1 for m in members if m.get('department'))} members with department")
+    # dashboard/stats returns only aggregate stats with no members array.
+    # Fetch full member list (with devices, position, department, etc.) separately.
+    if not members:
+        print("[stats] No members in dashboard/stats — fetching from members endpoint")
+        members = _fetch_members_list(base_url, headers)
 
     # Log all keys from first member to help debug field names
     if members:
@@ -119,6 +115,42 @@ def get_stats(base_url: str, token: str) -> dict:
 
     print(f"[stats] Members:{total} Active:{active} Idle:{idle} Offline:{offline} Avg:{avg_prod}%")
     return {"stats": stats, "members": members}
+
+
+
+def _fetch_members_list(base_url: str, headers: dict) -> list:
+    """
+    Fetch the full member list from the first endpoint that returns data.
+    Returns a list of member dicts (with all raw fields including devices).
+    """
+    candidate_urls = [
+        f"{base_url}/api/members",
+        f"{base_url}/api/team",
+        f"{base_url}/api/users",
+        f"{base_url}/api/employees",
+        f"{base_url}/api/admin/members",
+        f"{base_url}/api/dashboard/members",
+        f"{base_url}/admin/members",
+    ]
+    for url in candidate_urls:
+        try:
+            r = requests.get(url, headers=headers, timeout=10)
+            if r.status_code != 200:
+                continue
+            raw = r.json()
+            items = (
+                raw if isinstance(raw, list) else
+                raw.get("members") or raw.get("users") or
+                raw.get("employees") or raw.get("data") or raw.get("team") or []
+            )
+            if items:
+                print(f"[members] Got {len(items)} members from {url}")
+                print(f"[members] First member keys: {list(items[0].keys()) if items else []}")
+                return items
+        except Exception as e:
+            print(f"[members] {url} failed: {e}")
+    print("[members] All endpoints failed — returning empty list")
+    return []
 
 
 def _fetch_department_map(base_url: str, headers: dict) -> dict:
