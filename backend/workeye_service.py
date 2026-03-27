@@ -79,6 +79,15 @@ def get_stats(base_url: str, token: str) -> dict:
                 m["department"] = dept_map.get(mid) or dept_map.get(email) or None
         print(f"[stats] Enriched {sum(1 for m in members if m.get('department'))} members with department")
 
+    # Normalize devices field — WorkEye may use any of these names
+    _device_keys = ["devices_count", "num_devices", "total_devices", "device_count", "devicesCount"]
+    for m in members:
+        if not m.get("devices"):
+            for key in _device_keys:
+                if m.get(key) is not None:
+                    m["devices"] = m[key]
+                    break
+
     total   = len(members)
     active  = sum(1 for m in members if (m.get("status") or "").lower() == "active")
     idle    = sum(1 for m in members if (m.get("status") or "").lower() == "idle")
