@@ -90,33 +90,41 @@ def get_stats(base_url: str, token: str) -> dict:
                     m["department"] = dept
                     print(f"[stats] Assigned department '{dept}' to {m.get('name')}")
 
-    # Normalize devices field — check known names first, then scan all keys for anything device-like
+    # Normalize devices field — check known keys directly on member first,
+    # then fall back to a dedicated device map lookup
     _device_keys = [
+        "device_count",                    # WorkEye's actual field name
         "devices", "devices_count", "num_devices", "total_devices",
-        "device_count", "devicesCount", "deviceCount", "device",
+        "devicesCount", "deviceCount", "device",
         "connected_devices", "active_devices", "machine_count", "machines",
         "computers", "computer_count", "computersCount", "num_computers",
         "total_computers", "endpoints", "endpoint_count",
     ]
     for m in members:
         if not m.get("devices"):
-            # Try known keys
             for key in _device_keys:
                 if m.get(key) is not None:
                     m["devices"] = m[key]
                     break
-            # Fallback: scan ALL keys for anything containing "device", "machine", or "computer"
             if not m.get("devices"):
                 for key, val in m.items():
                     if (
-                        "device" in key.lower() or
-                        "machine" in key.lower() or
-                        "computer" in key.lower() or
-                        "endpoint" in key.lower()
+                        "device" in key.lower() or "machine" in key.lower() or
+                        "computer" in key.lower() or "endpoint" in key.lower()
                     ) and val is not None:
                         print(f"[stats] Found device field via scan: {key}={val}")
                         m["devices"] = val
                         break
+
+    # If any members still lack device data, fetch via dedicated device map
+    if any(not m.get("devices") for m in members):
+        device_map = _fetch_device_map(base_url, headers, members)
+        if device_map:
+            for m in members:
+                if not m.get("devices"):
+                    val = device_map.get(m.get("id")) or device_map.get(m.get("email"))
+                    if val is not None:
+                        m["devices"] = val
 
     total   = len(members)
     active  = sum(1 for m in members if (m.get("status") or "").lower() == "active")
@@ -141,13 +149,13 @@ def _fetch_members_list(base_url: str, headers: dict) -> list:
     Returns a list of member dicts (with all raw fields including devices).
     """
     candidate_urls = [
+        f"{base_url}/admin/members",       # WorkEye primary endpoint — returns device_count
         f"{base_url}/api/members",
         f"{base_url}/api/team",
         f"{base_url}/api/users",
         f"{base_url}/api/employees",
         f"{base_url}/api/admin/members",
         f"{base_url}/api/dashboard/members",
-        f"{base_url}/admin/members",
     ]
     for url in candidate_urls:
         try:
@@ -223,6 +231,122 @@ def _fetch_department_map(base_url: str, headers: dict) -> dict:
             continue
     print("[dept_map] No department data found from any endpoint")
     return dept_map
+
+
+def _fetch_device_map(base_url: str, headers: dict, members: list) -> dict:
+    """
+    Try to find device count for each member.
+    Returns a dict keyed by member id (int) and email (str) -> device count/value.
+    Strategy:
+      1. Try bulk device endpoints first.
+      2. Fall back to per-member live endpoint which may include device info.
+    """
+    device_map = {}
+    _dkeys = [
+        "device_count",                    # WorkEye's actual field name
+        "devices", "devices_count", "num_devices", "total_devices",
+        "devicesCount", "deviceCount", "device",
+        "connected_devices", "active_devices", "machine_count", "machines",
+        "computers", "computer_count", "computersCount", "num_computers",
+        "total_computers", "endpoints", "endpoint_count",
+    ]
+
+    # 1. Try bulk device endpoints
+    bulk_urls = [
+        f"{base_url}/admin/members",       # WorkEye primary — has device_count per member
+        f"{base_url}/api/devices",
+        f"{base_url}/api/computers",
+        f"{base_url}/api/machines",
+        f"{base_url}/api/endpoints",
+        f"{base_url}/api/admin/devices",
+        f"{base_url}/api/members/devices",
+    ]
+    for url in bulk_urls:
+        try:
+            r = requests.get(url, headers=headers, timeout=8)
+            if r.status_code != 200:
+                continue
+            raw = r.json()
+            # /admin/members returns {"members": [...]} each with device_count
+            items = (
+                raw if isinstance(raw, list) else
+                raw.get("members") or raw.get("devices") or raw.get("computers") or
+                raw.get("machines") or raw.get("data") or []
+            )
+            if not items:
+                continue
+            print(f"[device_map] Got {len(items)} records from {url}")
+            # If items have device_count directly (e.g. /admin/members), use it
+            if any(item.get("device_count") is not None for item in items if isinstance(item, dict)):
+                for item in items:
+                    if not isinstance(item, dict):
+                        continue
+                    val = item.get("device_count")
+                    if val is None:
+                        continue
+                    if item.get("id"):
+                        device_map[item["id"]] = val
+                    if item.get("email"):
+                        device_map[item["email"]] = val
+                if device_map:
+                    print(f"[device_map] Built map with {len(device_map)} entries (device_count) from {url}")
+                    return device_map
+            # Otherwise aggregate count per member_id (device-list endpoints)
+            counts = {}
+            for item in items:
+                mid = item.get("member_id") or item.get("user_id") or item.get("employee_id")
+                if mid:
+                    counts[mid] = counts.get(mid, 0) + 1
+            if counts:
+                device_map.update(counts)
+                print(f"[device_map] Built map with {len(device_map)} entries from {url}")
+                return device_map
+        except Exception as e:
+            print(f"[device_map] {url} failed: {e}")
+
+    # 2. Try per-member live endpoint (only for members missing device data)
+    missing = [m for m in members if m.get("id") and not device_map.get(m.get("id"))]
+    if missing:
+        print(f"[device_map] Trying per-member live for {len(missing)} members")
+        for m in missing[:20]:  # cap at 20 to avoid hammering the API
+            mid = m.get("id")
+            try:
+                r = requests.get(f"{base_url}/api/dashboard/member/{mid}/live",
+                                 headers=headers, timeout=8)
+                if r.status_code != 200:
+                    continue
+                data = r.json()
+                # Search the entire response for device-like fields
+                def _find_devices(obj, depth=0):
+                    if depth > 3:
+                        return None
+                    if isinstance(obj, dict):
+                        for k in _dkeys:
+                            if obj.get(k) is not None:
+                                return obj[k]
+                        for k, v in obj.items():
+                            if ("device" in k.lower() or "machine" in k.lower()
+                                    or "computer" in k.lower()):
+                                return v
+                        for v in obj.values():
+                            result = _find_devices(v, depth + 1)
+                            if result is not None:
+                                return result
+                    elif isinstance(obj, list):
+                        for item in obj:
+                            result = _find_devices(item, depth + 1)
+                            if result is not None:
+                                return result
+                    return None
+
+                val = _find_devices(data)
+                if val is not None:
+                    device_map[mid] = val
+                    print(f"[device_map] Found devices={val} for member {mid} via live endpoint")
+            except Exception as e:
+                print(f"[device_map] live for {mid} failed: {e}")
+
+    return device_map
 
 
 # =========================
