@@ -1481,11 +1481,13 @@ function fmtTime12(val){
 }
 function fmtSSTime(ts){
   if(!ts)return'—';
-  // Parse the timestamp and convert to 12-hour format
-  const timePart=ts.substring(11,19);
-  if(!timePart)return'—';
-  const parts=timePart.split(':');
-  let h=parseInt(parts[0]||0),m=parseInt(parts[1]||0),s=parseInt(parts[2]||0);
+  // Parse as UTC and convert to IST (UTC+5:30)
+  const utcStr=ts.includes('Z')||ts.includes('+')?ts:ts.replace(' ','T')+'Z';
+  const d=new Date(utcStr);
+  if(isNaN(d.getTime()))return'—';
+  const istMs=d.getTime()+(5*60+30)*60*1000;
+  const ist=new Date(istMs);
+  let h=ist.getUTCHours(),m=ist.getUTCMinutes(),s=ist.getUTCSeconds();
   const ampm=h>=12?'pm':'am';
   const h12=h%12||12;
   return h12+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+' '+ampm;
