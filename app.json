@@ -1,28 +1,24 @@
 {
     "name": "WorkEye Monitor",
     "version": "1.0.0",
-    "description": "Monitor your team in real-time. Track attendance, productivity, screenshots and activity logs — all synced directly to your Bitrix24 Drive.",
-
+    "description": "Monitor your team in real-time. Track attendance, productivity, screenshots and activity logs \u2014 all synced directly to your Bitrix24 Drive.",
     "vendor": {
         "name": "AESPL",
         "email": "dr.aarti@rajlaxmiworld.com",
         "website": "https://workeye-bitrix-integration.onrender.com"
     },
-
     "urls": {
-        "install":   "https://workeye-bitrix-integration.onrender.com/bitrix/install",
+        "install": "https://workeye-bitrix-integration.onrender.com/bitrix/install",
         "uninstall": "https://workeye-bitrix-integration.onrender.com/bitrix/uninstall",
-        "app":       "https://workeye-bitrix-integration.onrender.com/bitrix/app",
-        "privacy":   "https://workeye-bitrix-integration.onrender.com/privacy"
+        "app": "https://workeye-bitrix-integration.onrender.com/bitrix/app",
+        "privacy": "https://workeye.org/privacy"
     },
-
     "scopes": [
         "drive",
         "user",
         "department",
         "log"
     ],
-
     "placements": [
         {
             "id": "MENU_INFO_BLOCK",
@@ -30,16 +26,13 @@
             "description": "Open WorkEye employee monitoring dashboard"
         }
     ],
-
     "categories": [
         "HR",
         "Productivity"
     ],
-
     "price": {
         "type": "free"
     },
-
     "support": {
         "email": "dr.aarti@rajlaxmiworld.com",
         "website": "https://workeye-bitrix-integration.onrender.com"

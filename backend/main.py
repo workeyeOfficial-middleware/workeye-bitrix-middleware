@@ -53,17 +53,20 @@ def _serve_html(filename: str) -> HTMLResponse:
 @app.get("/privacy")
 @app.get("/privacy.html")
 async def serve_privacy():
-    return _serve_html("privacy.html")
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="https://workeye.org/privacy", status_code=301)
 
 @app.get("/eula")
 @app.get("/eula.html")
 async def serve_eula():
-    return _serve_html("eula.html")
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="https://workeye.org/eula", status_code=301)
 
 @app.get("/contact")
 @app.get("/contact.html")
 async def serve_contact():
-    return _serve_html("contact.html")
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="https://workeye.org/contact", status_code=301)
 
 # ── Auth ─────────────────────────────────────────────────
 class Creds(BaseModel):
