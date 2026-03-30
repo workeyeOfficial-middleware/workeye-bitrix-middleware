@@ -799,15 +799,37 @@ def get_billing(base_url: str, token: str) -> dict:
         data = r.json()
         lic = data.get("activeLicense") or data.get("license") or data.get("data") or data
 
-        # Resolve plan name
-        license_type = lic.get("licenseType") or {}
-        plan_name = (
-            license_type.get("name") if isinstance(license_type, dict) else None
-        ) or lic.get("planName") or lic.get("name") or "Unknown"
-
         expires_at = lic.get("endDate") or lic.get("expireAt") or lic.get("expiresAt") or None
         status = lic.get("status") or "active"
         billing_cycle = lic.get("billingCycle") or None
+
+        # Resolve plan name — licenseType may be a populated dict OR a raw string ObjectId
+        license_type = lic.get("licenseType") or {}
+        if isinstance(license_type, dict):
+            plan_name = license_type.get("name") or None
+        else:
+            # licenseType is a string ObjectId — need to look up the plans list
+            license_type_id = str(license_type)
+            plan_name = None
+            try:
+                plans_url = f"{base_url}/api/license-proxy/api/license/public/licenses-by-product/{PRODUCT_ID}"
+                pr = requests.get(plans_url, headers={"x-api-key": LMS_API_KEY}, timeout=10)
+                if pr.status_code == 200:
+                    pdata = pr.json()
+                    raw_plans = pdata.get("licenses") or pdata.get("data", {}).get("licenses") or pdata.get("data") or (pdata if isinstance(pdata, list) else [])
+                    for p in raw_plans:
+                        lt = p.get("licenseType") or p
+                        lt_id = lt.get("_id") if isinstance(lt, dict) else None
+                        if lt_id and lt_id == license_type_id:
+                            plan_name = lt.get("name") if isinstance(lt, dict) else None
+                            break
+                    print(f"[billing] Resolved plan name from plans list: {plan_name}")
+            except Exception as pe:
+                print(f"[billing] Plans list lookup failed: {pe}")
+
+        # Final fallbacks
+        if not plan_name:
+            plan_name = lic.get("planName") or lic.get("name") or "Unknown"
 
         print(f"[billing] plan={plan_name} status={status} expires={expires_at}")
         return {
