@@ -12,7 +12,7 @@ CHANGES FROM ORIGINAL:
 - Everything else is exactly the same
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from typing import Optional
 import database
@@ -28,12 +28,23 @@ def setup_bitrix_routes(app: FastAPI):
     @app.get("/bitrix/install")
     @app.post("/bitrix/install")
     async def bitrix_install(
+        request: Request,
         AUTH_ID: Optional[str] = None,
         AUTH_EXPIRES: Optional[int] = 3600,
         REFRESH_ID: Optional[str] = None,
         member_id: Optional[str] = None,
         DOMAIN: Optional[str] = None,
     ):
+        # Bitrix24 sends POST as form-data — parse it
+        try:
+            form = await request.form()
+            AUTH_ID      = AUTH_ID      or form.get("AUTH_ID")
+            REFRESH_ID   = REFRESH_ID   or form.get("REFRESH_ID")
+            member_id    = member_id    or form.get("member_id")
+            DOMAIN       = DOMAIN       or form.get("DOMAIN")
+            AUTH_EXPIRES = AUTH_EXPIRES or int(form.get("AUTH_EXPIRES") or 3600)
+        except Exception:
+            pass
         """
         Bitrix24 OAuth callback when user installs the app
 
@@ -76,7 +87,12 @@ def setup_bitrix_routes(app: FastAPI):
 
     # ── Bitrix Uninstall Handler ──────────────────────────────────────────────────
     @app.post("/bitrix/uninstall")
-    async def bitrix_uninstall(member_id: Optional[str] = None):
+    async def bitrix_uninstall(request: Request, member_id: Optional[str] = None):
+        try:
+            form = await request.form()
+            member_id = member_id or form.get("member_id")
+        except Exception:
+            pass
         """
         Called when user uninstalls the app from Bitrix24
 
@@ -108,7 +124,17 @@ def setup_bitrix_routes(app: FastAPI):
     # ── Bitrix App Launcher ───────────────────────────────────────────────────────
     @app.get("/bitrix/app")
     @app.post("/bitrix/app")
-    async def bitrix_app_launcher(DOMAIN: Optional[str] = None, member_id: Optional[str] = None):
+    async def bitrix_app_launcher(
+        request: Request,
+        DOMAIN: Optional[str] = None,
+        member_id: Optional[str] = None,
+    ):
+        try:
+            form = await request.form()
+            DOMAIN    = DOMAIN    or form.get("DOMAIN")
+            member_id = member_id or form.get("member_id")
+        except Exception:
+            pass
         """
         Called when Bitrix24 loads your app in an iframe
 
