@@ -797,41 +797,70 @@ def get_billing(base_url: str, token: str) -> dict:
             return {"plan_name": "Unknown", "status": "unknown", "expires_at": None}
 
         data = r.json()
+        print(f"[billing] Raw top-level keys: {list(data.keys()) if isinstance(data, dict) else type(data)}")
         lic = data.get("activeLicense") or data.get("license") or data.get("data") or data
+        print(f"[billing] License keys: {list(lic.keys()) if isinstance(lic, dict) else type(lic)}")
+        print(f"[billing] License raw: {str(lic)[:400]}")
 
         expires_at = lic.get("endDate") or lic.get("expireAt") or lic.get("expiresAt") or None
         status = lic.get("status") or "active"
         billing_cycle = lic.get("billingCycle") or None
 
-        # Resolve plan name — licenseType may be a populated dict OR a raw string ObjectId
-        license_type = lic.get("licenseType") or {}
-        if isinstance(license_type, dict):
-            plan_name = license_type.get("name") or None
+        # Exactly what BillingPage.tsx does:
+        # Step 1 — extract licenseTypeId (may be nested object or plain string)
+        lt_field = lic.get("licenseTypeId")
+        if isinstance(lt_field, dict):
+            license_type_id = lt_field.get("_id", "")
+        elif lt_field:
+            license_type_id = str(lt_field)
         else:
-            # licenseType is a string ObjectId — need to look up the plans list
-            license_type_id = str(license_type)
-            plan_name = None
+            # fallback: try licenseType field
+            lt2 = lic.get("licenseType")
+            if isinstance(lt2, dict):
+                license_type_id = lt2.get("_id", "")
+            else:
+                license_type_id = str(lt2) if lt2 else ""
+
+        print(f"[billing] licenseTypeId resolved: {license_type_id}")
+
+        # Step 2 — fetch plans list and match by licenseTypeId (exactly like BillingPage.tsx)
+        plan_name = None
+        if license_type_id:
             try:
                 plans_url = f"{base_url}/api/license-proxy/api/license/public/licenses-by-product/{PRODUCT_ID}"
-                pr = requests.get(plans_url, headers={"x-api-key": LMS_API_KEY}, timeout=10)
+                pr = requests.get(plans_url, timeout=10)
+                print(f"[billing] Plans list status: {pr.status_code}")
                 if pr.status_code == 200:
                     pdata = pr.json()
-                    raw_plans = pdata.get("licenses") or pdata.get("data", {}).get("licenses") or pdata.get("data") or (pdata if isinstance(pdata, list) else [])
+                    raw_plans = (
+                        pdata.get("licenses") or
+                        (pdata.get("data") or {}).get("licenses") or
+                        pdata.get("data") or
+                        (pdata if isinstance(pdata, list) else [])
+                    )
+                    print(f"[billing] Plans count: {len(raw_plans)}")
                     for p in raw_plans:
                         lt = p.get("licenseType") or p
                         lt_id = lt.get("_id") if isinstance(lt, dict) else None
+                        lt_name = lt.get("name") if isinstance(lt, dict) else None
+                        print(f"[billing] Plan: id={lt_id} name={lt_name}")
                         if lt_id and lt_id == license_type_id:
-                            plan_name = lt.get("name") if isinstance(lt, dict) else None
+                            plan_name = lt_name
                             break
-                    print(f"[billing] Resolved plan name from plans list: {plan_name}")
             except Exception as pe:
-                print(f"[billing] Plans list lookup failed: {pe}")
+                print(f"[billing] Plans lookup failed: {pe}")
 
-        # Final fallbacks
+        # Step 3 — fallbacks (same order as BillingPage.tsx line 567)
         if not plan_name:
-            plan_name = lic.get("planName") or lic.get("name") or "Unknown"
+            lt = lic.get("licenseType")
+            plan_name = (
+                (lt.get("name") if isinstance(lt, dict) else None) or
+                lic.get("planName") or
+                lic.get("name") or
+                "Unknown"
+            )
 
-        print(f"[billing] plan={plan_name} status={status} expires={expires_at}")
+        print(f"[billing] FINAL plan={plan_name} status={status} expires={expires_at}")
         return {
             "plan_name": str(plan_name).strip(),
             "status": str(status).strip().lower(),
