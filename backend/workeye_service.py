@@ -741,6 +741,86 @@ def get_admin_profile(base_url: str, token: str) -> dict:
     return {}
 
 
+# =========================
+# BILLING / SUBSCRIPTION
+# =========================
+def get_billing(base_url: str, token: str) -> dict:
+    """
+    Fetch the current subscription / billing plan for the company.
+    Tries multiple common endpoint patterns used by WorkEye.
+    Returns a normalised dict with keys:
+        plan_name, status, expires_at, billing_cycle, seats, amount, currency
+    """
+    headers = {"Authorization": f"Bearer {token}"}
+
+    candidate_urls = [
+        f"{base_url}/api/billing",
+        f"{base_url}/api/subscription",
+        f"{base_url}/api/billing/current",
+        f"{base_url}/api/billing/subscription",
+        f"{base_url}/api/plan",
+        f"{base_url}/api/company/subscription",
+        f"{base_url}/api/admin/billing",
+        f"{base_url}/api/admin/subscription",
+        f"{base_url}/api/account/subscription",
+        f"{base_url}/billing",
+        f"{base_url}/subscription",
+    ]
+
+    raw = {}
+    for url in candidate_urls:
+        try:
+            r = requests.get(url, headers=headers, timeout=10)
+            if r.status_code == 200:
+                data = r.json()
+                # Unwrap common envelope keys
+                inner = (
+                    data.get("subscription") or
+                    data.get("billing") or
+                    data.get("plan") or
+                    data.get("data") or
+                    data
+                )
+                if isinstance(inner, dict) and inner:
+                    raw = inner
+                    print(f"[billing] Found data at {url}: {list(raw.keys())}")
+                    break
+        except Exception as e:
+            print(f"[billing] {url} failed: {e}")
+
+    # Normalise fields from whatever the API returns
+    plan_name = (
+        raw.get("plan_name") or raw.get("plan") or raw.get("subscription_plan") or
+        raw.get("package") or raw.get("tier") or raw.get("name") or "—"
+    )
+    status = (
+        raw.get("status") or raw.get("subscription_status") or
+        raw.get("state") or ("active" if raw else "unknown")
+    )
+    expires_at = (
+        raw.get("expires_at") or raw.get("expiry_date") or raw.get("end_date") or
+        raw.get("valid_till") or raw.get("renewal_date") or raw.get("next_billing_date") or None
+    )
+    billing_cycle = (
+        raw.get("billing_cycle") or raw.get("cycle") or raw.get("interval") or
+        raw.get("plan_interval") or None
+    )
+    seats = raw.get("seats") or raw.get("max_users") or raw.get("user_limit") or None
+    amount = raw.get("amount") or raw.get("price") or raw.get("cost") or None
+    currency = raw.get("currency") or "USD"
+
+    return {
+        "plan_name": str(plan_name).strip(),
+        "status": str(status).strip().lower(),
+        "expires_at": expires_at,
+        "billing_cycle": billing_cycle,
+        "seats": seats,
+        "amount": amount,
+        "currency": currency,
+        "_raw": raw,
+    }
+
+
 def get_screenshot_image(base_url: str, token: str, screenshot_id: int) -> bytes:
     headers = {"Authorization": f"Bearer {token}"}
     url = f"{base_url}/api/screenshots/image/{screenshot_id}"

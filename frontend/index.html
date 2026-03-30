@@ -185,6 +185,54 @@
     padding: 1px 7px; min-width: 18px; text-align: center;
   }
 
+  /* ── Billing Plan Card (sidebar) ── */
+  .sidebar-plan-card {
+    margin: 0 12px 10px;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+    border-radius: 12px;
+    padding: 11px 14px;
+    cursor: default;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(99,102,241,.35);
+  }
+  [data-theme="dark"] .sidebar-plan-card {
+    box-shadow: 0 4px 14px rgba(99,102,241,.5);
+  }
+  .sidebar-plan-card::before {
+    content: '';
+    position: absolute; top: -18px; right: -14px;
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.12);
+  }
+  .sidebar-plan-card::after {
+    content: '';
+    position: absolute; bottom: -22px; right: 18px;
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.08);
+  }
+  .plan-card-label {
+    font-size: 9px; font-weight: 700; letter-spacing: .08em;
+    color: rgba(255,255,255,.75); text-transform: uppercase; margin-bottom: 3px;
+  }
+  .plan-card-name {
+    font-size: 15px; font-weight: 800; color: #fff;
+    display: flex; align-items: center; gap: 6px; line-height: 1.2;
+  }
+  .plan-card-badge {
+    font-size: 9px; font-weight: 700; padding: 2px 6px;
+    border-radius: 20px; letter-spacing: .05em; text-transform: uppercase;
+    background: rgba(255,255,255,.22); color: #fff;
+  }
+  .plan-card-badge.active  { background: rgba(52,211,153,.35); }
+  .plan-card-badge.expired { background: rgba(239,68,68,.35); }
+  .plan-card-expires {
+    font-size: 10px; color: rgba(255,255,255,.75); margin-top: 5px;
+    display: flex; align-items: center; gap: 4px;
+  }
+
   /* ── Sidebar Footer ── */
   .sidebar-footer {
     padding: 14px 18px;
@@ -642,6 +690,19 @@
         <span class="nav-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> Settings</div>
 
     </nav>
+    <!-- Billing plan mini-card -->
+    <div class="sidebar-plan-card" id="sidebarPlanCard" style="display:none">
+      <div class="plan-card-label">Current Plan</div>
+      <div class="plan-card-name">
+        <span id="sidebarPlanName">—</span>
+        <span class="plan-card-badge" id="sidebarPlanBadge">—</span>
+      </div>
+      <div class="plan-card-expires" id="sidebarPlanExpires" style="display:none">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span id="sidebarPlanExpiresText"></span>
+      </div>
+    </div>
+
     <div class="sidebar-footer">
       <button class="logout-btn" onclick="doLogout()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> <span>Logout</span></button>
       <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark mode"></button>
@@ -1491,6 +1552,32 @@ function prodBar(pct){pct=parseInt(pct)||0;const color=pct>=70?"var(--green)":pc
 function animateCount(el,target,suffix=""){if(!el)return;const start=parseInt(el.textContent)||0,diff=target-start;if(diff===0){el.textContent=target+suffix;return}const steps=20,step=diff/steps;let cur=start,count=0;const iv=setInterval(()=>{cur+=step;count++;el.textContent=Math.round(cur)+suffix;if(count>=steps){el.textContent=target+suffix;clearInterval(iv)}},20)}
 async function refreshToken(){if(!SESSION.email||!SESSION.password||!SESSION.workeye_url){doLogout();return false}try{const r=await fetch(API+"/login",{method:"POST",headers:{...HEADERS,"Content-Type":"application/json"},body:JSON.stringify({email:SESSION.email,password:SESSION.password,workeye_url:SESSION.workeye_url})}),data=await r.json();if(r.ok&&data.success){saveSession(data.token,SESSION.workeye_url,SESSION.email,SESSION.password,data.profile||SESSION.profile||{});return true}}catch(e){}doLogout();return false}
 function sessionParams(extra={}){let p=`?workeye_url=${encodeURIComponent(SESSION.workeye_url)}&token=${encodeURIComponent(SESSION.token)}`;Object.entries(extra).forEach(([k,v])=>{if(v)p+=`&${k}=${encodeURIComponent(v)}`});return p}
+
+async function loadBillingCard(){
+  try{
+    const res=await apiFetch("/get-billing");
+    const d=res.data||{};
+    const card=document.getElementById("sidebarPlanCard");
+    const nameEl=document.getElementById("sidebarPlanName");
+    const badgeEl=document.getElementById("sidebarPlanBadge");
+    const expiresWrap=document.getElementById("sidebarPlanExpires");
+    const expiresText=document.getElementById("sidebarPlanExpiresText");
+    if(!card)return;
+    const plan=d.plan_name||"—";
+    const status=(d.status||"").toLowerCase();
+    nameEl.textContent=plan;
+    badgeEl.textContent=status.charAt(0).toUpperCase()+status.slice(1)||"—";
+    badgeEl.className="plan-card-badge "+(status==="active"?"active":status==="expired"?"expired":"");
+    if(d.expires_at){
+      const dt=new Date(d.expires_at);
+      if(!isNaN(dt)){
+        expiresText.textContent="Expires "+dt.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
+        expiresWrap.style.display="flex";
+      }
+    }
+    card.style.display="block";
+  }catch(e){console.warn("[billing card]",e);}
+}
 async function apiFetch(p,extra={}){let r=await fetch(API+p+sessionParams(extra),{headers:HEADERS});if(r.status===401){const ok=await refreshToken();if(ok)r=await fetch(API+p+sessionParams(),{headers:HEADERS});else throw new Error("Session expired")}if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}
 async function apiPost(p){let r=await fetch(API+p+sessionParams(),{method:"POST",headers:HEADERS});if(r.status===401){const ok=await refreshToken();if(ok)r=await fetch(API+p+sessionParams(),{method:"POST",headers:HEADERS});else throw new Error("Session expired")}if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}
 function updateDonut(id,pct){const circ=2*Math.PI*46,offset=circ-(pct/100)*circ,el=document.getElementById(id);if(el)el.style.strokeDashoffset=offset}
@@ -1574,7 +1661,7 @@ let currentChartMode="productivity";
 function switchChart(mode,btn){currentChartMode=mode;document.querySelectorAll(".chart-tab").forEach(b=>b.classList.remove("on"));if(btn)btn.classList.add("on");drawTrendChart(generateTrendFromMembers(allMembers),mode)}
 function drawTrendChart(data,mode="productivity"){const canvas=document.getElementById("trendChart");if(!canvas)return;const ctx=canvas.getContext("2d"),dpr=window.devicePixelRatio||1,rect=canvas.parentElement.getBoundingClientRect();canvas.width=rect.width*dpr;canvas.height=160*dpr;canvas.style.width=rect.width+"px";canvas.style.height="160px";ctx.scale(dpr,dpr);const W=rect.width,H=160,pad={top:20,right:20,bottom:30,left:44},chartW=W-pad.left-pad.right,chartH=H-pad.top-pad.bottom,isDark=document.documentElement.getAttribute("data-theme")==="dark",gridColor=isDark?"#242b40":"#e4e8f0",textColor=isDark?"#64748b":"#94a3b8",lineColor=mode==="productivity"?"#5b5ef4":"#06b6d4",fillStart=mode==="productivity"?"rgba(91,94,244,0.25)":"rgba(6,182,212,0.2)";ctx.clearRect(0,0,W,H);[0,25,50,75,100].forEach(v=>{const y=pad.top+chartH-(v/100)*chartH;ctx.strokeStyle=gridColor;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(pad.left+chartW,y);ctx.stroke();ctx.fillStyle=textColor;ctx.font="10px DM Mono,monospace";ctx.textAlign="right";ctx.fillText(v+"%",pad.left-6,y+4)});if(!data||!data.length)return;const step=chartW/(data.length-1||1),grad=ctx.createLinearGradient(0,pad.top,0,pad.top+chartH);grad.addColorStop(0,fillStart);grad.addColorStop(1,"rgba(0,0,0,0)");ctx.beginPath();data.forEach((d,i)=>{const x=pad.left+i*step,y=pad.top+chartH-(d.value/100)*chartH;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});ctx.lineTo(pad.left+(data.length-1)*step,pad.top+chartH);ctx.lineTo(pad.left,pad.top+chartH);ctx.closePath();ctx.fillStyle=grad;ctx.fill();ctx.beginPath();ctx.strokeStyle=lineColor;ctx.lineWidth=2.5;ctx.lineJoin="round";data.forEach((d,i)=>{const x=pad.left+i*step,y=pad.top+chartH-(d.value/100)*chartH;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)});ctx.stroke();data.forEach((d,i)=>{const x=pad.left+i*step,y=pad.top+chartH-(d.value/100)*chartH;ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);ctx.fillStyle=lineColor;ctx.fill();ctx.strokeStyle=isDark?"#141826":"white";ctx.lineWidth=2;ctx.stroke();ctx.fillStyle=textColor;ctx.font="10px DM Mono,monospace";ctx.textAlign="center";ctx.fillText(d.label,x,H-8)});const legend=document.getElementById("trendLegend");if(legend&&data.length){const avg=Math.round(data.reduce((s,d)=>s+d.value,0)/data.length),max=Math.max(...data.map(d=>d.value)),min=Math.min(...data.map(d=>d.value));legend.innerHTML=`<span style="font-size:11px;color:var(--text2)">7-day avg: <strong style="color:var(--accent)">${avg}%</strong></span><span style="font-size:11px;color:var(--text2)">Peak: <strong style="color:var(--green)">${max}%</strong></span><span style="font-size:11px;color:var(--text2)">Low: <strong style="color:var(--red)">${min}%</strong></span>`}}
 function generateTrendFromMembers(members){const days=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],avgProd=members.length?Math.round(members.reduce((s,m)=>s+(m.productivity||0),0)/members.length):0,avgAct=members.length?Math.round((members.filter(m=>(m.status||"").toLowerCase()==="active").length/members.length)*100):0,base=currentChartMode==="activity"?avgAct:avgProd;return days.map(label=>({label,value:Math.max(0,Math.min(100,base+Math.floor(Math.random()*22-11)))}))}
-async function loadAll(){if(!SESSION.token||!SESSION.workeye_url)return;await Promise.all([loadStats(),loadScreenshotCount()]);const an=document.querySelector(".nav-item.active");if(an){const txt=an.textContent.trim().toLowerCase();if(txt.includes("attendance"))loadAttendance();if(txt.includes("screenshot"))loadScreenshots();if(txt.includes("activity"))loadActivityLog();if(txt.includes("team"))renderTeamGrid(allMembers);}const now=new Date();lastSyncTime=Date.now();document.getElementById("lastSync").textContent=""}
+async function loadAll(){if(!SESSION.token||!SESSION.workeye_url)return;await Promise.all([loadStats(),loadScreenshotCount(),loadBillingCard()]);const an=document.querySelector(".nav-item.active");if(an){const txt=an.textContent.trim().toLowerCase();if(txt.includes("attendance"))loadAttendance();if(txt.includes("screenshot"))loadScreenshots();if(txt.includes("activity"))loadActivityLog();if(txt.includes("team"))renderTeamGrid(allMembers);}const now=new Date();lastSyncTime=Date.now();document.getElementById("lastSync").textContent=""}
 async function loadAllWithAnim(){const btn=document.querySelector(".refresh-btn");if(btn)btn.classList.add("spinning");await loadAll();if(btn)btn.classList.remove("spinning")}
 async function loadScreenshotCount(){try{const res=await apiFetch("/get-screenshots"),list=res.data||[];animateCount(document.getElementById("vScreenshots"),list.length)}catch(e){}}
 let autoRefreshTimer;
