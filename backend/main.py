@@ -271,6 +271,52 @@ async def get_member_screenshots(workeye_url: str, token: str, member_id: int, d
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/debug-billing")
+async def debug_billing(workeye_url: str, token: str):
+    """
+    Probes every plausible billing/subscription endpoint on the WorkEye backend
+    and returns the raw status + body for each so we can find the real one.
+    """
+    import requests as req
+    headers = {"Authorization": f"Bearer {token}"}
+    candidates = [
+        "/api/billing",
+        "/api/billing/current",
+        "/api/billing/subscription",
+        "/api/subscription",
+        "/api/plan",
+        "/api/plans",
+        "/api/company/subscription",
+        "/api/company/plan",
+        "/api/admin/billing",
+        "/api/admin/subscription",
+        "/api/admin/plan",
+        "/api/account/subscription",
+        "/api/account/billing",
+        "/api/account",
+        "/billing",
+        "/subscription",
+        "/api/company",
+        "/api/admin/company",
+        "/api/settings",
+        "/api/admin/settings",
+        "/api/configuration",
+    ]
+    results = {}
+    for path in candidates:
+        url = f"{workeye_url}{path}"
+        try:
+            r = req.get(url, headers=headers, timeout=8)
+            try:
+                body = r.json()
+            except Exception:
+                body = r.text[:300]
+            results[path] = {"status": r.status_code, "body": body}
+        except Exception as e:
+            results[path] = {"error": str(e)}
+    return results
+
+
 @app.get("/get-billing")
 async def get_billing(workeye_url: str, token: str):
     try:

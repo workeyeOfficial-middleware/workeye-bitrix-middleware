@@ -744,81 +744,81 @@ def get_admin_profile(base_url: str, token: str) -> dict:
 # =========================
 # BILLING / SUBSCRIPTION
 # =========================
+PRODUCT_ID = "69589e3fe70228ef3c25f26c"
+LMS_API_KEY = "my-secret-key-123"
+
 def get_billing(base_url: str, token: str) -> dict:
     """
-    Fetch the current subscription / billing plan for the company.
-    Tries multiple common endpoint patterns used by WorkEye.
-    Returns a normalised dict with keys:
-        plan_name, status, expires_at, billing_cycle, seats, amount, currency
+    Fetch the active license/plan for this company from the WorkEye LMS.
+    Endpoint discovered from BillingPage.tsx:
+      GET /api/license-proxy/api/external/actve-license/{email}?productId=...
+    Email is decoded from the JWT token.
     """
-    headers = {"Authorization": f"Bearer {token}"}
+    import base64 as _b64, json as _json
 
-    candidate_urls = [
-        f"{base_url}/api/billing",
-        f"{base_url}/api/subscription",
-        f"{base_url}/api/billing/current",
-        f"{base_url}/api/billing/subscription",
-        f"{base_url}/api/plan",
-        f"{base_url}/api/company/subscription",
-        f"{base_url}/api/admin/billing",
-        f"{base_url}/api/admin/subscription",
-        f"{base_url}/api/account/subscription",
-        f"{base_url}/billing",
-        f"{base_url}/subscription",
-    ]
+    # Decode email from JWT
+    email = None
+    try:
+        payload = token.split(".")[1]
+        padded = payload + "=" * (4 - len(payload) % 4)
+        jwt_data = _json.loads(_b64.urlsafe_b64decode(padded))
+        email = (
+            jwt_data.get("email") or
+            jwt_data.get("sub") or
+            jwt_data.get("adminEmail") or
+            jwt_data.get("admin_email")
+        )
+        print(f"[billing] JWT keys: {list(jwt_data.keys())} email={email}")
+    except Exception as e:
+        print(f"[billing] JWT decode failed: {e}")
 
-    raw = {}
-    for url in candidate_urls:
+    if not email:
+        # Fallback: try admin profile to get email
         try:
-            r = requests.get(url, headers=headers, timeout=10)
-            if r.status_code == 200:
-                data = r.json()
-                # Unwrap common envelope keys
-                inner = (
-                    data.get("subscription") or
-                    data.get("billing") or
-                    data.get("plan") or
-                    data.get("data") or
-                    data
-                )
-                if isinstance(inner, dict) and inner:
-                    raw = inner
-                    print(f"[billing] Found data at {url}: {list(raw.keys())}")
-                    break
+            profile = get_admin_profile(base_url, token)
+            email = profile.get("email")
+            print(f"[billing] Got email from profile: {email}")
         except Exception as e:
-            print(f"[billing] {url} failed: {e}")
+            print(f"[billing] Profile fallback failed: {e}")
 
-    # Normalise fields from whatever the API returns
-    plan_name = (
-        raw.get("plan_name") or raw.get("plan") or raw.get("subscription_plan") or
-        raw.get("package") or raw.get("tier") or raw.get("name") or "—"
-    )
-    status = (
-        raw.get("status") or raw.get("subscription_status") or
-        raw.get("state") or ("active" if raw else "unknown")
-    )
-    expires_at = (
-        raw.get("expires_at") or raw.get("expiry_date") or raw.get("end_date") or
-        raw.get("valid_till") or raw.get("renewal_date") or raw.get("next_billing_date") or None
-    )
-    billing_cycle = (
-        raw.get("billing_cycle") or raw.get("cycle") or raw.get("interval") or
-        raw.get("plan_interval") or None
-    )
-    seats = raw.get("seats") or raw.get("max_users") or raw.get("user_limit") or None
-    amount = raw.get("amount") or raw.get("price") or raw.get("cost") or None
-    currency = raw.get("currency") or "USD"
+    if not email:
+        return {"plan_name": "Unknown", "status": "unknown", "expires_at": None}
 
-    return {
-        "plan_name": str(plan_name).strip(),
-        "status": str(status).strip().lower(),
-        "expires_at": expires_at,
-        "billing_cycle": billing_cycle,
-        "seats": seats,
-        "amount": amount,
-        "currency": currency,
-        "_raw": raw,
-    }
+    lms_url = (
+        f"{base_url}/api/license-proxy/api/external/actve-license"
+        f"/{requests.utils.quote(email, safe='')}?productId={PRODUCT_ID}"
+    )
+    headers = {"x-api-key": LMS_API_KEY}
+
+    try:
+        r = requests.get(lms_url, headers=headers, timeout=10)
+        print(f"[billing] LMS status: {r.status_code} url: {lms_url}")
+        if r.status_code != 200:
+            return {"plan_name": "Unknown", "status": "unknown", "expires_at": None}
+
+        data = r.json()
+        lic = data.get("activeLicense") or data.get("license") or data.get("data") or data
+
+        # Resolve plan name
+        license_type = lic.get("licenseType") or {}
+        plan_name = (
+            license_type.get("name") if isinstance(license_type, dict) else None
+        ) or lic.get("planName") or lic.get("name") or "Unknown"
+
+        expires_at = lic.get("endDate") or lic.get("expireAt") or lic.get("expiresAt") or None
+        status = lic.get("status") or "active"
+        billing_cycle = lic.get("billingCycle") or None
+
+        print(f"[billing] plan={plan_name} status={status} expires={expires_at}")
+        return {
+            "plan_name": str(plan_name).strip(),
+            "status": str(status).strip().lower(),
+            "expires_at": expires_at,
+            "billing_cycle": billing_cycle,
+        }
+    except Exception as e:
+        print(f"[billing] LMS fetch failed: {e}")
+        return {"plan_name": "Unknown", "status": "unknown", "expires_at": None}
 
 
 def get_screenshot_image(base_url: str, token: str, screenshot_id: int) -> bytes:
