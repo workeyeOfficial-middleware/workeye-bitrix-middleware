@@ -2446,7 +2446,15 @@ function exportAttDetailCSV(){
 let activitySortCol = 'name';
 let activitySortDir = 1; // 1=asc, -1=desc
 let currentDetailMember = null;
-let currentDetailDate = new Date();
+// Returns today's date object normalised to IST (UTC+5:30) midnight
+function getISTToday() {
+  const now = new Date();
+  const istMs = now.getTime() + (5.5 * 60 * 60 * 1000);
+  const ist = new Date(istMs);
+  // Build a plain local-midnight date from IST components
+  return new Date(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate());
+}
+let currentDetailDate = getISTToday();
 let currentDetailTab = 'screenshots';
 
 function fmtSecShort(sec) {
@@ -2543,7 +2551,7 @@ function openActivityDetail(idx) {
   const m = allMembers[idx];
   if (!m) return;
   currentDetailMember = { ...m, _idx: idx };
-  currentDetailDate = new Date();
+  currentDetailDate = getISTToday();
   
   // Set header
   document.getElementById('detailAvatar').textContent = (m.name||'?')[0].toUpperCase();
@@ -2605,7 +2613,7 @@ function updateDetailDateLabel() {
 }
 
 function goToToday() {
-  currentDetailDate = new Date();
+  currentDetailDate = getISTToday();
   updateDetailDateLabel();
   if (currentDetailTab === 'screenshots') loadDetailScreenshots();
   else loadDetailActivityLogs();
