@@ -2654,9 +2654,9 @@ async function loadDetailScreenshots() {
   const name = currentDetailMember.name || '';
   const memberId = currentDetailMember.id;
 
-  // Format selected date
+  // Format selected date (timezone-safe: avoid UTC shift for IST and other timezones)
   const d = new Date(currentDetailDate);
-  const dateStr = d.toISOString().substring(0, 10);
+  const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   const dateDisplay = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
   grid.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;padding:50px;gap:12px;color:var(--neu-text-secondary);grid-column:1/-1">
@@ -2773,9 +2773,9 @@ async function loadDetailActivityLogs() {
     return;
   }
 
-  // Format date for API
+  // Format date for API (timezone-safe: avoid UTC shift for IST and other timezones)
   const d = new Date(currentDetailDate);
-  const dateStr = d.toISOString().substring(0, 10);
+  const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
   try {
     const res = await apiFetch('/get-activity-logs', { member_id: memberId, date: dateStr });
