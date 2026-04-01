@@ -166,24 +166,43 @@ def get_stats(base_url: str, token: str) -> dict:
         if rt.status_code == 200:
             td = rt.json()
             print(f"[stats] activity-trends keys: {list(td.keys()) if isinstance(td, dict) else type(td)}")
+            # Log the full trends value so we can see its exact structure
+            trends_raw = td.get("trends") if isinstance(td, dict) else td
+            print(f"[stats] activity-trends['trends'] type={type(trends_raw)} value={str(trends_raw)[:500]}")
 
-            # WorkEye typically returns a list of daily records or a dict with daily arrays.
-            # We look for yesterday's entry in whatever shape the data comes in.
             def _extract_yesterday(obj, ydate):
-                """Recursively find a record matching yesterday's date and return
-                (total_members, avg_productivity) or (None, None)."""
+                """
+                Recursively search for a record matching yesterday's date.
+                WorkEye returns: {"trends": [ {date, productivity, active_users, ...}, ... ]}
+                Returns (total_members_or_None, avg_productivity_or_None).
+                Uses ?? semantics: only returns None if field truly absent (0 is valid).
+                """
                 if isinstance(obj, list):
                     for item in obj:
-                        if isinstance(item, dict):
-                            d = (item.get("date") or item.get("day") or
-                                 item.get("created_at","")[:10] or "")
-                            if d == ydate:
-                                tot  = (item.get("total_members") or item.get("total") or
-                                        item.get("employee_count") or item.get("headcount"))
-                                prod = (item.get("average_productivity") or
-                                        item.get("avg_productivity") or
-                                        item.get("productivity"))
-                                return tot, prod
+                        if not isinstance(item, dict):
+                            continue
+                        # Match by date field
+                        d = (item.get("date") or item.get("day") or
+                             item.get("created_at", "")[:10] or
+                             item.get("timestamp", "")[:10] or "")
+                        if d == ydate:
+                            print(f"[stats] Matched yesterday record: {item}")
+                            # Total members — use explicit None check so 0 is valid
+                            tot = None
+                            for k in ("total_members", "total", "employee_count",
+                                      "headcount", "members_count", "employees"):
+                                if k in item:
+                                    tot = item[k]
+                                    break
+                            # Productivity — use explicit None check so 0 is valid
+                            prod = None
+                            for k in ("average_productivity", "avg_productivity",
+                                      "productivity", "productivity_percentage",
+                                      "avg_prod", "productivity_avg"):
+                                if k in item:
+                                    prod = item[k]
+                                    break
+                            return tot, prod
                 if isinstance(obj, dict):
                     for v in obj.values():
                         if isinstance(v, (list, dict)):
@@ -193,18 +212,17 @@ def get_stats(base_url: str, token: str) -> dict:
                 return None, None
 
             yesterday_total, yesterday_prod = _extract_yesterday(td, yesterday_str)
-            print(f"[stats] Trends: yesterday total={yesterday_total} prod={yesterday_prod}")
+            print(f"[stats] Trends extracted: yesterday total={yesterday_total} prod={yesterday_prod}")
 
-        # ── Strategy 2: WorkEye raw stats object already has change fields ─────
-        # WorkEye computes employee_increase and productivity_increase itself.
-        # Check every possible field name they might use.
+        # ── Strategy 2: Scan raw stats object for WorkEye's own change fields ──
         _emp_change_keys = [
             "employee_increase", "employeeIncrease",
             "employee_change", "employeeChange",
             "member_change", "memberChange",
             "total_members_change", "headcount_change",
             "employees_increase", "employee_growth",
-            "new_employees", "employee_percent_change",
+            "employee_percent_change", "percentageIncrease",
+            "percentage_increase",
         ]
         _prod_change_keys = [
             "productivity_increase", "productivityIncrease",
@@ -223,42 +241,59 @@ def get_stats(base_url: str, token: str) -> dict:
                 print(f"[stats] Found productivity change in raw stats: {k}={stats[k]}")
                 break
 
-        # ── Strategy 3: stats?date=yesterday as final fallback ────────────────
-        if yesterday_total is None and yesterday_prod is None:
-            ry = requests.get(f"{base_url}/api/dashboard/stats",
-                              headers=headers,
-                              params={"date": yesterday_str},
-                              timeout=10)
-            if ry.status_code == 200:
-                yd       = ry.json()
-                ystats   = yd.get("stats", {})
-                ymembers = yd.get("members", [])
-                print(f"[stats] stats?date yesterday raw stats: {ystats}")
-                # Accept any non-empty response — don't filter by count equality
-                if ymembers:
-                    yesterday_total = len(ymembers)
-                    yprods = [m.get("productivity", 0) for m in ymembers]
-                    yesterday_prod = int(sum(yprods)/len(yprods)) if yprods else None
-                elif ystats.get("total_members") is not None:
-                    yesterday_total = ystats.get("total_members")
-                    yesterday_prod  = ystats.get("average_productivity")
-                print(f"[stats] stats?date: yesterday total={yesterday_total} prod={yesterday_prod}")
+        # ── Strategy 3: attendance endpoint for yesterday's member count ───────
+        # /api/attendance/members?date=yesterday reliably returns yesterday's roster
+        if "employee_change" not in preserved:
+            try:
+                ra = requests.get(f"{base_url}/api/attendance/members",
+                                  headers=headers,
+                                  params={"date": yesterday_str},
+                                  timeout=10)
+                if ra.status_code == 200:
+                    ad = ra.json()
+                    att_members = (ad.get("attendance") or ad.get("members") or
+                                   ad.get("data") or [])
+                    if att_members and len(att_members) > 0:
+                        # attendance member count = roster for that day
+                        yesterday_total = len(att_members)
+                        print(f"[stats] Attendance endpoint: yesterday total={yesterday_total}")
+            except Exception as ae:
+                print(f"[stats] Attendance yesterday failed: {ae}")
+
+        # ── Strategy 4: admin/members — check if it has a yesterday snapshot ───
+        if yesterday_total is None:
+            try:
+                ry = requests.get(f"{base_url}/api/dashboard/stats",
+                                  headers=headers,
+                                  params={"date": yesterday_str},
+                                  timeout=10)
+                if ry.status_code == 200:
+                    yd     = ry.json()
+                    ystats = yd.get("stats", {})
+                    print(f"[stats] stats?date={yesterday_str} raw: {ystats}")
+                    if ystats.get("total_members") is not None:
+                        yesterday_total = ystats["total_members"]
+                        yesterday_prod  = ystats.get("average_productivity")
+            except Exception as se:
+                print(f"[stats] stats?date yesterday failed: {se}")
 
     except Exception as ye:
         print(f"[stats] Yesterday fetch failed (non-critical): {ye}")
 
     # ── Compute change percentages from yesterday data (only if not already set) ──
-    # preserved may already have employee_change/productivity_change from the raw
-    # stats object scan above — don't overwrite those with computed values.
+    # Only compute if we have REAL yesterday data (not None, not 0-as-placeholder).
+    # yesterday_prod == 0 almost certainly means "not found" not "truly zero" —
+    # a company with 0% avg productivity would not be running WorkEye.
     if "employee_change" not in preserved and yesterday_total is not None and yesterday_total > 0:
         preserved["employee_change"] = round(
             ((total - yesterday_total) / yesterday_total) * 100, 1)
-    if "productivity_change" not in preserved and yesterday_prod is not None:
-        if yesterday_prod > 0:
-            preserved["productivity_change"] = round(
-                ((avg_prod - yesterday_prod) / yesterday_prod) * 100, 1)
-        elif yesterday_prod == 0 and avg_prod > 0:
-            preserved["productivity_change"] = 100.0
+        print(f"[stats] Computed employee_change={preserved['employee_change']}% "
+              f"(today={total} yesterday={yesterday_total})")
+    if "productivity_change" not in preserved and yesterday_prod is not None and yesterday_prod > 0:
+        preserved["productivity_change"] = round(
+            ((avg_prod - yesterday_prod) / yesterday_prod) * 100, 1)
+        print(f"[stats] Computed productivity_change={preserved['productivity_change']}% "
+              f"(today={avg_prod} yesterday={yesterday_prod})")
 
     print(f"[stats] Final changes: employee={preserved.get('employee_change')} "
           f"prod={preserved.get('productivity_change')}")
