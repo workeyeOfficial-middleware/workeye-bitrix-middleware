@@ -133,12 +133,26 @@ def get_stats(base_url: str, token: str) -> dict:
     all_prod = [m.get("productivity", 0) for m in members]
     avg_prod = int(sum(all_prod) / len(all_prod)) if all_prod else 0
 
+    # Preserve WorkEye's own change/history fields BEFORE overwriting with computed values.
+    # WorkEye returns employee_change, productivity_change etc in the raw stats object.
+    preserved = {}
+    for key, val in stats.items():
+        if val is not None:
+            kl = key.lower()
+            if any(w in kl for w in ("change", "increase", "decrease", "yesterday",
+                                      "previous", "prev", "percent", "growth", "history")):
+                preserved[key] = val
+                print(f"[stats] Preserved WorkEye change field: {key}={val}")
+
     stats.update({
         "total_members": total, "active_now": active,
         "idle_now": idle, "offline": offline, "average_productivity": avg_prod,
     })
+    # Re-apply preserved fields so they are not lost
+    stats.update(preserved)
 
     print(f"[stats] Members:{total} Active:{active} Idle:{idle} Offline:{offline} Avg:{avg_prod}%")
+    print(f"[stats] Change fields from WorkEye: {list(preserved.keys())}")
     return {"stats": stats, "members": members}
 
 
