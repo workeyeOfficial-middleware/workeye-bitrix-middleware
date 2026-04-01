@@ -68,6 +68,10 @@ def get_stats(base_url: str, token: str) -> dict:
     data = r.json()
     stats   = data.get("stats", {})
     members = data.get("members", [])
+    # Log the FULL raw stats object so we can see every field WorkEye actually returns
+    print(f"[stats] RAW top-level keys: {list(data.keys())}")
+    print(f"[stats] RAW stats keys: {list(stats.keys())}")
+    print(f"[stats] RAW stats values: {stats}")
 
     # dashboard/stats returns only aggregate stats with no members array.
     # Fetch full member list (with devices, position, department, etc.) separately.
@@ -191,7 +195,35 @@ def get_stats(base_url: str, token: str) -> dict:
             yesterday_total, yesterday_prod = _extract_yesterday(td, yesterday_str)
             print(f"[stats] Trends: yesterday total={yesterday_total} prod={yesterday_prod}")
 
-        # ── Strategy 2: stats?date=yesterday ─────────────────────────────────
+        # ── Strategy 2: WorkEye raw stats object already has change fields ─────
+        # WorkEye computes employee_increase and productivity_increase itself.
+        # Check every possible field name they might use.
+        _emp_change_keys = [
+            "employee_increase", "employeeIncrease",
+            "employee_change", "employeeChange",
+            "member_change", "memberChange",
+            "total_members_change", "headcount_change",
+            "employees_increase", "employee_growth",
+            "new_employees", "employee_percent_change",
+        ]
+        _prod_change_keys = [
+            "productivity_increase", "productivityIncrease",
+            "productivity_change", "productivityChange",
+            "avg_productivity_change", "avgProductivityChange",
+            "productivity_growth", "productivity_percent_change",
+        ]
+        for k in _emp_change_keys:
+            if stats.get(k) is not None:
+                preserved["employee_change"] = float(stats[k])
+                print(f"[stats] Found employee change in raw stats: {k}={stats[k]}")
+                break
+        for k in _prod_change_keys:
+            if stats.get(k) is not None:
+                preserved["productivity_change"] = float(stats[k])
+                print(f"[stats] Found productivity change in raw stats: {k}={stats[k]}")
+                break
+
+        # ── Strategy 3: stats?date=yesterday as final fallback ────────────────
         if yesterday_total is None and yesterday_prod is None:
             ry = requests.get(f"{base_url}/api/dashboard/stats",
                               headers=headers,
@@ -201,12 +233,13 @@ def get_stats(base_url: str, token: str) -> dict:
                 yd       = ry.json()
                 ystats   = yd.get("stats", {})
                 ymembers = yd.get("members", [])
-                # Only use if the response actually looks like yesterday (not just today repeated)
-                if ymembers and len(ymembers) != total:
+                print(f"[stats] stats?date yesterday raw stats: {ystats}")
+                # Accept any non-empty response — don't filter by count equality
+                if ymembers:
                     yesterday_total = len(ymembers)
                     yprods = [m.get("productivity", 0) for m in ymembers]
                     yesterday_prod = int(sum(yprods)/len(yprods)) if yprods else None
-                elif ystats.get("total_members") and ystats.get("total_members") != total:
+                elif ystats.get("total_members") is not None:
                     yesterday_total = ystats.get("total_members")
                     yesterday_prod  = ystats.get("average_productivity")
                 print(f"[stats] stats?date: yesterday total={yesterday_total} prod={yesterday_prod}")
@@ -214,12 +247,13 @@ def get_stats(base_url: str, token: str) -> dict:
     except Exception as ye:
         print(f"[stats] Yesterday fetch failed (non-critical): {ye}")
 
-    # ── Compute change percentages ────────────────────────────────────────────
-    # Only write a value if we have real yesterday data — never guess.
-    if yesterday_total is not None and yesterday_total > 0:
+    # ── Compute change percentages from yesterday data (only if not already set) ──
+    # preserved may already have employee_change/productivity_change from the raw
+    # stats object scan above — don't overwrite those with computed values.
+    if "employee_change" not in preserved and yesterday_total is not None and yesterday_total > 0:
         preserved["employee_change"] = round(
             ((total - yesterday_total) / yesterday_total) * 100, 1)
-    if yesterday_prod is not None:
+    if "productivity_change" not in preserved and yesterday_prod is not None:
         if yesterday_prod > 0:
             preserved["productivity_change"] = round(
                 ((avg_prod - yesterday_prod) / yesterday_prod) * 100, 1)
