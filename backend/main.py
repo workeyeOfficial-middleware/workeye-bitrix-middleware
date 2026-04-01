@@ -136,43 +136,6 @@ async def debug_raw_stats(workeye_url: str, token: str):
     except Exception as e:
         return {"error": str(e)}
 
-# ── Debug: dump EVERYTHING WorkEye returns ───────────────
-@app.get("/debug-all")
-async def debug_all(workeye_url: str, token: str):
-    """Dumps the complete raw response from every key endpoint.
-    Visit this URL after deploying to see exact field names."""
-    import requests as req
-    headers = {"Authorization": f"Bearer {token}"}
-    out = {}
-
-    # 1. Full /api/dashboard/stats raw response
-    try:
-        r = req.get(f"{workeye_url}/api/dashboard/stats", headers=headers, timeout=15)
-        raw = r.json() if r.status_code == 200 else {}
-        out["dashboard_stats"] = {
-            "top_level_keys": list(raw.keys()) if isinstance(raw, dict) else str(type(raw)),
-            "stats_object": raw.get("stats", {}),
-            "stats_keys": list(raw.get("stats", {}).keys()),
-        }
-    except Exception as e:
-        out["dashboard_stats"] = {"error": str(e)}
-
-    # 2. Full activity-trends raw response
-    try:
-        r = req.get(f"{workeye_url}/api/dashboard/activity-trends", headers=headers, timeout=15)
-        raw = r.json() if r.status_code == 200 else {}
-        trends = raw.get("trends") if isinstance(raw, dict) else raw
-        out["activity_trends"] = {
-            "top_level_keys": list(raw.keys()) if isinstance(raw, dict) else str(type(raw)),
-            "trends_type": str(type(trends)),
-            "trends_sample": trends[:3] if isinstance(trends, list) else (str(trends)[:500] if trends else None),
-            "trends_keys_in_first_item": list(trends[0].keys()) if isinstance(trends, list) and trends and isinstance(trends[0], dict) else None,
-        }
-    except Exception as e:
-        out["activity_trends"] = {"error": str(e)}
-
-    return out
-
 # ── Debug: dump activity-trends raw response ─────────────
 @app.get("/debug-trends")
 async def debug_trends(workeye_url: str, token: str):
