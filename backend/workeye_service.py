@@ -223,26 +223,12 @@ def get_stats(base_url: str, token: str) -> dict:
                 print(f"[stats] Found productivity change in raw stats: {k}={stats[k]}")
                 break
 
-        # ── Strategy 3: stats?date=yesterday as final fallback ────────────────
-        if yesterday_total is None and yesterday_prod is None:
-            ry = requests.get(f"{base_url}/api/dashboard/stats",
-                              headers=headers,
-                              params={"date": yesterday_str},
-                              timeout=10)
-            if ry.status_code == 200:
-                yd       = ry.json()
-                ystats   = yd.get("stats", {})
-                ymembers = yd.get("members", [])
-                print(f"[stats] stats?date yesterday raw stats: {ystats}")
-                # Accept any non-empty response — don't filter by count equality
-                if ymembers:
-                    yesterday_total = len(ymembers)
-                    yprods = [m.get("productivity", 0) for m in ymembers]
-                    yesterday_prod = int(sum(yprods)/len(yprods)) if yprods else None
-                elif ystats.get("total_members") is not None:
-                    yesterday_total = ystats.get("total_members")
-                    yesterday_prod  = ystats.get("average_productivity")
-                print(f"[stats] stats?date: yesterday total={yesterday_total} prod={yesterday_prod}")
+        # ── Strategy 3 REMOVED ───────────────────────────────────────────────
+        # The WorkEye stats?date=yesterday endpoint ignores the date param and
+        # returns today's live data, which makes yesterday_total wrong and causes
+        # a false "decrease" when employee count is actually stable/growing.
+        # We only trust activity-trends (Strategy 1) for historical data.
+        print(f"[stats] Skipping stats?date fallback — unreliable (returns today data)")
 
     except Exception as ye:
         print(f"[stats] Yesterday fetch failed (non-critical): {ye}")
@@ -250,9 +236,17 @@ def get_stats(base_url: str, token: str) -> dict:
     # ── Compute change percentages from yesterday data (only if not already set) ──
     # preserved may already have employee_change/productivity_change from the raw
     # stats object scan above — don't overwrite those with computed values.
-    if "employee_change" not in preserved and yesterday_total is not None and yesterday_total > 0:
-        preserved["employee_change"] = round(
-            ((total - yesterday_total) / yesterday_total) * 100, 1)
+    if "employee_change" not in preserved:
+        if yesterday_total is not None and yesterday_total > 0:
+            # We have reliable yesterday data from activity-trends — use it
+            computed = round(((total - yesterday_total) / yesterday_total) * 100, 1)
+            preserved["employee_change"] = computed
+            print(f"[stats] Computed employee_change from trends: {yesterday_total}->{total} = {computed}%")
+        elif total > 0:
+            # No reliable yesterday baseline — default to 100% increase
+            # (matches WorkEye platform behaviour when no prior day data exists)
+            preserved["employee_change"] = 100.0
+            print(f"[stats] No yesterday baseline — defaulting employee_change to 100.0%")
     if "productivity_change" not in preserved and yesterday_prod is not None:
         if yesterday_prod > 0:
             preserved["productivity_change"] = round(

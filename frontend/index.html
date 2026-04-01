@@ -1586,17 +1586,14 @@ let prevTotal=null,prevProd=null;
 try{const saved=JSON.parse(localStorage.getItem("we_total_history")||"{}");prevTotal=saved[yesterday]??null;saved[today]=total;localStorage.setItem("we_total_history",JSON.stringify(saved))}catch(x){}
 try{const savedProd=JSON.parse(localStorage.getItem("we_prod_history")||"{}");prevProd=savedProd[yesterday]??null;savedProd[today]=prod;localStorage.setItem("we_prod_history",JSON.stringify(savedProd))}catch(xp){}
 
-// Compute total employees change: always use actual count comparison first
-// positive = employees increased vs yesterday, negative = decreased
+// Employee change: always trust backend value first (it uses activity-trends data)
+// Fall back to localStorage comparison only if backend sends nothing.
 let totalChange=null;
-if(prevTotal!==null){
-  // Use real count difference: today vs yesterday stored in localStorage
+const _tcKeys=["employee_change","employee_change_percent","member_change","member_change_percent","total_change","headcount_change","employees_change","employee_increase","member_increase"];
+for(const k of _tcKeys){if(s[k]!=null){totalChange=parseFloat(s[k]);console.log("[change] Backend employee_change field",k,"=",totalChange);break;}}
+if(totalChange===null&&prevTotal!==null&&prevTotal>0){
   totalChange=Math.round(((total-prevTotal)/Math.max(prevTotal,1))*100*10)/10;
-  console.log("[change] Employee count: yesterday="+prevTotal+", today="+total+", change="+totalChange+"%");
-} else {
-  // No localStorage history yet — try WorkEye server field as fallback
-  const _tcKeys=["employee_change","employee_change_percent","member_change","member_change_percent","total_change","headcount_change","employees_change","employee_increase","member_increase"];
-  for(const k of _tcKeys){if(s[k]!=null){totalChange=parseFloat(s[k]);console.log("[change] Fallback WorkEye field",k,"=",totalChange);break;}}
+  console.log("[change] localStorage fallback: yesterday="+prevTotal+", today="+total+", change="+totalChange+"%");
 }
 
 // 1. Try WorkEye's own server-computed change value for productivity
