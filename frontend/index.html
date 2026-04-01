@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="light">
 <head>
-  <meta charset="UTF-8"/>h
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>WorkEye → Bitrix24</title>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&family=Inter:wght@200;300;400;500&display=swap" rel="stylesheet"/>
@@ -1586,12 +1586,18 @@ let prevTotal=null,prevProd=null;
 try{const saved=JSON.parse(localStorage.getItem("we_total_history")||"{}");prevTotal=saved[yesterday]??null;saved[today]=total;localStorage.setItem("we_total_history",JSON.stringify(saved))}catch(x){}
 try{const savedProd=JSON.parse(localStorage.getItem("we_prod_history")||"{}");prevProd=savedProd[yesterday]??null;savedProd[today]=prod;localStorage.setItem("we_prod_history",JSON.stringify(savedProd))}catch(xp){}
 
-// 1. Try WorkEye's own server-computed change value for employees
+// Compute total employees change: always use actual count comparison first
+// positive = employees increased vs yesterday, negative = decreased
 let totalChange=null;
-const _tcKeys=["employee_change","employee_change_percent","member_change","member_change_percent","total_change","headcount_change","employees_change","employee_increase","member_increase"];
-for(const k of _tcKeys){if(s[k]!=null){totalChange=parseFloat(s[k]);console.log("[change] Using WorkEye field",k,"=",totalChange);break;}}
-// 2. Fallback to yesterday from localStorage
-if(totalChange===null&&prevTotal!==null){totalChange=Math.round(((total-prevTotal)/Math.max(prevTotal,1))*100*10)/10;console.log("[change] Using localStorage for total change:",totalChange);}
+if(prevTotal!==null){
+  // Use real count difference: today vs yesterday stored in localStorage
+  totalChange=Math.round(((total-prevTotal)/Math.max(prevTotal,1))*100*10)/10;
+  console.log("[change] Employee count: yesterday="+prevTotal+", today="+total+", change="+totalChange+"%");
+} else {
+  // No localStorage history yet — try WorkEye server field as fallback
+  const _tcKeys=["employee_change","employee_change_percent","member_change","member_change_percent","total_change","headcount_change","employees_change","employee_increase","member_increase"];
+  for(const k of _tcKeys){if(s[k]!=null){totalChange=parseFloat(s[k]);console.log("[change] Fallback WorkEye field",k,"=",totalChange);break;}}
+}
 
 // 1. Try WorkEye's own server-computed change value for productivity
 let prodChange=null;
