@@ -1,8 +1,5 @@
 fastapi
-uvicorn
+uvicorn[standard]
 requests
-fastapi
-uvicorn
 httpx
 python-dotenv
-requests
