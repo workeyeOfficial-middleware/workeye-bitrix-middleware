@@ -1463,7 +1463,9 @@ function saveSession(t,u,e,p,profile){SESSION={token:t,workeye_url:u,email:e,pas
 function loadSession(){try{const s=localStorage.getItem("we_session");if(s)SESSION=JSON.parse(s)}catch(x){}}
 function clearSession(){SESSION={token:null,workeye_url:null};try{localStorage.removeItem("we_session")}catch(x){}}
 function toggleTheme(){const h=document.documentElement,d=h.getAttribute("data-theme")==="dark";h.setAttribute("data-theme",d?"light":"dark");try{localStorage.setItem("we_theme",d?"light":"dark")}catch(x){}}
-(function(){try{const t=localStorage.getItem("we_theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(x){}})();
+(function(){try{const t=localStorage.getItem("we_theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(x){}})(  );
+// Clear stale employee history cache that caused false "decrease" label
+try{localStorage.removeItem("we_total_history")}catch(x){}
 function togglePwd(){const inp=document.getElementById("loginPassword"),eye=document.getElementById("pwdEyeIcon"),eyeOff=document.getElementById("pwdEyeOffIcon");if(inp.type==="password"){inp.type="text";eye.style.display="none";eyeOff.style.display=""}else{inp.type="password";eye.style.display="";eyeOff.style.display="none"}}
 async function doLogin(){const url="https://backend-35m2.onrender.com",email=document.getElementById("loginEmail").value.trim(),password=document.getElementById("loginPassword").value.trim(),btn=document.getElementById("loginBtn"),err=document.getElementById("loginError");if(!email||!password){err.textContent="Please fill in all fields.";err.classList.add("show");return}btn.disabled=true;btn.textContent="Logging in…";err.classList.remove("show");try{const r=await fetch(API+"/login",{method:"POST",headers:{...HEADERS,"Content-Type":"application/json"},body:JSON.stringify({email,password,workeye_url:url})}),data=await r.json();if(!r.ok||!data.success)throw new Error(data.detail||"Login failed");saveSession(data.token,url,email,password,data.profile||{});showDashboard()}catch(e){err.textContent=e.message||"Login failed.";err.classList.add("show")}finally{btn.disabled=false;btn.textContent="Login to WorkEye →"}}
 function decodeJWT(token){try{const b=token.split(".")[1];const pad=b.length%4?b+"===".slice(b.length%4):"";return JSON.parse(atob(pad.replace(/-/g,"+").replace(/_/g,"/")))}catch(e){return {}}}
@@ -1581,20 +1583,16 @@ async function apiFetch(p,extra={}){let r=await fetch(API+p+sessionParams(extra)
 async function apiPost(p){let r=await fetch(API+p+sessionParams(),{method:"POST",headers:HEADERS});if(r.status===401){const ok=await refreshToken();if(ok)r=await fetch(API+p+sessionParams(),{method:"POST",headers:HEADERS});else throw new Error("Session expired")}if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}
 function updateDonut(id,pct){const circ=2*Math.PI*46,offset=circ-(pct/100)*circ,el=document.getElementById(id);if(el)el.style.strokeDashoffset=offset}
 async function loadStats(){try{const res=await apiFetch("/get-stats"),pl=res.data||res,s=pl.stats||pl,members=pl.members||[];console.log("WorkEye stats:", JSON.stringify(s));const total=s.total_members||members.length||0,active=s.active_now||0,idle=s.idle_now||0,offline=s.offline||0,prod=s.average_productivity||0,activeRate=total>0?Math.round((active/total)*100):0;animateCount(document.getElementById("vTotal"),total);animateCount(document.getElementById("vActiveRate"),activeRate,"%");animateCount(document.getElementById("vProd"),prod,"%");animateCount(document.getElementById("vActive"),active);animateCount(document.getElementById("vIdle"),idle);animateCount(document.getElementById("vOffline"),offline);animateCount(document.getElementById("vTeamSize"),total);const _istNow=new Date(new Date().getTime()+(5.5*60*60*1000));const today=_istNow.toISOString().slice(0,10);const _istYest=new Date(_istNow.getTime()-86400000);const yesterday=_istYest.toISOString().slice(0,10);// ── Change indicators ─────────────────────────────────────────────────────
-// Priority: 1) WorkEye server value  2) localStorage history  3) "today" fallback
-let prevTotal=null,prevProd=null;
-try{const saved=JSON.parse(localStorage.getItem("we_total_history")||"{}");prevTotal=saved[yesterday]??null;saved[today]=total;localStorage.setItem("we_total_history",JSON.stringify(saved))}catch(x){}
+// Employee change: use ONLY the backend-computed value (from activity-trends API).
+// localStorage history is intentionally NOT used — it was causing false "decrease"
+// by treating a previous session's count as "yesterday".
+let prevProd=null;
 try{const savedProd=JSON.parse(localStorage.getItem("we_prod_history")||"{}");prevProd=savedProd[yesterday]??null;savedProd[today]=prod;localStorage.setItem("we_prod_history",JSON.stringify(savedProd))}catch(xp){}
 
-// Employee change: always trust backend value first (it uses activity-trends data)
-// Fall back to localStorage comparison only if backend sends nothing.
 let totalChange=null;
 const _tcKeys=["employee_change","employee_change_percent","member_change","member_change_percent","total_change","headcount_change","employees_change","employee_increase","member_increase"];
-for(const k of _tcKeys){if(s[k]!=null){totalChange=parseFloat(s[k]);console.log("[change] Backend employee_change field",k,"=",totalChange);break;}}
-if(totalChange===null&&prevTotal!==null&&prevTotal>0){
-  totalChange=Math.round(((total-prevTotal)/Math.max(prevTotal,1))*100*10)/10;
-  console.log("[change] localStorage fallback: yesterday="+prevTotal+", today="+total+", change="+totalChange+"%");
-}
+for(const k of _tcKeys){if(s[k]!=null){totalChange=parseFloat(s[k]);console.log("[change] Backend employee_change:",k,"=",totalChange);break;}}
+// No localStorage fallback for employees — if backend sends nothing, show nothing
 
 // 1. Try WorkEye's own server-computed change value for productivity
 let prodChange=null;
