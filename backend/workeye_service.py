@@ -133,8 +133,7 @@ def get_stats(base_url: str, token: str) -> dict:
     all_prod = [m.get("productivity", 0) for m in members]
     avg_prod = int(sum(all_prod) / len(all_prod)) if all_prod else 0
 
-    # Preserve WorkEye's own change/history fields BEFORE overwriting with computed values.
-    # WorkEye returns employee_change, productivity_change etc in the raw stats object.
+    # ── Preserve WorkEye's own change/history fields ──────────────────────────
     preserved = {}
     for key, val in stats.items():
         if val is not None:
@@ -144,15 +143,99 @@ def get_stats(base_url: str, token: str) -> dict:
                 preserved[key] = val
                 print(f"[stats] Preserved WorkEye change field: {key}={val}")
 
+    # ── Fetch yesterday's data to compute accurate change percentages ──────────
+    # Strategy:
+    #  1. Try /api/dashboard/activity-trends  — WorkEye's own historical source
+    #  2. Try /api/dashboard/stats?date=yesterday — direct stats for that day
+    #  3. Fall back to "not available" (frontend shows neutral text)
+    yesterday_total = None
+    yesterday_prod  = None
+    try:
+        from datetime import timezone, timedelta as _td
+        IST = timezone(_td(hours=5, minutes=30))
+        yesterday_str = (datetime.now(IST) - _td(days=1)).strftime("%Y-%m-%d")
+        today_str     = datetime.now(IST).strftime("%Y-%m-%d")
+
+        # ── Strategy 1: activity-trends endpoint ──────────────────────────────
+        rt = requests.get(f"{base_url}/api/dashboard/activity-trends",
+                          headers=headers, timeout=10)
+        if rt.status_code == 200:
+            td = rt.json()
+            print(f"[stats] activity-trends keys: {list(td.keys()) if isinstance(td, dict) else type(td)}")
+
+            # WorkEye typically returns a list of daily records or a dict with daily arrays.
+            # We look for yesterday's entry in whatever shape the data comes in.
+            def _extract_yesterday(obj, ydate):
+                """Recursively find a record matching yesterday's date and return
+                (total_members, avg_productivity) or (None, None)."""
+                if isinstance(obj, list):
+                    for item in obj:
+                        if isinstance(item, dict):
+                            d = (item.get("date") or item.get("day") or
+                                 item.get("created_at","")[:10] or "")
+                            if d == ydate:
+                                tot  = (item.get("total_members") or item.get("total") or
+                                        item.get("employee_count") or item.get("headcount"))
+                                prod = (item.get("average_productivity") or
+                                        item.get("avg_productivity") or
+                                        item.get("productivity"))
+                                return tot, prod
+                if isinstance(obj, dict):
+                    for v in obj.values():
+                        if isinstance(v, (list, dict)):
+                            tot, prod = _extract_yesterday(v, ydate)
+                            if tot is not None or prod is not None:
+                                return tot, prod
+                return None, None
+
+            yesterday_total, yesterday_prod = _extract_yesterday(td, yesterday_str)
+            print(f"[stats] Trends: yesterday total={yesterday_total} prod={yesterday_prod}")
+
+        # ── Strategy 2: stats?date=yesterday ─────────────────────────────────
+        if yesterday_total is None and yesterday_prod is None:
+            ry = requests.get(f"{base_url}/api/dashboard/stats",
+                              headers=headers,
+                              params={"date": yesterday_str},
+                              timeout=10)
+            if ry.status_code == 200:
+                yd       = ry.json()
+                ystats   = yd.get("stats", {})
+                ymembers = yd.get("members", [])
+                # Only use if the response actually looks like yesterday (not just today repeated)
+                if ymembers and len(ymembers) != total:
+                    yesterday_total = len(ymembers)
+                    yprods = [m.get("productivity", 0) for m in ymembers]
+                    yesterday_prod = int(sum(yprods)/len(yprods)) if yprods else None
+                elif ystats.get("total_members") and ystats.get("total_members") != total:
+                    yesterday_total = ystats.get("total_members")
+                    yesterday_prod  = ystats.get("average_productivity")
+                print(f"[stats] stats?date: yesterday total={yesterday_total} prod={yesterday_prod}")
+
+    except Exception as ye:
+        print(f"[stats] Yesterday fetch failed (non-critical): {ye}")
+
+    # ── Compute change percentages ────────────────────────────────────────────
+    # Only write a value if we have real yesterday data — never guess.
+    if yesterday_total is not None and yesterday_total > 0:
+        preserved["employee_change"] = round(
+            ((total - yesterday_total) / yesterday_total) * 100, 1)
+    if yesterday_prod is not None:
+        if yesterday_prod > 0:
+            preserved["productivity_change"] = round(
+                ((avg_prod - yesterday_prod) / yesterday_prod) * 100, 1)
+        elif yesterday_prod == 0 and avg_prod > 0:
+            preserved["productivity_change"] = 100.0
+
+    print(f"[stats] Final changes: employee={preserved.get('employee_change')} "
+          f"prod={preserved.get('productivity_change')}")
+
     stats.update({
         "total_members": total, "active_now": active,
         "idle_now": idle, "offline": offline, "average_productivity": avg_prod,
     })
-    # Re-apply preserved fields so they are not lost
     stats.update(preserved)
 
     print(f"[stats] Members:{total} Active:{active} Idle:{idle} Offline:{offline} Avg:{avg_prod}%")
-    print(f"[stats] Change fields from WorkEye: {list(preserved.keys())}")
     return {"stats": stats, "members": members}
 
 

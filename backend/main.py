@@ -108,6 +108,63 @@ async def get_stats(workeye_url: str, token: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# ── Debug: dump raw /api/dashboard/stats keys + values ───
+@app.get("/debug-raw-stats")
+async def debug_raw_stats(workeye_url: str, token: str):
+    """Returns the complete raw stats object from WorkEye so we can see
+    every field name and value — use this to find change/history fields."""
+    import requests as req
+    headers = {"Authorization": f"Bearer {token}"}
+    try:
+        r = req.get(f"{workeye_url}/api/dashboard/stats", headers=headers, timeout=15)
+        raw = r.json() if r.status_code == 200 else {}
+        stats = raw.get("stats", {})
+        # Also probe /api/dashboard/stats?date=yesterday
+        from datetime import datetime, timedelta, timezone
+        IST = timezone(timedelta(hours=5, minutes=30))
+        yesterday = (datetime.now(IST) - timedelta(days=1)).strftime("%Y-%m-%d")
+        r2 = req.get(f"{workeye_url}/api/dashboard/stats", headers=headers,
+                     params={"date": yesterday}, timeout=15)
+        stats_yesterday = r2.json().get("stats", {}) if r2.status_code == 200 else {}
+        return {
+            "today_stats_keys": list(stats.keys()),
+            "today_stats": stats,
+            "yesterday_stats_keys": list(stats_yesterday.keys()),
+            "yesterday_stats": stats_yesterday,
+            "yesterday_date": yesterday,
+        }
+    except Exception as e:
+        return {"error": str(e)}
+
+# ── Debug: dump activity-trends raw response ─────────────
+@app.get("/debug-trends")
+async def debug_trends(workeye_url: str, token: str):
+    """Returns raw /api/dashboard/activity-trends so we can see
+    what historical fields WorkEye actually provides."""
+    import requests as req
+    headers = {"Authorization": f"Bearer {token}"}
+    results = {}
+    # Try several date-parameterised variants too
+    from datetime import datetime, timedelta, timezone
+    IST = timezone(timedelta(hours=5, minutes=30))
+    yesterday = (datetime.now(IST) - timedelta(days=1)).strftime("%Y-%m-%d")
+    today     = datetime.now(IST).strftime("%Y-%m-%d")
+    candidates = [
+        f"{workeye_url}/api/dashboard/activity-trends",
+        f"{workeye_url}/api/dashboard/productivity-trends",
+        f"{workeye_url}/api/dashboard/stats/history",
+        f"{workeye_url}/api/dashboard/daily-stats",
+        f"{workeye_url}/api/reports/daily",
+        f"{workeye_url}/api/reports/productivity",
+    ]
+    for url in candidates:
+        try:
+            r = req.get(url, headers=headers, timeout=8)
+            results[url] = {"status": r.status_code, "body": r.json() if r.status_code == 200 else r.text[:200]}
+        except Exception as e:
+            results[url] = {"error": str(e)}
+    return results
+
 # ── Debug: show raw fields WorkEye returns for members ───
 @app.get("/debug-member-fields")
 async def debug_member_fields(workeye_url: str, token: str):
