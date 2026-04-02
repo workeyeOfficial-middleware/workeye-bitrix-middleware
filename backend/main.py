@@ -61,7 +61,10 @@ async def serve_index_html():
 
 
 # ✅ Optional (if you have JS/CSS)
-app.mount("/static", StaticFiles(directory="../frontend/static"), name="static")
+static_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "static")
+
+if os.path.exists(static_path):
+    app.mount("/static", StaticFiles(directory=static_path), name="static")
 
 
 # ── Legal redirects ───────────────────────────────────────
