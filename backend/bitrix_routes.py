@@ -59,7 +59,20 @@ def setup_bitrix_routes(app: FastAPI):
                     status_code=302
                 )
 
-            return HTMLResponse("<h2>WorkEye Install Endpoint</h2>")
+            return HTMLResponse(f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <script>
+        // ✅ Redirect inside iframe (WORKS in Bitrix)
+        window.location.href = "/bitrix/app?DOMAIN={DOMAIN}&member_id={member_id}&AUTH_ID={AUTH_ID}";
+    </script>
+</head>
+<body>
+    Redirecting to WorkEye App...
+</body>
+</html>
+""")
 
         except Exception as e:
             print(f"❌ Install error: {e}")

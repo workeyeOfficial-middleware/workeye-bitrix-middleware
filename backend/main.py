@@ -8,6 +8,8 @@ import workeye_service as ws
 import bitrix_service as bs
 import bitrix_routes
 import os
+import database
+database.init_db()
 
 app = FastAPI()
 
@@ -24,7 +26,10 @@ app.add_middleware(
 async def allow_iframe(request, call_next):
     response = await call_next(request)
 
-    response.headers["X-Frame-Options"] = "ALLOWALL"
+    # ❌ REMOVE invalid header
+    response.headers.pop("X-Frame-Options", None)
+
+    # ✅ Allow Bitrix iframe
     response.headers["Content-Security-Policy"] = (
         "frame-ancestors https://*.bitrix24.com https://*.bitrix24.ru"
     )
