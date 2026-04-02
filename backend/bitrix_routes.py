@@ -1,26 +1,41 @@
 """
-bitrix_routes.py
-================
-Bitrix24 OAuth + App integration (FINAL FIXED VERSION)
+bitrix_routes.py — FINAL WORKING VERSION
+=========================================
+ROOT CAUSE FIX:
+- Bitrix24 shows "Loading..." forever when:
+  1. App URL returns a redirect instead of HTML directly
+  2. BX24.init() is never called
+  3. index.html fails to load
 
-✔ Fixes infinite loading
-✔ Fixes iframe issue
-✔ Fixes install → app redirect
-✔ Handles POST + GET properly
-✔ Production ready
+SOLUTION:
+- /bitrix/install → saves tokens + returns HTML with BX24.init()
+- /bitrix/app     → reads index.html from disk and returns it directly
+                    NO redirects. NO window.location. Just HTML.
 """
 
 from fastapi import FastAPI, Request
-from fastapi.responses import Response, HTMLResponse, RedirectResponse
+from fastapi.responses import Response, HTMLResponse
 from typing import Optional
+import os
 import database
 
 
-def setup_bitrix_routes(app: FastAPI):
+# Path to index.html (backend runs from /backend dir, frontend is ../frontend)
+FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend")
+INDEX_PATH   = os.path.join(FRONTEND_DIR, "index.html")
 
-    # ─────────────────────────────────────────────
-    # ✅ INSTALL HANDLER (FIXED)
-    # ─────────────────────────────────────────────
+
+def read_index_html() -> str:
+    """Read index.html and return its content. Raises if file not found."""
+    if not os.path.exists(INDEX_PATH):
+        raise FileNotFoundError(f"index.html not found at {INDEX_PATH}")
+    with open(INDEX_PATH, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+def setup_bitrix_routes(app):
+
+    # ── INSTALL ───────────────────────────────────────────────────────────────
     @app.get("/bitrix/install")
     @app.post("/bitrix/install")
     async def bitrix_install(
@@ -31,20 +46,21 @@ def setup_bitrix_routes(app: FastAPI):
         member_id: Optional[str] = None,
         DOMAIN: Optional[str] = None,
     ):
+        # Parse form data (Bitrix24 sends POST as multipart/form-data)
         try:
             form = await request.form()
             AUTH_ID      = AUTH_ID      or form.get("AUTH_ID")
             REFRESH_ID   = REFRESH_ID   or form.get("REFRESH_ID")
             member_id    = member_id    or form.get("member_id")
             DOMAIN       = DOMAIN       or form.get("DOMAIN")
-            AUTH_EXPIRES = AUTH_EXPIRES or int(form.get("AUTH_EXPIRES") or 3600)
+            AUTH_EXPIRES = int(form.get("AUTH_EXPIRES") or AUTH_EXPIRES or 3600)
         except Exception:
             pass
 
+        # Save tokens to database
         try:
             if AUTH_ID and REFRESH_ID and member_id and DOMAIN:
                 print(f"✓ Installed: {member_id} @ {DOMAIN}")
-
                 database.save_portal(
                     member_id=member_id,
                     domain=DOMAIN,
@@ -52,36 +68,35 @@ def setup_bitrix_routes(app: FastAPI):
                     refresh_token=REFRESH_ID,
                     expires_in=AUTH_EXPIRES or 3600
                 )
+        except Exception as e:
+            print(f"❌ DB save error: {e}")
 
-                # ✅ 🔥 CRITICAL: Redirect to app after install
-                return RedirectResponse(
-                    url=f"/bitrix/app?DOMAIN={DOMAIN}&member_id={member_id}&AUTH_ID={AUTH_ID}",
-                    status_code=302
-                )
-
-            return HTMLResponse(f"""
+        # Return HTML with BX24.init() — Bitrix24 requires this to dismiss loading screen
+        return HTMLResponse(content="""
 <!DOCTYPE html>
 <html>
 <head>
-    <script>
-        // ✅ Redirect inside iframe (WORKS in Bitrix)
-        window.location.href = "/bitrix/app?DOMAIN={DOMAIN}&member_id={member_id}&AUTH_ID={AUTH_ID}";
-    </script>
+    <meta charset="utf-8">
+    <title>WorkEye Installed</title>
+    <script src="https://api.bitrix24.com/api/v1/"></script>
 </head>
-<body>
-    Redirecting to WorkEye App...
+<body style="font-family:Arial,sans-serif;text-align:center;padding:60px 20px;background:#f5f5f5;">
+    <div style="background:white;border-radius:16px;padding:40px;max-width:400px;margin:0 auto;box-shadow:0 4px 20px rgba(0,0,0,.08)">
+        <div style="font-size:48px;margin-bottom:16px">✅</div>
+        <h2 style="color:#1e293b;margin-bottom:8px">WorkEye Installed!</h2>
+        <p style="color:#64748b;font-size:14px">Open WorkEye from the left menu to get started.</p>
+    </div>
+    <script>
+        BX24.init(function() {
+            BX24.resizeWindow(500, 350);
+        });
+    </script>
 </body>
 </html>
-""")
-
-        except Exception as e:
-            print(f"❌ Install error: {e}")
-            return HTMLResponse("<h2>WorkEye Install OK</h2>")
+""", status_code=200)
 
 
-    # ─────────────────────────────────────────────
-    # ✅ UNINSTALL HANDLER
-    # ─────────────────────────────────────────────
+    # ── UNINSTALL ─────────────────────────────────────────────────────────────
     @app.post("/bitrix/uninstall")
     async def bitrix_uninstall(request: Request, member_id: Optional[str] = None):
         try:
@@ -94,46 +109,56 @@ def setup_bitrix_routes(app: FastAPI):
             if member_id:
                 print(f"✓ Uninstalled: {member_id}")
                 database.delete_portal(member_id)
-
-            return Response("OK")
-
         except Exception as e:
             print(f"❌ Uninstall error: {e}")
-            return Response("OK")
+
+        return Response(content="OK", status_code=200)
 
 
-    # ─────────────────────────────────────────────
-    # ✅ APP LAUNCHER (FINAL FIXED)
-    # ─────────────────────────────────────────────
+    # ── APP LAUNCHER ──────────────────────────────────────────────────────────
     @app.get("/bitrix/app")
     @app.post("/bitrix/app")
-    async def bitrix_app_launcher(
-        request: Request,
-        DOMAIN: Optional[str] = None,
-        member_id: Optional[str] = None,
-        AUTH_ID: Optional[str] = None,
-        REFRESH_ID: Optional[str] = None,
-    ):
+    async def bitrix_app_launcher(request: Request):
+        """
+        Called by Bitrix24 when user opens the app.
+        MUST return HTML directly — no redirects, no window.location.
+        Bitrix24 shows "Loading..." forever if it gets anything other than
+        HTML with BX24.init() called inside it.
+        """
+        # Read and serve index.html directly
         try:
-            form = await request.form()
-            DOMAIN     = DOMAIN     or form.get("DOMAIN")
-            member_id  = member_id  or form.get("member_id")
-            AUTH_ID    = AUTH_ID    or form.get("AUTH_ID")
-            REFRESH_ID = REFRESH_ID or form.get("REFRESH_ID")
-        except Exception:
-            pass
-
-        try:
-            print(f"✓ App opened: {DOMAIN}")
-
-            # Serve index.html directly — no redirect (redirect breaks inside Bitrix iframe)
-            import os
-            index_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "index.html")
-            with open(index_path, "r", encoding="utf-8") as f:
-                html = f.read()
-
+            html = read_index_html()
+            print(f"✓ Serving index.html ({len(html)} bytes) for Bitrix app")
             return HTMLResponse(content=html, status_code=200)
 
+        except FileNotFoundError as e:
+            print(f"❌ {e}")
+            return HTMLResponse(content="""
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://api.bitrix24.com/api/v1/"></script>
+</head>
+<body style="font-family:Arial;padding:40px;text-align:center">
+    <h2>⚠️ WorkEye app files not found</h2>
+    <p>Please contact support.</p>
+    <script>BX24.init(function(){ BX24.resizeWindow(400,200); });</script>
+</body>
+</html>
+""", status_code=200)
+
         except Exception as e:
-            print(f"❌ App error: {e}")
-            return HTMLResponse("<h2>WorkEye Error — could not load app</h2>")
+            print(f"❌ App launcher error: {e}")
+            return HTMLResponse(content=f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://api.bitrix24.com/api/v1/"></script>
+</head>
+<body style="font-family:Arial;padding:40px;text-align:center">
+    <h2>⚠️ Error loading WorkEye</h2>
+    <p>{str(e)}</p>
+    <script>BX24.init(function(){{ BX24.resizeWindow(400,200); }});</script>
+</body>
+</html>
+""", status_code=200)
