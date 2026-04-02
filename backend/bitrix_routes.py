@@ -1,26 +1,30 @@
 """
 bitrix_routes.py
 ================
-Bitrix24 OAuth + App integration (FINAL FIXED VERSION)
+All Bitrix24 OAuth and integration endpoints
+Separated from main WorkEye app logic
 
-✔ Fixes infinite loading
-✔ Fixes iframe issue
-✔ Fixes install → app redirect
-✔ Handles POST + GET properly
-✔ Production ready
+This keeps Bitrix code isolated and easy to maintain
+
+CHANGES FROM ORIGINAL:
+- Filled in TODO: Save to database on install  → uses database.py save_portal()
+- Filled in TODO: Delete from database on uninstall → uses database.py delete_portal()
+- Everything else is exactly the same
 """
 
 from fastapi import FastAPI, Request
-from fastapi.responses import Response, HTMLResponse, RedirectResponse
+from fastapi.responses import Response
 from typing import Optional
 import database
 
 
 def setup_bitrix_routes(app: FastAPI):
+    """
+    Setup all Bitrix24 endpoints on the FastAPI app
+    Call this in main.py to register routes
+    """
 
-    # ─────────────────────────────────────────────
-    # ✅ INSTALL HANDLER (FIXED)
-    # ─────────────────────────────────────────────
+    # ── Bitrix Install Handler ────────────────────────────────────────────────────
     @app.get("/bitrix/install")
     @app.post("/bitrix/install")
     async def bitrix_install(
@@ -31,6 +35,7 @@ def setup_bitrix_routes(app: FastAPI):
         member_id: Optional[str] = None,
         DOMAIN: Optional[str] = None,
     ):
+        # Bitrix24 sends POST as form-data — parse it
         try:
             form = await request.form()
             AUTH_ID      = AUTH_ID      or form.get("AUTH_ID")
@@ -40,48 +45,47 @@ def setup_bitrix_routes(app: FastAPI):
             AUTH_EXPIRES = AUTH_EXPIRES or int(form.get("AUTH_EXPIRES") or 3600)
         except Exception:
             pass
+        """
+        Bitrix24 OAuth callback when user installs the app
 
+        Receives:
+        - AUTH_ID: Access token from Bitrix24
+        - REFRESH_ID: Refresh token
+        - member_id: Bitrix24 portal ID
+        - DOMAIN: Bitrix24 domain
+
+        Returns: "OK"
+
+        What it does:
+        1. Receive tokens from Bitrix24
+        2. Save to database ✅ NOW IMPLEMENTED
+        3. Return "OK" to confirm
+        """
         try:
             if AUTH_ID and REFRESH_ID and member_id and DOMAIN:
-                print(f"✓ Installed: {member_id} @ {DOMAIN}")
+                print(f"✓ Bitrix24 app installed for {member_id} on {DOMAIN}")
 
+                # ✅ Save tokens to database
                 database.save_portal(
-                    member_id=member_id,
-                    domain=DOMAIN,
-                    access_token=AUTH_ID,
-                    refresh_token=REFRESH_ID,
-                    expires_in=AUTH_EXPIRES or 3600
+                    member_id     = member_id,
+                    domain        = DOMAIN,
+                    access_token  = AUTH_ID,
+                    refresh_token = REFRESH_ID,
+                    expires_in    = AUTH_EXPIRES or 3600
                 )
 
-                pass  # tokens saved, fall through to return HTML below
+                return Response(content="OK", status_code=200)
 
-            return HTMLResponse(content="""
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <script src="https://api.bitrix24.com/api/v1/"></script>
-</head>
-<body style="font-family:Arial;text-align:center;padding:60px 20px;">
-    <h2>✅ WorkEye Installed!</h2>
-    <p>Open WorkEye from the left menu to get started.</p>
-    <script>
-        BX24.init(function() {
-            BX24.resizeWindow(500, 300);
-        });
-    </script>
-</body>
-</html>
-""", status_code=200)
+            # Bitrix validation ping (when no params sent)
+            return Response(content="OK", status_code=200)
 
         except Exception as e:
-            print(f"❌ Install error: {e}")
-            return HTMLResponse("<html><body><h2>WorkEye Install OK</h2></body></html>")
+            print(f"❌ Bitrix install error: {e}")
+            # Always return OK to avoid Bitrix retries
+            return Response(content="OK", status_code=200)
 
 
-    # ─────────────────────────────────────────────
-    # ✅ UNINSTALL HANDLER
-    # ─────────────────────────────────────────────
+    # ── Bitrix Uninstall Handler ──────────────────────────────────────────────────
     @app.post("/bitrix/uninstall")
     async def bitrix_uninstall(request: Request, member_id: Optional[str] = None):
         try:
@@ -89,49 +93,72 @@ def setup_bitrix_routes(app: FastAPI):
             member_id = member_id or form.get("member_id")
         except Exception:
             pass
+        """
+        Called when user uninstalls the app from Bitrix24
 
+        Receives:
+        - member_id: Portal ID to delete
+
+        Returns: "OK"
+
+        What it does:
+        1. Receive member_id
+        2. Delete all app data for this portal ✅ NOW IMPLEMENTED
+        3. Return "OK" to confirm
+        """
         try:
             if member_id:
-                print(f"✓ Uninstalled: {member_id}")
+                print(f"✓ Bitrix24 app uninstalled for {member_id}")
+
+                # ✅ Delete portal tokens from database
                 database.delete_portal(member_id)
 
-            return Response("OK")
+            return Response(content="OK", status_code=200)
 
         except Exception as e:
-            print(f"❌ Uninstall error: {e}")
-            return Response("OK")
+            print(f"❌ Bitrix uninstall error: {e}")
+            # Always return OK
+            return Response(content="OK", status_code=200)
 
 
-    # ─────────────────────────────────────────────
-    # ✅ APP LAUNCHER (FINAL FIXED)
-    # ─────────────────────────────────────────────
+    # ── Bitrix App Launcher ───────────────────────────────────────────────────────
     @app.get("/bitrix/app")
     @app.post("/bitrix/app")
     async def bitrix_app_launcher(
         request: Request,
         DOMAIN: Optional[str] = None,
         member_id: Optional[str] = None,
-        AUTH_ID: Optional[str] = None,
-        REFRESH_ID: Optional[str] = None,
     ):
         try:
             form = await request.form()
-            DOMAIN     = DOMAIN     or form.get("DOMAIN")
-            member_id  = member_id  or form.get("member_id")
-            AUTH_ID    = AUTH_ID    or form.get("AUTH_ID")
-            REFRESH_ID = REFRESH_ID or form.get("REFRESH_ID")
+            DOMAIN    = DOMAIN    or form.get("DOMAIN")
+            member_id = member_id or form.get("member_id")
         except Exception:
             pass
+        """
+        Called when Bitrix24 loads your app in an iframe
 
+        Receives:
+        - DOMAIN: Bitrix24 domain
+        - member_id: Portal ID
+
+        Returns: HTML or redirect
+
+        What it does:
+        1. Receive Bitrix context
+        2. Load your app UI (or redirect to frontend)
+        3. App shows inside Bitrix24 iframe
+        """
         try:
-            print(f"✓ App opened: {DOMAIN}")
+            if DOMAIN:
+                print(f"✓ Bitrix24 app loaded for {DOMAIN}")
+                # Redirect to your frontend with domain
+                return {
+                    "redirect": f"/?domain={DOMAIN}&member_id={member_id}"
+                }
 
-            import os
-            index_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "index.html")
-            with open(index_path, "r", encoding="utf-8") as f:
-                html = f.read()
-            return HTMLResponse(content=html, status_code=200)
+            return Response(content="OK", status_code=200)
 
         except Exception as e:
-            print(f"❌ App error: {e}")
-            return HTMLResponse("<html><body><h2>WorkEye Error: " + str(e) + "</h2></body></html>")
+            print(f"❌ Bitrix app launcher error: {e}")
+            return Response(content="OK", status_code=200)
