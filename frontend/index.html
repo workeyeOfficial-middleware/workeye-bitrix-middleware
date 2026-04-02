@@ -643,8 +643,14 @@
   /* Horizontal rule */
   .neu-divider { height:1px; background:linear-gradient(90deg,transparent,var(--neu-shadow-dark) 20%,var(--neu-shadow-dark) 80%,transparent); margin:24px 0; }
 </style>
+  <!-- Bitrix24 SDK -->
+  <script src="https://api.bitrix24.com/api/v1/"></script>
 </head>
 <body>
+<script>
+if(typeof BX24!=="undefined"){BX24.init(function(){BX24.resizeWindow(1200,800);});}
+</script>
+
 <div class="auto-refresh-bar" id="refreshBar"></div>
 <div id="loginPage" class="login-page">
   <div class="login-card">

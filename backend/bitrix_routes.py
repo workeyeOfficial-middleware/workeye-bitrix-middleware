@@ -126,65 +126,14 @@ def setup_bitrix_routes(app: FastAPI):
         try:
             print(f"✓ App opened: {DOMAIN}")
 
-            return HTMLResponse(f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <title>WorkEye</title>
+            # Serve index.html directly — no redirect (redirect breaks inside Bitrix iframe)
+            import os
+            index_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "index.html")
+            with open(index_path, "r", encoding="utf-8") as f:
+                html = f.read()
 
-    <!-- ✅ Bitrix SDK -->
-    <script src="https://api.bitrix24.com/api/v1/"></script>
-
-    <style>
-        body {{
-            font-family: Arial;
-            padding: 20px;
-        }}
-    </style>
-</head>
-<body>
-
-<h2>🚀 WorkEye App Loaded</h2>
-<p>Domain: {DOMAIN}</p>
-
-<div id="app">Initializing...</div>
-
-<script>
-    BX24.init(function() {{
-
-        console.log("Bitrix initialized");
-
-        // ✅ Resize iframe (important)
-        BX24.resizeWindow(1000, 800);
-
-        const context = {{
-            domain: "{DOMAIN}",
-            member_id: "{member_id}",
-            auth_id: "{AUTH_ID}"
-        }};
-
-        console.log("Context:", context);
-
-        document.getElementById("app").innerHTML =
-            "<b>✅ App Ready</b><br><pre>" +
-            JSON.stringify(context, null, 2) +
-            "</pre>";
-
-        // Example API call
-        /*
-        BX24.callMethod("user.current", {{}}, function(result) {{
-            console.log(result.data());
-        }});
-        */
-
-    }});
-</script>
-
-</body>
-</html>
-""")
+            return HTMLResponse(content=html, status_code=200)
 
         except Exception as e:
             print(f"❌ App error: {e}")
-            return HTMLResponse("<h2>WorkEye Error</h2>")
+            return HTMLResponse("<h2>WorkEye Error — could not load app</h2>")
