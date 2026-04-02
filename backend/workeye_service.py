@@ -66,12 +66,36 @@ def get_stats(base_url: str, token: str) -> dict:
         raise Exception(f"Stats failed: {r.status_code} - {r.text[:200]}")
 
     data = r.json()
-    stats   = data.get("stats", {})
-    members = data.get("members", [])
+    stats       = data.get("stats", {})
+    members     = data.get("members", [])
+    comparisons = data.get("comparisons", {})
     # Log the FULL raw stats object so we can see every field WorkEye actually returns
     print(f"[stats] RAW top-level keys: {list(data.keys())}")
     print(f"[stats] RAW stats keys: {list(stats.keys())}")
     print(f"[stats] RAW stats values: {stats}")
+    print(f"[stats] RAW comparisons: {comparisons}")
+
+    # ── Extract yesterday baseline directly from WorkEye's comparisons block ──
+    # WorkEye returns: {"comparisons": {"total_members": 23, "date": "2026-04-01", ...}}
+    # This is the most reliable source — use it to pre-seed stats with the correct change %.
+    if comparisons and comparisons.get("available", True) is not False:
+        comp_yesterday = comparisons.get("total_members")
+        comp_today     = stats.get("total_members") or len(members)
+        if comp_yesterday and comp_yesterday > 0 and comp_today:
+            emp_change = round(((comp_today - comp_yesterday) / comp_yesterday) * 100, 1)
+            stats["employee_change"] = emp_change
+            print(f"[stats] comparisons block: yesterday={comp_yesterday} today={comp_today} => {emp_change}%")
+        comp_prod_yesterday = comparisons.get("average_productivity")
+        comp_prod_today     = stats.get("average_productivity")
+        if comp_prod_yesterday is not None and comp_prod_today is not None:
+            if comp_prod_yesterday > 0:
+                prod_change = round(((comp_prod_today - comp_prod_yesterday) / comp_prod_yesterday) * 100, 1)
+            elif comp_prod_today > 0:
+                prod_change = 100.0
+            else:
+                prod_change = 0.0
+            stats["productivity_change"] = prod_change
+            print(f"[stats] comparisons block: prod_yesterday={comp_prod_yesterday} today={comp_prod_today} => {prod_change}%")
 
     # dashboard/stats returns only aggregate stats with no members array.
     # Fetch full member list (with devices, position, department, etc.) separately.
