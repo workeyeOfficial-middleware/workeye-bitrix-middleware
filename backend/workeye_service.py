@@ -205,6 +205,10 @@ def get_stats(base_url: str, token: str) -> dict:
             "total_members_change", "headcount_change",
             "employees_increase", "employee_growth",
             "new_employees", "employee_percent_change",
+            "totalMembersChange", "totalMembersIncrease",
+            "total_members_increase", "membersIncrease",
+            "members_increase", "members_change",
+            "user_change", "userChange", "users_increase",
         ]
         _prod_change_keys = [
             "productivity_increase", "productivityIncrease",
@@ -222,6 +226,35 @@ def get_stats(base_url: str, token: str) -> dict:
                 preserved["productivity_change"] = float(stats[k])
                 print(f"[stats] Found productivity change in raw stats: {k}={stats[k]}")
                 break
+
+        # ── Strategy 2b: brute-force scan all stats keys for increase/change fields ──
+        # WorkEye may use an unexpected field name not in our list above.
+        # Scan every key in stats for keywords and a numeric value.
+        if "employee_change" not in preserved:
+            _emp_kws = ("increase", "change", "growth", "percent", "diff", "delta", "trend")
+            _emp_skip = ("productivity", "prod", "active", "idle", "offline", "activity")
+            for key, val in stats.items():
+                kl = key.lower()
+                if any(w in kl for w in _emp_kws) and not any(w in kl for w in _emp_skip):
+                    try:
+                        fval = float(val)
+                        preserved["employee_change"] = fval
+                        print(f"[stats] Strategy2b: found employee change via scan: {key}={val}")
+                        break
+                    except (TypeError, ValueError):
+                        pass
+        if "productivity_change" not in preserved:
+            _prod_kws = ("productivity", "prod")
+            for key, val in stats.items():
+                kl = key.lower()
+                if any(w in kl for w in _prod_kws) and any(w in kl for w in ("increase", "change", "growth", "percent", "diff")):
+                    try:
+                        fval = float(val)
+                        preserved["productivity_change"] = fval
+                        print(f"[stats] Strategy2b: found productivity change via scan: {key}={val}")
+                        break
+                    except (TypeError, ValueError):
+                        pass
 
         # ── Strategy 3 REMOVED ───────────────────────────────────────────────
         # The WorkEye stats?date=yesterday endpoint ignores the date param and
