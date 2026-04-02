@@ -13,7 +13,7 @@ CHANGES FROM ORIGINAL:
 """
 
 from fastapi import FastAPI, Request
-from fastapi.responses import Response
+from fastapi.responses import Response, HTMLResponse
 from typing import Optional
 import database
 
@@ -74,15 +74,15 @@ def setup_bitrix_routes(app: FastAPI):
                     expires_in    = AUTH_EXPIRES or 3600
                 )
 
-                return Response(content="OK", status_code=200)
+                return HTMLResponse(content="<html><body><h1>WorkEye installed successfully!</h1></body></html>", status_code=200)
 
             # Bitrix validation ping (when no params sent)
-            return Response(content="OK", status_code=200)
+            return HTMLResponse(content="<html><body><h1>WorkEye Monitor</h1></body></html>", status_code=200)
 
         except Exception as e:
             print(f"❌ Bitrix install error: {e}")
             # Always return OK to avoid Bitrix retries
-            return Response(content="OK", status_code=200)
+            return HTMLResponse(content="<html><body><h1>WorkEye Monitor</h1></body></html>", status_code=200)
 
 
     # ── Bitrix Uninstall Handler ──────────────────────────────────────────────────
@@ -152,13 +152,18 @@ def setup_bitrix_routes(app: FastAPI):
         try:
             if DOMAIN:
                 print(f"✓ Bitrix24 app loaded for {DOMAIN}")
-                # Redirect to your frontend with domain
-                return {
-                    "redirect": f"/?domain={DOMAIN}&member_id={member_id}"
-                }
+                return HTMLResponse(content=f"""
+<html>
+<head>
+  <title>WorkEye Monitor</title>
+  <script>window.location.href = "/?domain={DOMAIN}&member_id={member_id}";</script>
+</head>
+<body><p>Loading WorkEye...</p></body>
+</html>
+""", status_code=200)
 
-            return Response(content="OK", status_code=200)
+            return HTMLResponse(content="<html><body><h1>WorkEye Monitor</h1></body></html>", status_code=200)
 
         except Exception as e:
             print(f"❌ Bitrix app launcher error: {e}")
-            return Response(content="OK", status_code=200)
+            return HTMLResponse(content="<html><body><h1>WorkEye Monitor</h1></body></html>", status_code=200)
