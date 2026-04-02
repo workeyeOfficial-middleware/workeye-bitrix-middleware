@@ -242,11 +242,24 @@ def get_stats(base_url: str, token: str) -> dict:
             computed = round(((total - yesterday_total) / yesterday_total) * 100, 1)
             preserved["employee_change"] = computed
             print(f"[stats] Computed employee_change from trends: {yesterday_total}->{total} = {computed}%")
-        elif total > 0:
-            # No reliable yesterday baseline — default to 100% increase
-            # (matches WorkEye platform behaviour when no prior day data exists)
-            preserved["employee_change"] = 100.0
-            print(f"[stats] No yesterday baseline — defaulting employee_change to 100.0%")
+        else:
+            # Check if WorkEye already sent its own increase value in the stats response
+            # (captured by the initial keyword-preservation loop above, e.g. "employee_increase")
+            _workeye_increase = None
+            for _k in _emp_change_keys:
+                if _k in preserved:
+                    try:
+                        _workeye_increase = float(preserved[_k])
+                    except (TypeError, ValueError):
+                        pass
+                    break
+            if _workeye_increase is not None:
+                preserved["employee_change"] = _workeye_increase
+                print(f"[stats] Using WorkEye's own increase value from preserved: {_workeye_increase}%")
+            elif total > 0:
+                # No reliable yesterday baseline and no WorkEye-provided value — default to 100%
+                preserved["employee_change"] = 100.0
+                print(f"[stats] No yesterday baseline — defaulting employee_change to 100.0%")
     if "productivity_change" not in preserved and yesterday_prod is not None:
         if yesterday_prod > 0:
             preserved["productivity_change"] = round(
