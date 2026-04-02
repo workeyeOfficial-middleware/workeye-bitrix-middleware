@@ -4,7 +4,7 @@ from fastapi.responses import Response, FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional
-from backend import workeye_service as ws
+import workeye_service as ws
 import bitrix_service as bs
 import bitrix_routes
 import os
