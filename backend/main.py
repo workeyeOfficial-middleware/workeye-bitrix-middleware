@@ -27,7 +27,8 @@ async def allow_iframe(request, call_next):
     response = await call_next(request)
 
     # ❌ REMOVE invalid header
-    response.headers.pop("X-Frame-Options", None)
+    if "X-Frame-Options" in response.headers:
+        del response.headers["X-Frame-Options"]
 
     # ✅ Allow Bitrix iframe
     response.headers["Content-Security-Policy"] = (
