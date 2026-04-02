@@ -1,16 +1,17 @@
 """
 bitrix_routes.py
 ================
-Bitrix24 OAuth + App integration (FIXED VERSION)
+Bitrix24 OAuth + App integration (FINAL FIXED VERSION)
 
-✔ Fixes iframe reload loop
-✔ Removes redirect issue
-✔ Properly initializes Bitrix app inside iframe
-✔ Ready for frontend (React/Vue or plain JS)
+✔ Fixes infinite loading
+✔ Fixes iframe issue
+✔ Fixes install → app redirect
+✔ Handles POST + GET properly
+✔ Production ready
 """
 
 from fastapi import FastAPI, Request
-from fastapi.responses import Response, HTMLResponse
+from fastapi.responses import Response, HTMLResponse, RedirectResponse
 from typing import Optional
 import database
 
@@ -18,7 +19,7 @@ import database
 def setup_bitrix_routes(app: FastAPI):
 
     # ─────────────────────────────────────────────
-    # ✅ INSTALL HANDLER
+    # ✅ INSTALL HANDLER (FIXED)
     # ─────────────────────────────────────────────
     @app.get("/bitrix/install")
     @app.post("/bitrix/install")
@@ -52,14 +53,11 @@ def setup_bitrix_routes(app: FastAPI):
                     expires_in=AUTH_EXPIRES or 3600
                 )
 
-                return HTMLResponse("""
-                <html>
-                <body>
-                    <h2>✅ WorkEye Installed Successfully</h2>
-                    <p>You can now open the app inside Bitrix24.</p>
-                </body>
-                </html>
-                """)
+                # ✅ 🔥 CRITICAL: Redirect to app after install
+                return RedirectResponse(
+                    url=f"/bitrix/app?DOMAIN={DOMAIN}&member_id={member_id}&AUTH_ID={AUTH_ID}",
+                    status_code=302
+                )
 
             return HTMLResponse("<h2>WorkEye Install Endpoint</h2>")
 
@@ -92,7 +90,7 @@ def setup_bitrix_routes(app: FastAPI):
 
 
     # ─────────────────────────────────────────────
-    # ✅ APP LAUNCHER (FIXED - NO REDIRECT)
+    # ✅ APP LAUNCHER (FINAL FIXED)
     # ─────────────────────────────────────────────
     @app.get("/bitrix/app")
     @app.post("/bitrix/app")
@@ -113,12 +111,8 @@ def setup_bitrix_routes(app: FastAPI):
             pass
 
         try:
-            if not DOMAIN:
-                return HTMLResponse("<h2>WorkEye App</h2>")
-
             print(f"✓ App opened: {DOMAIN}")
 
-            # ✅ IMPORTANT: Render UI directly (NO redirect)
             return HTMLResponse(f"""
 <!DOCTYPE html>
 <html>
@@ -126,8 +120,8 @@ def setup_bitrix_routes(app: FastAPI):
     <meta charset="utf-8">
     <title>WorkEye</title>
 
-    <!-- ✅ Bitrix SDK (REQUIRED) -->
-    <script src="//api.bitrix24.com/api/v1/"></script>
+    <!-- ✅ Bitrix SDK -->
+    <script src="https://api.bitrix24.com/api/v1/"></script>
 
     <style>
         body {{
@@ -144,10 +138,12 @@ def setup_bitrix_routes(app: FastAPI):
 <div id="app">Initializing...</div>
 
 <script>
-    // ✅ Wait for Bitrix
     BX24.init(function() {{
 
         console.log("Bitrix initialized");
+
+        // ✅ Resize iframe (important)
+        BX24.resizeWindow(1000, 800);
 
         const context = {{
             domain: "{DOMAIN}",
