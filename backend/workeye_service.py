@@ -758,7 +758,16 @@ def get_activity_trends(base_url: str, token: str) -> dict:
 # SCREENSHOTS
 # =========================
 def get_screenshots(base_url: str, token: str, date: str = None) -> list:
+    from datetime import timezone, timedelta as _td
+    import screenshot_cache as _sc
+
     headers = {"Authorization": f"Bearer {token}"}
+
+    # Default date = today in IST (same timezone WorkEye uses)
+    IST = timezone(_td(hours=5, minutes=30))
+    if not date:
+        date = datetime.now(IST).strftime("%Y-%m-%d")
+
     try:
         stats = get_stats(base_url, token)
         members = stats.get("members", [])
@@ -773,9 +782,10 @@ def get_screenshots(base_url: str, token: str, date: str = None) -> list:
             continue
         try:
             url = f"{base_url}/api/screenshots/{member_id}"
-            params = {"limit": 100, "offset": 0}
-            if date:
-                params.update({"date": date, "start_date": date, "end_date": date})
+            # Use a high limit to avoid missing screenshots; also pass date so
+            # WorkEye filters server-side (reduces payload and avoids cross-day bleed)
+            params = {"limit": 500, "offset": 0, "date": date,
+                      "start_date": date, "end_date": date}
             r = requests.get(url, headers=headers, params=params, timeout=15)
             if r.status_code == 200:
                 data = r.json()
@@ -787,14 +797,25 @@ def get_screenshots(base_url: str, token: str, date: str = None) -> list:
                         s.get("screenshot_url") or
                         f"/proxy-image?workeye_url={base_url}&token={token}&screenshot_id={s['id']}"
                     )
+                print(f"[screenshots] Member {member_id} ({member_name}): {len(screenshots)} screenshots")
                 all_screenshots.extend(screenshots)
         except Exception as e:
             print(f"[screenshots] Member {member_id} failed: {e}")
             continue
 
-    if date:
-        all_screenshots = [s for s in all_screenshots if (s.get("timestamp") or "").startswith(date)]
+    # Always filter to the requested date so cross-day bleed from the API is removed
+    all_screenshots = [s for s in all_screenshots if (s.get("timestamp") or "").startswith(date)]
     all_screenshots.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+
+    # Save fresh results to cache (keyed by today's date) so the cache stays current
+    if all_screenshots:
+        try:
+            _sc.save_screenshots(all_screenshots)
+            print(f"[screenshots] Saved {len(all_screenshots)} screenshots to cache for {date}")
+        except Exception as ce:
+            print(f"[screenshots] Cache save failed (non-critical): {ce}")
+
+    print(f"[screenshots] Total for {date}: {len(all_screenshots)}")
     return all_screenshots
 
 

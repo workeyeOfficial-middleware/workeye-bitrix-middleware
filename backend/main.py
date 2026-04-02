@@ -225,15 +225,21 @@ async def get_attendance(workeye_url: str, token: str, date: str = None):
 async def get_screenshots(workeye_url: str, token: str, date: str = None):
     try:
         import screenshot_cache
-        # Always fetch fresh from WorkEye (saves to cache automatically)
+        from datetime import datetime, timezone, timedelta
+        IST = timezone(timedelta(hours=5, minutes=30))
+        # Default to today in IST — same as WorkEye dashboard shows
+        target_date = date or datetime.now(IST).strftime("%Y-%m-%d")
+
+        # Always fetch fresh from WorkEye first (get_screenshots now saves to cache)
         try:
-            data = ws.get_screenshots(workeye_url, token, date)
-            if data:
+            data = ws.get_screenshots(workeye_url, token, target_date)
+            if data is not None:  # empty list is valid (no screenshots today)
                 return {"success": True, "data": data}
-        except:
-            pass
-        # Fallback to local cache
-        data = screenshot_cache.get_screenshots_by_date(date)
+        except Exception as e:
+            print(f"[get-screenshots] Live fetch failed, falling back to cache: {e}")
+
+        # Fallback: cache — always scoped to target_date so no 7-day bleed
+        data = screenshot_cache.get_screenshots_by_date(target_date)
         return {"success": True, "data": data}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
