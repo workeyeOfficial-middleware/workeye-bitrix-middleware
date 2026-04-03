@@ -1459,9 +1459,20 @@
 <script>
 const API=window.location.origin,HEADERS={"ngrok-skip-browser-warning":"1"};
 let SESSION={token:null,workeye_url:null};
-function saveSession(t,u,e,p,profile){SESSION={token:t,workeye_url:u,email:e,password:p,profile:profile||{}};try{localStorage.setItem("we_session",JSON.stringify(SESSION))}catch(x){}}
-function loadSession(){try{const s=localStorage.getItem("we_session");if(s)SESSION=JSON.parse(s)}catch(x){}}
-function clearSession(){SESSION={token:null,workeye_url:null};try{localStorage.removeItem("we_session")}catch(x){}}
+
+// Each Bitrix company gets its own session key based on their portal domain
+// Bitrix passes ?DOMAIN=theircompany.bitrix24.com in the URL when opening the app
+function getSessionKey(){
+  try{
+    const params=new URLSearchParams(window.location.search);
+    const domain=params.get("DOMAIN")||params.get("domain")||"default";
+    return "we_session_"+domain.replace(/[^a-zA-Z0-9._-]/g,"_");
+  }catch(x){return "we_session_default"}
+}
+
+function saveSession(t,u,e,p,profile){SESSION={token:t,workeye_url:u,email:e,password:p,profile:profile||{}};try{localStorage.setItem(getSessionKey(),JSON.stringify(SESSION))}catch(x){}}
+function loadSession(){try{const s=localStorage.getItem(getSessionKey());if(s)SESSION=JSON.parse(s)}catch(x){}}
+function clearSession(){SESSION={token:null,workeye_url:null};try{localStorage.removeItem(getSessionKey())}catch(x){}}
 function toggleTheme(){const h=document.documentElement,d=h.getAttribute("data-theme")==="dark";h.setAttribute("data-theme",d?"light":"dark");try{localStorage.setItem("we_theme",d?"light":"dark")}catch(x){}}
 (function(){try{const t=localStorage.getItem("we_theme");if(t)document.documentElement.setAttribute("data-theme",t)}catch(x){}})(  );
 // Clear stale employee history cache that caused false "decrease" label
