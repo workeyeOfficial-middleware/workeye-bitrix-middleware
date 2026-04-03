@@ -13,7 +13,7 @@ CHANGES FROM ORIGINAL:
 """
 
 from fastapi import FastAPI, Request
-from fastapi.responses import Response
+from fastapi.responses import Response, HTMLResponse
 from typing import Optional
 import database
 
@@ -135,28 +135,23 @@ def setup_bitrix_routes(app: FastAPI):
             member_id = member_id or form.get("member_id")
         except Exception:
             pass
-        """
-        Called when Bitrix24 loads your app in an iframe
 
-        Receives:
-        - DOMAIN: Bitrix24 domain
-        - member_id: Portal ID
-
-        Returns: HTML or redirect
-
-        What it does:
-        1. Receive Bitrix context
-        2. Load your app UI (or redirect to frontend)
-        3. App shows inside Bitrix24 iframe
-        """
         try:
             if DOMAIN:
                 print(f"✓ Bitrix24 app loaded for {DOMAIN}")
-                # Redirect to your frontend with domain
-                return {
-                    "redirect": f"/?domain={DOMAIN}&member_id={member_id}"
-                }
+                # ✅ Use HTMLResponse with a meta-refresh or JS redirect
+                redirect_url = f"/?domain={DOMAIN}&member_id={member_id}"
+                html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="refresh" content="0; url={redirect_url}" />
+    <script>window.location.href = "{redirect_url}";</script>
+</head>
+<body>Loading WorkEye...</body>
+</html>"""
+                return HTMLResponse(content=html, status_code=200)
 
+            # Bitrix validation ping — no params sent
             return Response(content="OK", status_code=200)
 
         except Exception as e:
