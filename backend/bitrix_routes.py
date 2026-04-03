@@ -9,7 +9,8 @@ This keeps Bitrix code isolated and easy to maintain
 CHANGES FROM ORIGINAL:
 - Filled in TODO: Save to database on install  → uses database.py save_portal()
 - Filled in TODO: Delete from database on uninstall → uses database.py delete_portal()
-- Everything else is exactly the same
+- Install handler now returns HTML instead of plain "OK" (fixes blank iframe)
+- App launcher now returns HTML redirect instead of JSON (fixes app not opening)
 """
 
 from fastapi import FastAPI, Request
@@ -45,22 +46,7 @@ def setup_bitrix_routes(app: FastAPI):
             AUTH_EXPIRES = AUTH_EXPIRES or int(form.get("AUTH_EXPIRES") or 3600)
         except Exception:
             pass
-        """
-        Bitrix24 OAuth callback when user installs the app
 
-        Receives:
-        - AUTH_ID: Access token from Bitrix24
-        - REFRESH_ID: Refresh token
-        - member_id: Bitrix24 portal ID
-        - DOMAIN: Bitrix24 domain
-
-        Returns: "OK"
-
-        What it does:
-        1. Receive tokens from Bitrix24
-        2. Save to database ✅ NOW IMPLEMENTED
-        3. Return "OK" to confirm
-        """
         try:
             if AUTH_ID and REFRESH_ID and member_id and DOMAIN:
                 print(f"✓ Bitrix24 app installed for {member_id} on {DOMAIN}")
@@ -74,15 +60,68 @@ def setup_bitrix_routes(app: FastAPI):
                     expires_in    = AUTH_EXPIRES or 3600
                 )
 
-                return Response(content="OK", status_code=200)
+                # ✅ Return HTML so user sees a nice screen, not plain "OK"
+                return HTMLResponse(content=f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="refresh" content="2; url=https://app.workeye.org/bitrix/app?DOMAIN={DOMAIN}&member_id={member_id}" />
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: #f0f4ff;
+        }}
+        .card {{
+            text-align: center;
+            background: white;
+            padding: 40px 50px;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+        }}
+        .icon {{ font-size: 48px; margin-bottom: 16px; }}
+        h2 {{ color: #1a56db; font-size: 22px; margin-bottom: 8px; }}
+        p  {{ color: #666; font-size: 14px; }}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="icon">✅</div>
+        <h2>WorkEye Installed Successfully!</h2>
+        <p>Redirecting to your app...</p>
+    </div>
+</body>
+</html>""", status_code=200)
 
-            # Bitrix validation ping (when no params sent)
-            return Response(content="OK", status_code=200)
+            # ✅ Bitrix validation ping — redirect to app instead of showing "OK"
+            return HTMLResponse(content="""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="refresh" content="0; url=https://app.workeye.org/bitrix/app" />
+</head>
+<body>
+    <p>Loading WorkEye...</p>
+</body>
+</html>""", status_code=200)
 
         except Exception as e:
             print(f"❌ Bitrix install error: {e}")
-            # Always return OK to avoid Bitrix retries
-            return Response(content="OK", status_code=200)
+            return HTMLResponse(content="""<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8" /></head>
+<body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#fff5f5">
+    <div style="text-align:center;background:white;padding:40px 50px;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+        <div style="font-size:48px">⚠️</div>
+        <h2 style="color:#e53e3e;margin:12px 0 8px">Installation Error</h2>
+        <p style="color:#666;font-size:14px">Something went wrong. Please try reinstalling the app.</p>
+    </div>
+</body>
+</html>""", status_code=200)
 
 
     # ── Bitrix Uninstall Handler ──────────────────────────────────────────────────
@@ -93,23 +132,10 @@ def setup_bitrix_routes(app: FastAPI):
             member_id = member_id or form.get("member_id")
         except Exception:
             pass
-        """
-        Called when user uninstalls the app from Bitrix24
 
-        Receives:
-        - member_id: Portal ID to delete
-
-        Returns: "OK"
-
-        What it does:
-        1. Receive member_id
-        2. Delete all app data for this portal ✅ NOW IMPLEMENTED
-        3. Return "OK" to confirm
-        """
         try:
             if member_id:
                 print(f"✓ Bitrix24 app uninstalled for {member_id}")
-
                 # ✅ Delete portal tokens from database
                 database.delete_portal(member_id)
 
@@ -117,7 +143,6 @@ def setup_bitrix_routes(app: FastAPI):
 
         except Exception as e:
             print(f"❌ Bitrix uninstall error: {e}")
-            # Always return OK
             return Response(content="OK", status_code=200)
 
 
@@ -139,21 +164,49 @@ def setup_bitrix_routes(app: FastAPI):
         try:
             if DOMAIN:
                 print(f"✓ Bitrix24 app loaded for {DOMAIN}")
-                # ✅ Use HTMLResponse with a meta-refresh or JS redirect
-                redirect_url = f"/?domain={DOMAIN}&member_id={member_id}"
-                html = f"""<!DOCTYPE html>
+
+                # ✅ Check if portal is installed in database
+                portal = database.get_portal(member_id)
+                if not portal:
+                    return HTMLResponse(content="""<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8" /></head>
+<body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#fff5f5">
+    <div style="text-align:center;background:white;padding:40px 50px;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+        <div style="font-size:48px">⚠️</div>
+        <h2 style="color:#e53e3e;margin:12px 0 8px">App Not Installed Properly</h2>
+        <p style="color:#666;font-size:14px">Please reinstall WorkEye from the Bitrix24 Marketplace.</p>
+    </div>
+</body>
+</html>""", status_code=200)
+
+                # ✅ Portal found — redirect to frontend with domain context
+                redirect_url = f"https://app.workeye.org/?domain={DOMAIN}&member_id={member_id}"
+                return HTMLResponse(content=f"""<!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8" />
     <meta http-equiv="refresh" content="0; url={redirect_url}" />
     <script>window.location.href = "{redirect_url}";</script>
 </head>
-<body>Loading WorkEye...</body>
-</html>"""
-                return HTMLResponse(content=html, status_code=200)
+<body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f0f4ff">
+    <p>Loading WorkEye...</p>
+</body>
+</html>""", status_code=200)
 
-            # Bitrix validation ping — no params sent
+            # ✅ Bitrix validation ping — no params, return plain OK
             return Response(content="OK", status_code=200)
 
         except Exception as e:
             print(f"❌ Bitrix app launcher error: {e}")
-            return Response(content="OK", status_code=200)
+            return HTMLResponse(content="""<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8" /></head>
+<body style="font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#fff5f5">
+    <div style="text-align:center;background:white;padding:40px 50px;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.08)">
+        <div style="font-size:48px">⚠️</div>
+        <h2 style="color:#e53e3e;margin:12px 0 8px">Something Went Wrong</h2>
+        <p style="color:#666;font-size:14px">Please close this and try opening the app again.</p>
+    </div>
+</body>
+</html>""", status_code=200)
