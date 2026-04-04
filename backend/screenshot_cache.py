@@ -3,7 +3,9 @@ import json
 from datetime import datetime, timedelta
 import os
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "screenshots_cache.db")
+# Use /data (Render persistent disk) if available, otherwise fall back to local dir
+_PERSIST_DIR = "/data" if os.path.isdir("/data") else os.path.dirname(__file__)
+DB_PATH = os.path.join(_PERSIST_DIR, "screenshots_cache.db")
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -25,7 +27,7 @@ def init_db():
     conn.close()
 
 def save_screenshots(screenshots: list):
-    purge_old_screenshots()  # Clean up expired screenshots whenever new ones are saved
+    purge_old_screenshots()
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     now = datetime.now().isoformat()
@@ -41,13 +43,11 @@ def save_screenshots(screenshots: list):
             (sid, s.get("member_id"), s.get("member_name"), s.get("member_email"),
              ts, s.get("image_url",""), s.get("screenshot_url",""),
              1 if s.get("is_valid") else 0,
-             
              date, json.dumps(s), now))
     conn.commit()
     conn.close()
 
 def purge_old_screenshots(retention_days: int = 7):
-    """Delete screenshots older than retention_days. Call this on a schedule or at save time."""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     cutoff = (datetime.now() - timedelta(days=retention_days)).strftime("%Y-%m-%d")
@@ -61,7 +61,6 @@ def get_screenshots_by_date(date: str = None) -> list:
     if date:
         c.execute("SELECT raw_json FROM screenshots WHERE date=? ORDER BY timestamp DESC", (date,))
     else:
-        # Only return screenshots within the 7-day retention window
         cutoff = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
         c.execute("SELECT raw_json FROM screenshots WHERE date >= ? ORDER BY timestamp DESC", (cutoff,))
     rows = c.fetchall()
@@ -75,7 +74,6 @@ def get_screenshots_by_member_date(member_id: int, date: str = None) -> list:
         c.execute("SELECT raw_json FROM screenshots WHERE member_id=? AND date=? ORDER BY timestamp DESC",
                   (member_id, date))
     else:
-        # Only return screenshots within the 7-day retention window
         cutoff = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
         c.execute("SELECT raw_json FROM screenshots WHERE member_id=? AND date >= ? ORDER BY timestamp DESC",
                   (member_id, cutoff))
