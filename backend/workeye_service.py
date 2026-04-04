@@ -829,6 +829,7 @@ def get_activity_trends(base_url: str, token: str) -> dict:
 # =========================
 def get_screenshots(base_url: str, token: str, date: str = None) -> list:
     from datetime import timezone, timedelta as _td
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     import screenshot_cache as _sc
 
     headers = {"Authorization": f"Bearer {token}"}
@@ -844,16 +845,13 @@ def get_screenshots(base_url: str, token: str, date: str = None) -> list:
     except Exception:
         return []
 
-    all_screenshots = []
-    for member in members:
+    def fetch_member_screenshots(member):
         member_id   = member.get("id")
         member_name = member.get("name", "Unknown")
         if not member_id:
-            continue
+            return []
         try:
             url = f"{base_url}/api/screenshots/{member_id}"
-            # Use a high limit to avoid missing screenshots; also pass date so
-            # WorkEye filters server-side (reduces payload and avoids cross-day bleed)
             params = {"limit": 500, "offset": 0, "date": date,
                       "start_date": date, "end_date": date}
             r = requests.get(url, headers=headers, params=params, timeout=15)
@@ -868,10 +866,21 @@ def get_screenshots(base_url: str, token: str, date: str = None) -> list:
                         f"/proxy-image?workeye_url={base_url}&token={token}&screenshot_id={s['id']}"
                     )
                 print(f"[screenshots] Member {member_id} ({member_name}): {len(screenshots)} screenshots")
-                all_screenshots.extend(screenshots)
+                return screenshots
         except Exception as e:
             print(f"[screenshots] Member {member_id} failed: {e}")
-            continue
+        return []
+
+    # Fetch all members in parallel (max 20 workers to avoid overwhelming the API)
+    all_screenshots = []
+    with ThreadPoolExecutor(max_workers=20) as executor:
+        futures = {executor.submit(fetch_member_screenshots, m): m for m in members}
+        for future in as_completed(futures):
+            try:
+                result = future.result()
+                all_screenshots.extend(result)
+            except Exception as e:
+                print(f"[screenshots] Parallel fetch error: {e}")
 
     # Always filter to the requested date so cross-day bleed from the API is removed
     all_screenshots = [s for s in all_screenshots if (s.get("timestamp") or "").startswith(date)]
