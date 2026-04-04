@@ -41,11 +41,12 @@ def save_screenshots(screenshots: list):
             (sid, s.get("member_id"), s.get("member_name"), s.get("member_email"),
              ts, s.get("image_url",""), s.get("screenshot_url",""),
              1 if s.get("is_valid") else 0,
+             
              date, json.dumps(s), now))
     conn.commit()
     conn.close()
 
-def purge_old_screenshots(retention_days: int = 30):
+def purge_old_screenshots(retention_days: int = 7):
     """Delete screenshots older than retention_days. Call this on a schedule or at save time."""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
