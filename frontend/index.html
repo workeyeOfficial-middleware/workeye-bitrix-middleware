@@ -80,8 +80,8 @@
   body, * { font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif; }
 
   /* ── Layout ── */
-  .layout { display: flex; min-height: 100vh; }
-  .main { flex: 1; overflow-y: auto; background: var(--neu-bg); transition: background .3s; }
+  .layout { display: flex; min-height: 100vh; min-width: 768px; overflow-x: auto; }
+  .main { flex: 1; overflow-y: auto; min-width: 0; background: var(--neu-bg); transition: background .3s; }
   .main-inner { padding: 24px 28px; max-width: 1160px; }
 
   /* ── Sidebar ── */
