@@ -1110,19 +1110,36 @@
       <!-- ══ End Activity Log Page ══ -->
 
             <div id="page-settings" class="page">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
-          <div class="table-card">
-            <div class="table-head"><div><div class="table-title">⚙️ Current Configuration</div><div class="table-sub">Active settings for your company</div></div></div>
-            <div id="settingsBody" style="padding:20px"><div class="empty">Loading…</div></div>
+        <div style="display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:start">
+
+          <!-- LEFT: Current Settings Panel -->
+          <div class="table-card" style="position:sticky;top:80px">
+            <div class="table-head"><div><div class="table-title">👁 Current Settings</div><div class="table-sub">Active settings for your company</div></div></div>
+            <div id="settingsBody" style="padding:16px"><div class="empty">Loading…</div></div>
           </div>
-          <div class="table-card">
-            <div class="table-head"><div><div class="table-title">📅 Working Days</div><div class="table-sub">Days your team is active</div></div></div>
-            <div id="workingDaysBody" style="padding:20px"><div class="empty">Loading…</div></div>
+
+          <!-- RIGHT: Detail Cards -->
+          <div style="display:flex;flex-direction:column;gap:16px">
+
+            <!-- Row 1: Working Days -->
+            <div class="table-card">
+              <div class="table-head"><div><div class="table-title">📅 Working Days</div><div class="table-sub">Days your team is active</div></div></div>
+              <div id="workingDaysBody" style="padding:20px"><div class="empty">Loading…</div></div>
+            </div>
+
+            <!-- Row 2: Office Hours & Intervals -->
+            <div class="table-card">
+              <div class="table-head"><div><div class="table-title">🕐 Office Hours & Intervals</div><div class="table-sub">Monitoring schedule</div></div></div>
+              <div id="officeHoursBody" style="padding:20px;display:grid;grid-template-columns:repeat(3,1fr);gap:16px"><div class="empty" style="grid-column:1/-1">Loading…</div></div>
+            </div>
+
+            <!-- Row 3: Tracker Mode -->
+            <div class="table-card">
+              <div class="table-head"><div><div class="table-title">⚡ Tracker Mode</div><div class="table-sub">How devices connect to WorkEye</div></div></div>
+              <div id="trackerModeBody" style="padding:20px"><div class="empty">Loading…</div></div>
+            </div>
+
           </div>
-        </div>
-        <div class="table-card">
-          <div class="table-head"><div><div class="table-title">🕐 Office Hours & Intervals</div><div class="table-sub">Monitoring schedule</div></div></div>
-          <div id="officeHoursBody" style="padding:20px;display:grid;grid-template-columns:repeat(3,1fr);gap:16px"><div class="empty" style="grid-column:1/-1">Loading…</div></div>
         </div>
       </div>
 
@@ -2235,40 +2252,127 @@ async function loadSettings(){
   const body=document.getElementById('settingsBody');
   const wdBody=document.getElementById('workingDaysBody');
   const ohBody=document.getElementById('officeHoursBody');
+  const tmBody=document.getElementById('trackerModeBody');
   if(body)body.innerHTML='<div class="empty">Loading…</div>';
+  if(wdBody)wdBody.innerHTML='<div class="empty">Loading…</div>';
+  if(ohBody)ohBody.innerHTML='<div class="empty" style="grid-column:1/-1">Loading…</div>';
+  if(tmBody)tmBody.innerHTML='<div class="empty">Loading…</div>';
   try{
     const res=await apiFetch('/get-configuration');
     const cfg=res.data||{};
     console.log('Config:', JSON.stringify(cfg));
+
+    // ── LEFT PANEL: Current Settings summary ──
+    const lastMod=cfg.updated_at||cfg.last_modified_at;
+    const lastModFmt=lastMod?new Date(lastMod).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'—';
+    const modBy=cfg.last_modified_by?'Admin #'+cfg.last_modified_by:'—';
+    const ssInt=cfg.screenshot_interval_minutes||cfg.screenshot_interval||'—';
+    const idleInt=cfg.idle_timeout_minutes||cfg.idle_timeout||'—';
+    const startT=(cfg.office_start_time||'09:00').slice(0,5);
+    const endT=(cfg.office_end_time||'18:00').slice(0,5);
     const workingDays=cfg.working_days||[1,2,3,4,5];
+    const trackerMode=cfg.tracker_mode||'pairing';
+    const webhookUrl=cfg.bitrix_webhook_url||'';
+    const webhookValidated=cfg.bitrix_webhook_validated_at;
+
     if(body)body.innerHTML=`
-      <div class="emp-modal-row"><span class="emp-modal-row-key">Config ID</span><span class="emp-modal-row-val">${cfg.id||'—'}</span></div>
-      <div class="emp-modal-row"><span class="emp-modal-row-key">Company ID</span><span class="emp-modal-row-val">${cfg.company_id||'—'}</span></div>
-      <div class="emp-modal-row"><span class="emp-modal-row-key">Last Modified</span><span class="emp-modal-row-val">${cfg.updated_at?new Date(cfg.updated_at).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'—'}</span></div>
-      <div class="emp-modal-row"><span class="emp-modal-row-key">Modified By</span><span class="emp-modal-row-val">Admin #${cfg.last_modified_by||'—'}</span></div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div style="background:var(--surface2);border-radius:10px;padding:12px;border:1px solid var(--border)">
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px"># Config ID</div>
+            <div style="font-size:18px;font-weight:700;color:var(--text)">${cfg.id||'—'}</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:10px;padding:12px;border:1px solid var(--border)">
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">🏢 Company</div>
+            <div style="font-size:18px;font-weight:700;color:var(--text)">${cfg.company_id||'—'}</div>
+          </div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:14px;border:1px solid var(--border)">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">⚡ Tracker Mode</div>
+          <div style="font-size:20px;font-weight:700;color:var(--text);text-transform:capitalize">${trackerMode}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">${trackerMode==='bitrix'?'Bitrix sends START/STOP to desktop tracker':'Device paired once with secure member code'}</div>
+          ${webhookValidated&&trackerMode==='bitrix'?`<div style="font-size:10px;color:var(--accent);margin-top:6px">✅ Webhook validated: ${new Date(webhookValidated).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div>`:''}
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:14px;border:1px solid var(--border)">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">📸 Screenshot</div>
+          <div style="font-size:28px;font-weight:700;font-family:'DM Mono',monospace;color:var(--accent)">${ssInt}</div>
+          <div style="font-size:10px;color:var(--muted)">minutes</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:14px;border:1px solid var(--border)">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">💤 Idle</div>
+          <div style="font-size:28px;font-weight:700;font-family:'DM Mono',monospace;color:var(--amber)">${idleInt}</div>
+          <div style="font-size:10px;color:var(--muted)">minutes</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:14px;border:1px solid var(--border)">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">🕐 Office Hours</div>
+          <div style="font-size:18px;font-weight:700;font-family:'DM Mono',monospace;color:var(--green)">${fmtHour(startT)} – ${fmtHour(endT)}</div>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:2px">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:3px">Last modified</div>
+          <div style="font-size:12px;font-weight:600;color:var(--text)">${lastModFmt}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:6px">Modified by</div>
+          <div style="font-size:12px;font-weight:600;color:var(--text)">${modBy}</div>
+        </div>
+      </div>
     `;
-    const allDays=[{v:1,l:'Mon'},{v:2,l:'Tue'},{v:3,l:'Wed'},{v:4,l:'Thu'},{v:5,l:'Fri'},{v:6,l:'Sat'},{v:7,l:'Sun'}];
-    if(wdBody)wdBody.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:8px;padding:4px 0">'+
-      allDays.map(d=>{const active=workingDays.includes(d.v);return`<div style="padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;background:${active?'var(--accent)':'var(--surface2)'};color:${active?'white':'var(--muted)'};border:1.5px solid ${active?'var(--accent)':'var(--border)'}">${d.l}</div>`;}).join('')+
-      `<div style="width:100%;margin-top:8px;font-size:11px;color:var(--muted)">${workingDays.length} working days per week</div></div>`;
+
+    // ── WORKING DAYS ──
+    const allDays=[{v:1,l:'Mon'},{v:2,l:'Tue'},{v:3,l:'Wed'},{v:4,l:'Thu'},{v:5,l:'Fri'},{v:6,l:'Sat'},{v:0,l:'Sun'}];
+    if(wdBody)wdBody.innerHTML=`
+      <div style="display:flex;flex-wrap:wrap;gap:10px;padding:4px 0">
+        ${allDays.map(d=>{const active=workingDays.includes(d.v);return`<div style="padding:10px 20px;border-radius:10px;font-size:13px;font-weight:700;background:${active?'var(--accent)':'var(--surface2)'};color:${active?'white':'var(--muted)'};border:2px solid ${active?'var(--accent)':'var(--border)'};box-shadow:${active?'0 2px 8px rgba(99,102,241,.3)':'none'}">${d.l}</div>`;}).join('')}
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:var(--muted)">${workingDays.length} working days per week</div>
+    `;
+
+    // ── OFFICE HOURS & INTERVALS ──
     if(ohBody)ohBody.innerHTML=`
-      <div style="background:var(--surface2);border-radius:12px;padding:18px;border:1px solid var(--border);text-align:center">
-        <div style="font-size:28px;margin-bottom:8px">📸</div>
-        <div style="font-family:'DM Mono',monospace;font-size:28px;font-weight:500;color:var(--accent)">${cfg.screenshot_interval_minutes||cfg.screenshot_interval||cfg.screenshot_time||cfg.screenshotInterval||'—'}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.5px">Screenshot Interval (min)</div>
+      <div style="background:var(--surface2);border-radius:14px;padding:22px;border:1px solid var(--border);text-align:center">
+        <div style="font-size:32px;margin-bottom:10px">📸</div>
+        <div style="font-family:'DM Mono',monospace;font-size:36px;font-weight:700;color:var(--accent)">${ssInt}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;text-transform:uppercase;letter-spacing:.8px">Screenshot Interval (min)</div>
       </div>
-      <div style="background:var(--surface2);border-radius:12px;padding:18px;border:1px solid var(--border);text-align:center">
-        <div style="font-size:28px;margin-bottom:8px">💤</div>
-        <div style="font-family:'DM Mono',monospace;font-size:28px;font-weight:500;color:var(--amber)">${cfg.idle_timeout_minutes||cfg.idle_timeout||cfg.idle_time||cfg.idleTimeout||'—'}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.5px">Idle Timeout (min)</div>
+      <div style="background:var(--surface2);border-radius:14px;padding:22px;border:1px solid var(--border);text-align:center">
+        <div style="font-size:32px;margin-bottom:10px">💤</div>
+        <div style="font-family:'DM Mono',monospace;font-size:36px;font-weight:700;color:var(--amber)">${idleInt}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;text-transform:uppercase;letter-spacing:.8px">Idle Timeout (min)</div>
       </div>
-      <div style="background:var(--surface2);border-radius:12px;padding:18px;border:1px solid var(--border);text-align:center">
-        <div style="font-size:28px;margin-bottom:8px">🕐</div>
-        <div style="font-family:'DM Mono',monospace;font-size:20px;font-weight:500;color:var(--green)">${fmtHour(cfg.office_start_time||'09:00')} – ${fmtHour(cfg.office_end_time||'18:00')}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.5px">Office Hours</div>
+      <div style="background:var(--surface2);border-radius:14px;padding:22px;border:1px solid var(--border);text-align:center">
+        <div style="font-size:32px;margin-bottom:10px">🕐</div>
+        <div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:700;color:var(--green)">${fmtHour(startT)} – ${fmtHour(endT)}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px;text-transform:uppercase;letter-spacing:.8px">Office Hours</div>
       </div>
     `;
-  }catch(e){const _isAuth=e.message&&(e.message.includes("401")||e.message.includes("Session expired")),_isNet=(e.message==="Failed to fetch"||!navigator.onLine);const _reason=_isAuth?"subscription":_isNet?"no-internet":"server-err";setServerStatus(false,_reason);if(body)body.innerHTML='<div class="empty" style="color:var(--red)">⚠️ See status banner below.</div>';}
+
+    // ── TRACKER MODE ──
+    if(tmBody)tmBody.innerHTML=`
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div style="padding:18px;border-radius:14px;border:2px solid ${trackerMode==='pairing'?'var(--accent)':'var(--border)'};background:${trackerMode==='pairing'?'var(--surface2)':'transparent'}">
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">Pairing Mode</div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.6">Employees enter a one-time pairing code, then the tracker remembers the device session.</div>
+          ${trackerMode==='pairing'?'<div style="margin-top:10px;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px">● Active</div>':''}
+        </div>
+        <div style="padding:18px;border-radius:14px;border:2px solid ${trackerMode==='bitrix'?'var(--accent)':'var(--border)'};background:${trackerMode==='bitrix'?'var(--surface2)':'transparent'}">
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">Bitrix Mode</div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.6">The desktop app waits for Bitrix START and STOP events and never asks employees for a code.</div>
+          ${trackerMode==='bitrix'?'<div style="margin-top:10px;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px">● Active</div>':''}
+        </div>
+      </div>
+      ${webhookUrl&&trackerMode==='bitrix'?`
+      <div style="margin-top:14px;background:var(--surface2);border-radius:12px;padding:14px;border:1px solid var(--border)">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">⚡ Bitrix Webhook URL</div>
+        <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--text);word-break:break-all">${webhookUrl}</div>
+        ${webhookValidated?`<div style="font-size:10px;color:var(--green);margin-top:6px">✅ Validated: ${new Date(webhookValidated).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>`:'<div style="font-size:10px;color:var(--amber);margin-top:6px">⚠️ Not yet validated</div>'}
+      </div>`:''}
+    `;
+
+  }catch(e){
+    const _isAuth=e.message&&(e.message.includes("401")||e.message.includes("Session expired"));
+    const _isNet=(e.message==="Failed to fetch"||!navigator.onLine);
+    const _reason=_isAuth?"subscription":_isNet?"no-internet":"server-err";
+    setServerStatus(false,_reason);
+    if(body)body.innerHTML='<div class="empty" style="color:var(--red)">⚠️ See status banner below.</div>';
+  }
 }
 
 // ── Real-time timer ────────────────────────────────────
