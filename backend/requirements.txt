@@ -4,4 +4,4 @@ requests
 httpx
 python-dotenv
 apscheduler>=3.10
-weasyprint
+xhtml2pdf

@@ -2,11 +2,13 @@ services:
   - type: web
     name: workeye-integration
     runtime: python
-    buildCommand: apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 libcairo2 libgdk-pixbuf2.0-0 libffi-dev && pip install -r backend/requirements.txt
+    buildCommand: pip install -r backend/requirements.txt
     startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
+      - key: WEASYPRINT_FLAGS
+        value: "--no-sandbox"
     disk:
       name: screenshots-db
       mountPath: /data

@@ -22,11 +22,11 @@ from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 
 try:
-    from weasyprint import HTML as WeasyprintHTML
+    from xhtml2pdf import pisa
     WEASYPRINT_AVAILABLE = True
 except ImportError:
     WEASYPRINT_AVAILABLE = False
-    print("[Bitrix] WARNING: weasyprint not installed. Run: pip install weasyprint")
+    print("[Bitrix] WARNING: xhtml2pdf not installed.")
 
 load_dotenv()
 
@@ -101,11 +101,8 @@ def save_to_drive(filename, html_content):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _html_to_pdf_bytes(html_content):
-    """Convert HTML string to PDF bytes using weasyprint."""
-    if not WEASYPRINT_AVAILABLE:
-        raise RuntimeError("weasyprint is not installed. Run: pip install weasyprint")
     buf = io.BytesIO()
-    WeasyprintHTML(string=html_content).write_pdf(buf)
+    pisa.CreatePDF(html_content.encode("utf-8"), dest=buf)
     return buf.getvalue()
 
 
