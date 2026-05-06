@@ -22,11 +22,11 @@ from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 
 try:
-    from weasyprint import HTML as WeasyprintHTML
-    WEASYPRINT_AVAILABLE = True
+    from xhtml2pdf import pisa
+    PISA_AVAILABLE = True
 except ImportError:
-    WEASYPRINT_AVAILABLE = False
-    print("[Bitrix] WARNING: weasyprint not installed. Run: pip install weasyprint")
+    PISA_AVAILABLE = False
+    print("[Bitrix] WARNING: xhtml2pdf not installed. Run: pip install xhtml2pdf")
 
 load_dotenv()
 
@@ -109,18 +109,21 @@ def get_or_create_folder():
 def save_to_drive(filename, html_content):
     """
     Upload an HTML file to the WorkEye Reports folder on Bitrix24 Shared Drive.
-    Uses disk.folder.uploadfile with fileContent as a plain base64 string.
+    Deletes any existing file with the same name first (Bitrix rejects duplicates).
     """
     folder_id = get_or_create_folder()
     if not folder_id:
         return {"success": False, "error": "Could not get/create WorkEye Reports folder"}
 
-    encoded = base64.b64encode(html_content.encode("utf-8")).decode("utf-8")
+    # Delete existing file with the same name if it exists
+    children = _call("disk.folder.getchildren", {"id": folder_id})
+    for item in children.get("result", []):
+        if item.get("NAME") == filename and item.get("TYPE") == "file":
+            _call("disk.file.delete", {"id": item["ID"]})
+            print(f"[Bitrix] Deleted old file: {filename} (ID: {item['ID']})")
+            break
 
-    # Correct Bitrix24 disk.folder.uploadfile payload:
-    # id           → folder ID (in body, not URL)
-    # data.NAME    → filename shown in Drive
-    # fileContent  → plain base64 string (NOT a list, NOT multipart)
+    encoded = base64.b64encode(html_content.encode("utf-8")).decode("utf-8")
     result = _call("disk.folder.uploadfile", {
         "id":          folder_id,
         "data":        {"NAME": filename},
@@ -145,36 +148,54 @@ def save_to_drive(filename, html_content):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# HTML → PDF converter
+# HTML → PDF converter + Drive uploader
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _html_to_pdf_bytes(html_content):
-    """Convert HTML string to PDF bytes using weasyprint."""
-    if not WEASYPRINT_AVAILABLE:
-        raise RuntimeError("weasyprint is not installed. Run: pip install weasyprint")
+    """Convert HTML string to PDF bytes using xhtml2pdf (no system libs needed)."""
+    if not PISA_AVAILABLE:
+        raise RuntimeError("xhtml2pdf not installed. Run: pip install xhtml2pdf")
     buf = io.BytesIO()
-    WeasyprintHTML(string=html_content).write_pdf(buf)
+    result = pisa.CreatePDF(html_content, dest=buf)
+    if result.err:
+        raise RuntimeError(f"PDF conversion error: {result.err}")
     return buf.getvalue()
 
 
 def save_pdf_to_drive(filename, html_content):
-    """Convert HTML to PDF and upload to Bitrix24 Drive."""
+    """
+    Convert HTML → PDF and upload to Bitrix24 Drive.
+    Deletes any existing file with the same name first so Bitrix never rejects it.
+    filename should end with .pdf  e.g. 'Dashboard Report.pdf'
+    """
     folder_id = get_or_create_folder()
     if not folder_id:
         return {"success": False, "error": "Could not get/create folder"}
-    pdf_bytes = _html_to_pdf_bytes(html_content)
-    encoded   = base64.b64encode(pdf_bytes).decode("utf-8")
-    result    = _call("disk.folder.uploadfile", {
+
+    # Delete existing file with same name
+    children = _call("disk.folder.getchildren", {"id": folder_id})
+    for item in children.get("result", []):
+        if item.get("NAME") == filename and item.get("TYPE") == "file":
+            _call("disk.file.delete", {"id": item["ID"]})
+            print(f"[Bitrix] Deleted old PDF: {filename} (ID: {item['ID']})")
+            break
+
+    pdf_bytes  = _html_to_pdf_bytes(html_content)
+    encoded    = base64.b64encode(pdf_bytes).decode("utf-8")
+    result     = _call("disk.folder.uploadfile", {
         "id": folder_id, "data": {"NAME": filename}, "fileContent": encoded,
     })
-    file_id    = result.get("result", {}).get("ID")
-    detail_url = result.get("result", {}).get("DETAIL_URL", "")
+    file_result  = result.get("result") or {}
+    file_id      = file_result.get("ID") if isinstance(file_result, dict) else None
+    detail_url   = file_result.get("DETAIL_URL", "") if isinstance(file_result, dict) else ""
+    download_url = file_result.get("DOWNLOAD_URL", "") if isinstance(file_result, dict) else ""
     if file_id:
-        print(f"[Bitrix] Uploaded PDF: {filename} (ID: {file_id})")
-        return {"success": True, "file_id": file_id, "url": detail_url}
+        print(f"[Bitrix] ✅ Uploaded PDF: {filename} (ID: {file_id})")
+        return {"success": True, "file_id": file_id, "url": detail_url, "download_url": download_url}
     else:
-        print(f"[Bitrix] PDF Upload failed: {result}")
-        return {"success": False, "error": str(result)}
+        err = result.get("error", str(result))
+        print(f"[Bitrix] ❌ PDF Upload failed for {filename}: {err}")
+        return {"success": False, "error": err}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -321,7 +342,7 @@ def generate_daily_report(stats_response):
 def sync_daily_report(stats_response):
     html     = generate_daily_report(stats_response)
     date_str = datetime.now(IST).strftime("%Y-%m-%d")
-    return save_to_drive(f"WorkEye_Daily_{date_str}.html", html)
+    return save_pdf_to_drive("Dashboard Report.pdf", html)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -369,7 +390,7 @@ def sync_attendance(attendance_data):
         members = attendance_data or []
     html     = generate_attendance_report(members)
     date_str = datetime.now(IST).strftime("%Y-%m-%d")
-    return save_to_drive(f"WorkEye_Attendance_{date_str}.html", html)
+    return save_pdf_to_drive("Attendance Report.pdf", html)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -406,7 +427,7 @@ def generate_employee_report(members):
 def sync_employees(members):
     html     = generate_employee_report(members)
     date_str = datetime.now(IST).strftime("%Y-%m-%d")
-    return save_to_drive(f"WorkEye_Employee_{date_str}.html", html)
+    return save_pdf_to_drive("Employee Report.pdf", html)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -565,11 +586,18 @@ def sync_screenshots(screenshots):
         ts   = s.get("timestamp", "")
         name = s.get("member_name") or s.get("name", "—")
         lines.append(f"{i}. {name} | {ts[:10]} {ts[11:19] if len(ts)>10 else '—'} | {s.get('image_url','—')}")
-    filename  = f"WorkEye_Screenshots_{date_str}.txt"
+    filename  = "Screenshots Log.txt"
     encoded   = base64.b64encode("\n".join(lines).encode()).decode()
     folder_id = get_or_create_folder()
     if not folder_id:
         return {"success": False, "error": "Could not get folder"}
+    # Delete existing file with same name first
+    children = _call("disk.folder.getchildren", {"id": folder_id})
+    for item in children.get("result", []):
+        if item.get("NAME") == filename and item.get("TYPE") == "file":
+            _call("disk.file.delete", {"id": item["ID"]})
+            print(f"[Bitrix] Deleted old screenshots file: {filename}")
+            break
     result  = _call("disk.folder.uploadfile", {
         "id": folder_id, "data": {"NAME": filename}, "fileContent": encoded,
     })
