@@ -206,3 +206,85 @@ def is_token_expired(member_id: str) -> bool:
     expires_at = datetime.fromisoformat(portal["expires_at"])
     # Consider expired 5 minutes early to be safe
     return datetime.utcnow() >= (expires_at - timedelta(minutes=5))
+
+# =========================
+# WORKEYE CONFIG — Store per-portal WorkEye credentials + report_time
+# =========================
+
+def _ensure_workeye_columns():
+    """
+    Adds WorkEye-specific columns to the portals table if they don't exist.
+    Safe to call on every startup (uses IF NOT EXISTS pattern via try/except).
+    Columns added:
+      workeye_url      — WorkEye backend base URL
+      workeye_email    — admin login email
+      workeye_password — admin login password (stored for re-auth)
+      workeye_token    — last known JWT (cached, may expire)
+      report_time      — HH:MM string in IST for daily auto-report (e.g. "23:59")
+    """
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    for col, coltype in [
+        ("workeye_url",      "TEXT"),
+        ("workeye_email",    "TEXT"),
+        ("workeye_password", "TEXT"),
+        ("workeye_token",    "TEXT"),
+        ("report_time",      "TEXT DEFAULT '23:59'"),
+    ]:
+        try:
+            cursor.execute(f"ALTER TABLE portals ADD COLUMN {col} {coltype}")
+            print(f"[DB] Added column: {col}")
+        except Exception:
+            pass  # column already exists
+    conn.commit()
+    conn.close()
+
+
+def save_workeye_config(member_id: str, workeye_url: str, email: str,
+                         password: str, token: str = None, report_time: str = "23:59"):
+    """
+    Save WorkEye credentials and report_time for a portal.
+    Called when admin connects WorkEye inside the Bitrix24 app.
+    """
+    _ensure_workeye_columns()
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE portals
+        SET workeye_url=?, workeye_email=?, workeye_password=?,
+            workeye_token=?, report_time=?
+        WHERE member_id=?
+    """, (workeye_url, email, password, token, report_time, member_id))
+    conn.commit()
+    conn.close()
+    print(f"[DB] WorkEye config saved for portal: {member_id}")
+
+
+def update_workeye_token(member_id: str, token: str):
+    """Update just the cached WorkEye JWT token."""
+    _ensure_workeye_columns()
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("UPDATE portals SET workeye_token=? WHERE member_id=?", (token, member_id))
+    conn.commit()
+    conn.close()
+
+
+def get_all_portals() -> list:
+    """
+    Returns all portals with WorkEye config — used by auto_reporter.py.
+    Only returns portals where workeye_url is set.
+    """
+    _ensure_workeye_columns()
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT member_id, domain, access_token, workeye_url,
+               workeye_email, workeye_password, workeye_token, report_time
+        FROM portals
+        WHERE workeye_url IS NOT NULL AND workeye_url != ''
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]

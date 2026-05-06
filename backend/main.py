@@ -7,6 +7,7 @@ from typing import Optional
 import workeye_service as ws
 import bitrix_service as bs
 import bitrix_routes
+import database
 import os
 
 app = FastAPI()
@@ -20,6 +21,15 @@ app.add_middleware(
 
 # Setup Bitrix24 routes
 bitrix_routes.setup_bitrix_routes(app)
+
+# ── Auto-reporter scheduler ───────────────────────────────
+try:
+    from auto_reporter import start_scheduler
+    @app.on_event("startup")
+    async def _start_auto_reporter():
+        start_scheduler(app)
+except ImportError:
+    pass  # APScheduler not installed — scheduler disabled
 
 # ── Serve frontend ────────────────────────────────────────
 @app.get("/")
@@ -424,5 +434,49 @@ async def sync_screenshots(workeye_url: str, token: str):
         data = ws.get_screenshots(workeye_url, token)
         result = bs.sync_screenshots(data)
         return {"success": True, "result": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/run-all-reports")
+async def run_all_reports(workeye_url: str, token: str):
+    """
+    Manually trigger all 3 HTML reports + CRM timeline comments.
+    Same action the scheduler runs automatically at report_time.
+    """
+    try:
+        stats_response = ws.get_stats(workeye_url, token)
+        try:
+            attendance = ws.get_attendance(workeye_url, token)
+        except Exception:
+            attendance = None
+        results = bs.run_all_reports(stats_response, attendance)
+        return {"success": True, "results": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/save-workeye-config")
+async def save_workeye_config(
+    member_id: str, workeye_url: str, email: str,
+    password: str, report_time: str = "23:59"
+):
+    """
+    Save WorkEye credentials and daily report_time for a portal.
+    The auto-reporter uses these to re-authenticate and run reports nightly.
+    """
+    try:
+        # Verify credentials work before saving
+        auth = ws.get_token(workeye_url, email, password)
+        token = auth["token"]
+        database.save_workeye_config(
+            member_id=member_id,
+            workeye_url=workeye_url,
+            email=email,
+            password=password,
+            token=token,
+            report_time=report_time,
+        )
+        return {"success": True, "message": f"Config saved. Reports will run daily at {report_time} IST."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
