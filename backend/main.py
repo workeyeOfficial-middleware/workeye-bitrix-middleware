@@ -454,6 +454,30 @@ async def sync_screenshots(workeye_url: str, token: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/sync-crm-comments")
+async def sync_crm_comments(workeye_url: str, token: str):
+    """
+    POST daily WorkEye productivity + attendance summary as CRM timeline
+    comments on every matched Bitrix24 CRM Contact (matched by email).
+
+    This is the core Bitrix REST API data exchange:
+      - crm.contact.list  → find contact by employee email
+      - crm.timeline.comment.add → post daily summary on their CRM timeline
+
+    Returns: { posted, skipped, errors }
+    """
+    try:
+        stats_response = ws.get_stats(workeye_url, token)
+        try:
+            attendance = ws.get_attendance(workeye_url, token)
+        except Exception:
+            attendance = None
+        result = bs.post_daily_crm_comments(stats_response, attendance)
+        return {"success": True, "result": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/run-all-reports")
 async def run_all_reports(workeye_url: str, token: str):
     """

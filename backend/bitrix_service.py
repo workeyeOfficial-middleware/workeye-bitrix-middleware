@@ -475,72 +475,119 @@ def post_crm_timeline_comment(entity_id, comment):
     """
     Add a comment to a CRM Contact's timeline.
     Uses crm.timeline.comment.add — counts as a real Bitrix REST API call.
+
+    ENTITY_TYPE must be "CRM_CONTACT" (uppercase) for Bitrix REST API.
     """
     result = _call("crm.timeline.comment.add", payload={
         "fields": {
             "ENTITY_ID":   int(entity_id),
-            "ENTITY_TYPE": "contact",
+            "ENTITY_TYPE": "CRM_CONTACT",   # must be uppercase for Bitrix REST
             "COMMENT":     comment,
-            "AUTHOR_ID":   1,  # Bitrix admin user ID — change if needed
         }
     })
     comment_id = result.get("result")
     if comment_id:
-        print(f"[Bitrix CRM] Posted timeline comment ID {comment_id} on contact {entity_id}")
+        print(f"[Bitrix CRM] ✅ Posted timeline comment ID {comment_id} on contact {entity_id}")
         return {"success": True, "comment_id": comment_id}
     else:
-        print(f"[Bitrix CRM] Failed for contact {entity_id}: {result}")
-        return {"success": False, "error": str(result)}
+        err = result.get("error_description") or result.get("error") or str(result)
+        print(f"[Bitrix CRM] ❌ Failed for contact {entity_id}: {err}")
+        return {"success": False, "error": err}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CRM: post daily summary comments for all matched employees
 # ─────────────────────────────────────────────────────────────────────────────
 
-def post_daily_crm_comments(stats_response):
+def post_daily_crm_comments(stats_response, attendance=None):
     """
     For every employee in stats_response, look up their Bitrix CRM Contact
-    by email and post a daily productivity summary to their timeline.
+    by email and post a daily productivity + attendance summary to their timeline.
+
+    attendance — optional list of attendance dicts (from ws.get_attendance).
+                 If provided, punch-in/out times and hours worked are included
+                 in the comment, making it a richer and more useful entry.
     """
     payload  = stats_response.get("data", stats_response)
     members  = payload.get("members", [])
-    date_str = datetime.now(IST).strftime("%Y-%m-%d")
+    date_str = datetime.now(IST).strftime("%d %b %Y")   # e.g. "06 May 2026"
+
+    # Build a lookup map: email → attendance record (for O(1) access per member)
+    att_map = {}
+    if attendance:
+        att_list = attendance if isinstance(attendance, list) else (
+            attendance.get("members") or attendance.get("attendance") or []
+        )
+        for a in att_list:
+            email = a.get("email") or a.get("member_email") or ""
+            if email:
+                att_map[email.lower()] = a
 
     posted = skipped = errors = 0
 
     for m in members:
-        email = m.get("email")
+        email = (m.get("email") or "").strip()
         if not email:
             skipped += 1
             continue
 
+        # Find matching CRM contact by email
         contact_id = _find_crm_contact_id(email)
         if not contact_id:
             print(f"[Bitrix CRM] No CRM contact for {email} — skipping")
             skipped += 1
             continue
 
-        status   = m.get("status", "unknown").capitalize()
+        # Core WorkEye fields
+        name     = m.get("name") or "—"
+        status   = (m.get("status") or "unknown").capitalize()
         prod     = int(m.get("productivity") or 0)
         screen   = _fmt_seconds(m.get("screen_time", 0))
         position = m.get("position") or "Employee"
         dept     = m.get("department") or "—"
 
+        # Status emoji
+        status_emoji = {"Active": "🟢", "Idle": "🟡", "Offline": "🔴"}.get(status, "⚪")
+
+        # Attendance block (punch-in/out)
+        att = att_map.get(email.lower())
+        if att:
+            punch_in  = _fmt_time(att.get("punch_in_time"))
+            punch_out = _fmt_time(att.get("punch_out_time"))
+            hours     = att.get("today_hours") or att.get("hours_worked") or "—"
+            att_block = (
+                f"🕐 Punch In     : {punch_in}\n"
+                f"🕕 Punch Out    : {punch_out}\n"
+                f"⏱ Hours Worked : {hours}h\n"
+            )
+        else:
+            att_block = "🕐 Attendance   : Not available\n"
+
+        # Productivity bar (text version)
+        filled = int(prod / 10)
+        bar    = "█" * filled + "░" * (10 - filled)
+
         comment = (
             f"📊 WorkEye Daily Report — {date_str}\n"
-            f"Employee : {m.get('name','—')} ({position} / {dept})\n"
-            f"Status   : {status}\n"
-            f"Productivity : {prod}%\n"
-            f"Screen Time  : {screen}\n"
-            f"——————————————————\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"👤 Employee    : {name}\n"
+            f"💼 Position    : {position} / {dept}\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"{status_emoji} Status        : {status}\n"
+            f"{att_block}"
+            f"🖥 Screen Time  : {screen}\n"
+            f"📈 Productivity : {prod}%  [{bar}]\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             f"Auto-generated by WorkEye × Bitrix24 integration."
         )
 
         r = post_crm_timeline_comment(contact_id, comment)
-        if r.get("success"): posted += 1
-        else:                 errors += 1
+        if r.get("success"):
+            posted += 1
+        else:
+            errors += 1
 
-    print(f"[Bitrix CRM] Comments: posted={posted} skipped={skipped} errors={errors}")
+    print(f"[Bitrix CRM] Comments done — posted={posted} skipped={skipped} errors={errors}")
     return {"posted": posted, "skipped": skipped, "errors": errors}
 
 
@@ -580,7 +627,7 @@ def run_all_reports(stats_response, attendance=None):
         print(f"[reports] Attendance failed: {e}")
 
     try:
-        results["crm_comments"] = post_daily_crm_comments(stats_response)
+        results["crm_comments"] = post_daily_crm_comments(stats_response, attendance)
     except Exception as e:
         results["crm_comments"] = {"success": False, "error": str(e)}
         print(f"[reports] CRM comments failed: {e}")
