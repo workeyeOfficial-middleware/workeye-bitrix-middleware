@@ -83,7 +83,7 @@ def save_to_drive(filename, html_content):
     encoded = base64.b64encode(html_content.encode("utf-8")).decode("utf-8")
     result = _call(
         "disk.folder.uploadfile",
-        payload={"data": {"NAME": filename}, "fileContent": [filename, encoded]},
+        payload={"data": {"NAME": filename}, "fileContent": encoded},
         params={"id": folder_id},
     )
     file_result  = result.get("result", {})
@@ -531,4 +531,4 @@ def sync_screenshots(screenshots):
                    payload={"data": {"NAME": filename}, "fileContent": encoded},
                    params={"id": folder_id})
     file_id = result.get("result", {}).get("ID")
-    return {"success": bool(file_id), "file_id": file_id}
+    return {"success": bool(file_id), "file_id": file_id}   

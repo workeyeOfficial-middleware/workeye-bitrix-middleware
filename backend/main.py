@@ -405,7 +405,11 @@ async def sync_dashboard(workeye_url: str, token: str):
     try:
         data = ws.get_stats(workeye_url, token)
         result = bs.sync_dashboard(data)
+        if not result.get("success"):
+            raise HTTPException(status_code=502, detail=result.get("error", "Bitrix upload failed"))
         return {"success": True, "result": result}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -415,7 +419,11 @@ async def sync_employees(workeye_url: str, token: str):
         data = ws.get_stats(workeye_url, token)
         members = data.get("members", [])
         result = bs.sync_employees(members)
+        if not result.get("success"):
+            raise HTTPException(status_code=502, detail=result.get("error", "Bitrix upload failed"))
         return {"success": True, "result": result}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -424,7 +432,11 @@ async def sync_attendance(workeye_url: str, token: str):
     try:
         data = ws.get_attendance(workeye_url, token)
         result = bs.sync_attendance(data)
+        if not result.get("success"):
+            raise HTTPException(status_code=502, detail=result.get("error", "Bitrix upload failed"))
         return {"success": True, "result": result}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -433,7 +445,11 @@ async def sync_screenshots(workeye_url: str, token: str):
     try:
         data = ws.get_screenshots(workeye_url, token)
         result = bs.sync_screenshots(data)
+        if not result.get("success"):
+            raise HTTPException(status_code=502, detail=result.get("error", "Bitrix upload failed"))
         return {"success": True, "result": result}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
