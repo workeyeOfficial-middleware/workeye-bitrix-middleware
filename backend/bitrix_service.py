@@ -189,9 +189,19 @@ def save_pdf_to_drive(filename, html_content):
     file_id      = file_result.get("ID") if isinstance(file_result, dict) else None
     detail_url   = file_result.get("DETAIL_URL", "") if isinstance(file_result, dict) else ""
     download_url = file_result.get("DOWNLOAD_URL", "") if isinstance(file_result, dict) else ""
+
     if file_id:
+        # DOWNLOAD_URL = direct PDF bytes — opens/saves natively, no Google Docs
+        # DETAIL_URL   = Bitrix viewer page — may prompt Google login (avoid this)
         print(f"[Bitrix] ✅ Uploaded PDF: {filename} (ID: {file_id})")
-        return {"success": True, "file_id": file_id, "url": detail_url, "download_url": download_url}
+        print(f"[Bitrix] 🔗 Direct URL: {download_url}")
+        return {
+            "success":      True,
+            "file_id":      file_id,
+            "url":          download_url,   # direct PDF link — use this in frontend
+            "download_url": download_url,
+            "detail_url":   detail_url,
+        }
     else:
         err = result.get("error", str(result))
         print(f"[Bitrix] ❌ PDF Upload failed for {filename}: {err}")
