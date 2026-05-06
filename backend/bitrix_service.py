@@ -53,13 +53,13 @@ def _call(method, payload=None, params=None):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def get_or_create_folder():
-    result = _call("disk.folder.getchildren", params={"id": SHARED_DRIVE_ID})
+    result = _call("disk.storage.getchildren", params={"id": SHARED_DRIVE_ID})
     for item in result.get("result", []):
         if item.get("NAME") == "WorkEye Reports" and item.get("TYPE") == "folder":
             print(f"[Bitrix] Found folder ID: {item['ID']}")
             return item["ID"]
     result = _call(
-        "disk.folder.addsubfolder",
+        "disk.storage.addfolder",
         params={"id": SHARED_DRIVE_ID},
         payload={"data": {"NAME": "WorkEye Reports"}},
     )
