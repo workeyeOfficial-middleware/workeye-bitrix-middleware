@@ -527,3 +527,42 @@ async def debug_bitrix_drive():
         "folder_id": folder_id,
         "test_upload_result": upload_result,
     }
+
+
+@app.get("/debug-bitrix-drive")
+async def debug_bitrix_drive():
+    """
+    Open this in your browser to see exactly what Bitrix is returning.
+    Shows: webhook configured?, storage list, folder creation, test upload result.
+    """
+    import bitrix_service as bs_mod, base64 as b64mod, os
+
+    webhook = os.getenv("BITRIX_WEBHOOK", "")
+    out = {"webhook_configured": bool(webhook), "webhook_preview": webhook[:40] + "..." if webhook else "NOT SET"}
+
+    # Step 1: list storages
+    out["step1_storage_list"] = bs_mod._call("disk.storage.getlist")
+
+    # Step 2: discover shared storage ID
+    storage_id = bs_mod._get_shared_storage_id()
+    out["step2_storage_id"] = storage_id
+
+    # Step 3: list root children
+    out["step3_children"] = bs_mod._call("disk.storage.getchildren", {"id": storage_id})
+
+    # Step 4: get/create folder
+    folder_id = bs_mod.get_or_create_folder()
+    out["step4_folder_id"] = folder_id
+
+    # Step 5: test upload
+    if folder_id:
+        test_b64 = b64mod.b64encode(b"<html><body>test</body></html>").decode()
+        out["step5_upload"] = bs_mod._call("disk.folder.uploadfile", {
+            "id": folder_id,
+            "data": {"NAME": "_workeye_test.html"},
+            "fileContent": test_b64,
+        })
+    else:
+        out["step5_upload"] = "SKIPPED — no folder_id"
+
+    return out
