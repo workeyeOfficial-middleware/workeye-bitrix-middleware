@@ -496,3 +496,34 @@ async def save_workeye_config(
         return {"success": True, "message": f"Config saved. Reports will run daily at {report_time} IST."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/debug-bitrix-drive")
+async def debug_bitrix_drive():
+    """
+    Diagnose Bitrix24 Drive connectivity.
+    Lists all storages and attempts a tiny test upload.
+    Hit this URL in your browser after deploying to confirm Drive works.
+    """
+    import bitrix_service as bs_mod
+    import base64
+
+    storages_result = bs_mod._call("disk.storage.getlist")
+    storage_id = bs_mod._get_shared_storage_id()
+    folder_id = bs_mod.get_or_create_folder()
+
+    upload_result = None
+    if folder_id:
+        test_content = base64.b64encode(b"<html><body>WorkEye test</body></html>").decode()
+        upload_result = bs_mod._call("disk.folder.uploadfile", {
+            "id": folder_id,
+            "data": {"NAME": "_workeye_test.html"},
+            "fileContent": test_content,
+        })
+
+    return {
+        "webhook_set": bool(bs_mod.BITRIX_WEBHOOK),
+        "storages": storages_result.get("result", storages_result),
+        "resolved_storage_id": storage_id,
+        "folder_id": folder_id,
+        "test_upload_result": upload_result,
+    }

@@ -41,19 +41,46 @@ IST = timezone(timedelta(hours=5, minutes=30))
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _call(method, payload=None, params=None):
+    """
+    POST to Bitrix24 REST webhook.
+    All parameters go in the JSON body — Bitrix accepts them either way,
+    but mixing URL params + JSON body causes 400s on some methods.
+    We do NOT call raise_for_status() so we always get the error body back.
+    """
     if not BITRIX_WEBHOOK:
         print("[Bitrix] ERROR: BITRIX_WEBHOOK not set")
         return {"error": "BITRIX_WEBHOOK not configured"}
     url = f"{BITRIX_WEBHOOK}/{method}.json"
+    body = dict(payload or {})
     if params:
-        url += "?" + "&".join(f"{k}={v}" for k, v in params.items())
+        body.update(params)          # merge params into body — never use URL params
     try:
-        r = requests.post(url, json=payload or {}, timeout=15)
-        r.raise_for_status()
-        return r.json()
+        r = requests.post(url, json=body, timeout=30)
+        data = r.json()
+        if r.status_code >= 400:
+            err = data.get("error_description") or data.get("error") or str(data)
+            print(f"[Bitrix] HTTP {r.status_code} on {method}: {err}")
+            return {"error": f"HTTP {r.status_code}: {err}"}
+        return data
     except requests.exceptions.RequestException as e:
         print(f"[Bitrix] ERROR {method}: {e}")
         return {"error": str(e)}
+
+
+def _get_shared_storage_id() -> str:
+    """
+    Auto-discover the correct shared-drive storage ID for this portal.
+    Falls back to SHARED_DRIVE_ID if discovery fails.
+    Bitrix shared drive is TYPE=shared; its ID varies per portal.
+    """
+    result = _call("disk.storage.getlist")
+    for s in result.get("result", []):
+        if s.get("CODE") == "shared" or s.get("TYPE") == "shared":
+            sid = str(s["ID"])
+            print(f"[Bitrix] Shared storage ID: {sid}")
+            return sid
+    print(f"[Bitrix] WARNING: could not discover shared storage — using default {SHARED_DRIVE_ID}")
+    return SHARED_DRIVE_ID
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -61,42 +88,60 @@ def _call(method, payload=None, params=None):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def get_or_create_folder():
-    result = _call("disk.storage.getchildren", params={"id": SHARED_DRIVE_ID})
+    storage_id = _get_shared_storage_id()
+    # List children of the storage root
+    result = _call("disk.storage.getchildren", {"id": storage_id})
     for item in result.get("result", []):
         if item.get("NAME") == "WorkEye Reports" and item.get("TYPE") == "folder":
             print(f"[Bitrix] Found folder ID: {item['ID']}")
-            return item["ID"]
-    result = _call(
-        "disk.storage.addfolder",
-        params={"id": SHARED_DRIVE_ID},
-        payload={"data": {"NAME": "WorkEye Reports"}},
-    )
-    folder_id = result.get("result", {}).get("ID")
-    print(f"[Bitrix] Created folder ID: {folder_id}")
-    return folder_id
+            return str(item["ID"])
+    # Create it
+    result = _call("disk.storage.addfolder", {"id": storage_id, "data": {"NAME": "WorkEye Reports"}})
+    folder = result.get("result", {})
+    folder_id = folder.get("ID")
+    if folder_id:
+        print(f"[Bitrix] Created folder ID: {folder_id}")
+        return str(folder_id)
+    print(f"[Bitrix] ERROR creating folder: {result}")
+    return None
 
 
 def save_to_drive(filename, html_content):
+    """
+    Upload an HTML file to the WorkEye Reports folder on Bitrix24 Shared Drive.
+    Uses disk.folder.uploadfile with fileContent as a plain base64 string.
+    """
     folder_id = get_or_create_folder()
     if not folder_id:
-        return {"success": False, "error": "Could not get/create folder"}
+        return {"success": False, "error": "Could not get/create WorkEye Reports folder"}
+
     encoded = base64.b64encode(html_content.encode("utf-8")).decode("utf-8")
-    result = _call(
-        "disk.folder.uploadfile",
-        payload={"data": {"NAME": filename}, "fileContent": encoded},
-        params={"id": folder_id},
-    )
-    file_result  = result.get("result", {})
-    file_id      = file_result.get("ID")
-    detail_url   = file_result.get("DETAIL_URL", "")
-    download_url = file_result.get("DOWNLOAD_URL", "")
+
+    # Correct Bitrix24 disk.folder.uploadfile payload:
+    # id           → folder ID (in body, not URL)
+    # data.NAME    → filename shown in Drive
+    # fileContent  → plain base64 string (NOT a list, NOT multipart)
+    result = _call("disk.folder.uploadfile", {
+        "id":          folder_id,
+        "data":        {"NAME": filename},
+        "fileContent": encoded,
+    })
+
+    file_result  = result.get("result") or {}
+    if isinstance(file_result, dict):
+        file_id      = file_result.get("ID")
+        detail_url   = file_result.get("DETAIL_URL", "")
+        download_url = file_result.get("DOWNLOAD_URL", "")
+    else:
+        file_id = None
+
     if file_id:
-        print(f"[Bitrix] Uploaded: {filename} (ID: {file_id})")
-        print(f"[Bitrix] View URL: {download_url}")
+        print(f"[Bitrix] ✅ Uploaded: {filename} (ID: {file_id})")
         return {"success": True, "file_id": file_id, "url": detail_url, "download_url": download_url}
     else:
-        print(f"[Bitrix] Upload failed: {result}")
-        return {"success": False, "error": str(result)}
+        err = result.get("error", str(result))
+        print(f"[Bitrix] ❌ Upload failed for {filename}: {err}")
+        return {"success": False, "error": err}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -119,11 +164,9 @@ def save_pdf_to_drive(filename, html_content):
         return {"success": False, "error": "Could not get/create folder"}
     pdf_bytes = _html_to_pdf_bytes(html_content)
     encoded   = base64.b64encode(pdf_bytes).decode("utf-8")
-    result    = _call(
-        "disk.folder.uploadfile",
-        payload={"data": {"NAME": filename}, "fileContent": encoded},
-        params={"id": folder_id},
-    )
+    result    = _call("disk.folder.uploadfile", {
+        "id": folder_id, "data": {"NAME": filename}, "fileContent": encoded,
+    })
     file_id    = result.get("result", {}).get("ID")
     detail_url = result.get("result", {}).get("DETAIL_URL", "")
     if file_id:
@@ -527,8 +570,11 @@ def sync_screenshots(screenshots):
     folder_id = get_or_create_folder()
     if not folder_id:
         return {"success": False, "error": "Could not get folder"}
-    result = _call("disk.folder.uploadfile",
-                   payload={"data": {"NAME": filename}, "fileContent": encoded},
-                   params={"id": folder_id})
-    file_id = result.get("result", {}).get("ID")
-    return {"success": bool(file_id), "file_id": file_id}   
+    result  = _call("disk.folder.uploadfile", {
+        "id": folder_id, "data": {"NAME": filename}, "fileContent": encoded,
+    })
+    res     = result.get("result") or {}
+    file_id = res.get("ID") if isinstance(res, dict) else None
+    if not file_id:
+        print(f"[Bitrix] Screenshots upload failed: {result.get('error', result)}")
+    return {"success": bool(file_id), "file_id": file_id, "error": result.get("error")}
