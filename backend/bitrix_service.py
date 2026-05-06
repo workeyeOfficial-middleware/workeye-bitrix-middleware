@@ -83,7 +83,7 @@ def save_to_drive(filename, html_content):
     encoded = base64.b64encode(html_content.encode("utf-8")).decode("utf-8")
     result = _call(
         "disk.folder.uploadfile",
-        payload={"data": {"NAME": filename}, "fileContent": encoded},
+        payload={"data": {"NAME": filename}, "fileContent": [filename, encoded]},
         params={"id": folder_id},
     )
     file_result  = result.get("result", {})
