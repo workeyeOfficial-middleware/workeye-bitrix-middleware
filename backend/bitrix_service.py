@@ -22,11 +22,11 @@ from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 
 try:
-    from xhtml2pdf import pisa
+    from weasyprint import HTML as WeasyprintHTML
     WEASYPRINT_AVAILABLE = True
 except ImportError:
     WEASYPRINT_AVAILABLE = False
-    print("[Bitrix] WARNING: xhtml2pdf not installed.")
+    print("[Bitrix] WARNING: weasyprint not installed. Run: pip install weasyprint")
 
 load_dotenv()
 
@@ -86,11 +86,14 @@ def save_to_drive(filename, html_content):
         payload={"data": {"NAME": filename}, "fileContent": encoded},
         params={"id": folder_id},
     )
-    file_id = result.get("result", {}).get("ID")
-    detail_url = result.get("result", {}).get("DETAIL_URL", "")
+    file_result  = result.get("result", {})
+    file_id      = file_result.get("ID")
+    detail_url   = file_result.get("DETAIL_URL", "")
+    download_url = file_result.get("DOWNLOAD_URL", "")
     if file_id:
         print(f"[Bitrix] Uploaded: {filename} (ID: {file_id})")
-        return {"success": True, "file_id": file_id, "url": detail_url}
+        print(f"[Bitrix] View URL: {download_url}")
+        return {"success": True, "file_id": file_id, "url": detail_url, "download_url": download_url}
     else:
         print(f"[Bitrix] Upload failed: {result}")
         return {"success": False, "error": str(result)}
@@ -101,8 +104,11 @@ def save_to_drive(filename, html_content):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _html_to_pdf_bytes(html_content):
+    """Convert HTML string to PDF bytes using weasyprint."""
+    if not WEASYPRINT_AVAILABLE:
+        raise RuntimeError("weasyprint is not installed. Run: pip install weasyprint")
     buf = io.BytesIO()
-    pisa.CreatePDF(html_content.encode("utf-8"), dest=buf)
+    WeasyprintHTML(string=html_content).write_pdf(buf)
     return buf.getvalue()
 
 
@@ -134,43 +140,39 @@ def save_pdf_to_drive(filename, html_content):
 
 _CSS = """
 <style>
+  @page { size: A4 landscape; margin: 1cm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-         background: #f0f2f5; color: #1a1a2e; }
-  .page { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
-  .header { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%);
-            color: #fff; border-radius: 12px; padding: 28px 32px; margin-bottom: 24px; }
-  .header h1 { font-size: 22px; font-weight: 700; letter-spacing: .5px; }
-  .header .meta { font-size: 13px; opacity: .75; margin-top: 6px; }
-  .kpi-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 24px; }
-  .kpi { flex: 1 1 140px; background: #fff; border-radius: 10px;
-         padding: 18px 20px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
-  .kpi .val { font-size: 30px; font-weight: 700; }
-  .kpi .lbl { font-size: 12px; color: #777; margin-top: 4px; text-transform: uppercase; letter-spacing: .4px; }
+  body { font-family: Helvetica, Arial, sans-serif; background: #fff; color: #1a1a2e; font-size: 11px; }
+  .page { width: 100%; padding: 12px; }
+  .header { background-color: #1a1a2e; color: #fff; padding: 16px 20px; margin-bottom: 16px; }
+  .header h1 { font-size: 16px; font-weight: bold; }
+  .header .meta { font-size: 10px; color: #ccc; margin-top: 4px; }
+  .kpi-row { width: 100%; margin-bottom: 16px; }
+  .kpi-row table { width: 100%; border-collapse: collapse; }
+  .kpi-row td { width: 20%; padding: 10px 14px; background: #f8f9fb;
+                border: 1px solid #e5e7eb; text-align: center; }
+  .kpi .val { font-size: 22px; font-weight: bold; }
+  .kpi .lbl { font-size: 9px; color: #777; margin-top: 3px; text-transform: uppercase; }
   .kpi.green .val { color: #10b981; }
   .kpi.blue  .val { color: #3b82f6; }
   .kpi.amber .val { color: #f59e0b; }
   .kpi.red   .val { color: #ef4444; }
-  table { width: 100%; border-collapse: collapse; background: #fff;
-          border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
-  thead tr { background: #1a1a2e; color: #fff; }
-  thead th { padding: 12px 14px; text-align: left; font-size: 12px;
-             font-weight: 600; letter-spacing: .5px; text-transform: uppercase; }
-  tbody tr:nth-child(even) { background: #f8f9fb; }
-  tbody tr:hover { background: #eff6ff; }
-  tbody td { padding: 11px 14px; font-size: 13px; border-bottom: 1px solid #f0f0f0; }
-  .badge { display: inline-block; padding: 3px 9px; border-radius: 20px;
-           font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+  table.data-table { width: 100%; border-collapse: collapse; }
+  table.data-table thead tr { background-color: #1a1a2e; color: #fff; }
+  table.data-table thead th { padding: 8px 6px; text-align: left; font-size: 9px;
+                               font-weight: bold; text-transform: uppercase; word-wrap: break-word; }
+  table.data-table tbody tr:nth-child(even) { background: #f8f9fb; }
+  table.data-table tbody td { padding: 7px 6px; font-size: 10px;
+                               border-bottom: 1px solid #e5e7eb; word-wrap: break-word; }
+  .badge { display: inline; padding: 2px 6px; font-size: 9px; font-weight: bold; text-transform: uppercase; }
   .badge-active  { background: #d1fae5; color: #065f46; }
   .badge-idle    { background: #fef3c7; color: #92400e; }
   .badge-offline { background: #f3f4f6; color: #6b7280; }
   .badge-in      { background: #dbeafe; color: #1e40af; }
   .badge-out     { background: #fce7f3; color: #9d174d; }
-  .prod-bar { height: 6px; border-radius: 3px; background: #e5e7eb; overflow: hidden; min-width: 60px; }
-  .prod-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #3b82f6, #10b981); }
-  .section-title { font-size: 15px; font-weight: 700; margin: 0 0 12px; color: #1a1a2e; }
-  .table-wrap { margin-bottom: 28px; }
-  footer { text-align: center; font-size: 12px; color: #aaa; margin-top: 20px; padding-bottom: 12px; }
+  .section-title { font-size: 12px; font-weight: bold; margin: 0 0 8px; color: #1a1a2e; }
+  .table-wrap { margin-bottom: 20px; }
+  footer { text-align: center; font-size: 9px; color: #aaa; margin-top: 12px; }
 </style>
 """
 
@@ -206,10 +208,7 @@ def _punch_badge(is_in):
 
 def _prod_cell(pct):
     p = int(pct or 0)
-    return (f'<div style="display:flex;align-items:center;gap:8px">'
-            f'<span style="min-width:34px;font-weight:600">{p}%</span>'
-            f'<div class="prod-bar"><div class="prod-fill" style="width:{p}%"></div></div>'
-            f'</div>')
+    return f'<span style="font-weight:bold">{p}%</span>'
 
 def _fmt_time(iso_str):
     if not iso_str: return "—"
@@ -239,13 +238,13 @@ def generate_daily_report(stats_response):
     offline  = stats.get("offline",      total - active - idle)
     avg_prod = stats.get("average_productivity", 0)
 
-    kpis = (f'<div class="kpi-row">'
-            f'<div class="kpi blue"><div class="val">{total}</div><div class="lbl">Total Employees</div></div>'
-            f'<div class="kpi green"><div class="val">{active}</div><div class="lbl">Active Now</div></div>'
-            f'<div class="kpi amber"><div class="val">{idle}</div><div class="lbl">Idle</div></div>'
-            f'<div class="kpi red"><div class="val">{offline}</div><div class="lbl">Offline</div></div>'
-            f'<div class="kpi blue"><div class="val">{int(avg_prod)}%</div><div class="lbl">Avg Productivity</div></div>'
-            f'</div>')
+    kpis = (f'<div class="kpi-row"><table><tr>'
+            f'<td class="kpi blue"><div class="val">{total}</div><div class="lbl">Total Employees</div></td>'
+            f'<td class="kpi green"><div class="val">{active}</div><div class="lbl">Active Now</div></td>'
+            f'<td class="kpi amber"><div class="val">{idle}</div><div class="lbl">Idle</div></td>'
+            f'<td class="kpi red"><div class="val">{offline}</div><div class="lbl">Offline</div></td>'
+            f'<td class="kpi blue"><div class="val">{int(avg_prod)}%</div><div class="lbl">Avg Productivity</div></td>'
+            f'</tr></table></div>')
 
     rows = "".join(
         f'<tr>'
@@ -262,7 +261,7 @@ def generate_daily_report(stats_response):
     )
 
     table = (f'<div class="table-wrap"><p class="section-title">Employee Status Overview</p>'
-             f'<table><thead><tr><th>#</th><th>Name</th><th>Email</th><th>Position</th>'
+             f'<table class="data-table"><thead><tr><th>#</th><th>Name</th><th>Email</th><th>Position</th>'
              f'<th>Department</th><th>Status</th><th>Screen Time</th><th>Productivity</th>'
              f'</tr></thead><tbody>{rows}</tbody></table></div>')
 
@@ -272,7 +271,7 @@ def generate_daily_report(stats_response):
 def sync_daily_report(stats_response):
     html     = generate_daily_report(stats_response)
     date_str = datetime.now(IST).strftime("%Y-%m-%d")
-    return save_pdf_to_drive(f"WorkEye_Daily_{date_str}.pdf", html)
+    return save_to_drive(f"WorkEye_Daily_{date_str}.html", html)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -285,11 +284,11 @@ def generate_attendance_report(attendance):
     punched_in  = sum(1 for m in attendance if m.get("is_punched_in"))
     punched_out = len(attendance) - punched_in
 
-    kpis = (f'<div class="kpi-row">'
-            f'<div class="kpi blue"><div class="val">{len(attendance)}</div><div class="lbl">Total Employees</div></div>'
-            f'<div class="kpi green"><div class="val">{punched_in}</div><div class="lbl">Punched In</div></div>'
-            f'<div class="kpi red"><div class="val">{punched_out}</div><div class="lbl">Not Punched In</div></div>'
-            f'</div>')
+    kpis = (f'<div class="kpi-row"><table><tr>'
+            f'<td class="kpi blue"><div class="val">{len(attendance)}</div><div class="lbl">Total Employees</div></td>'
+            f'<td class="kpi green"><div class="val">{punched_in}</div><div class="lbl">Punched In</div></td>'
+            f'<td class="kpi red"><div class="val">{punched_out}</div><div class="lbl">Not Punched In</div></td>'
+            f'</tr></table></div>')
 
     rows = "".join(
         f'<tr>'
@@ -306,7 +305,7 @@ def generate_attendance_report(attendance):
     )
 
     table = (f'<div class="table-wrap"><p class="section-title">Attendance Details</p>'
-             f'<table><thead><tr><th>#</th><th>Name</th><th>Position</th><th>Department</th>'
+             f'<table class="data-table"><thead><tr><th>#</th><th>Name</th><th>Position</th><th>Department</th>'
              f'<th>Status</th><th>Punch In</th><th>Punch Out</th><th>Hours Worked</th>'
              f'</tr></thead><tbody>{rows}</tbody></table></div>')
 
@@ -320,7 +319,7 @@ def sync_attendance(attendance_data):
         members = attendance_data or []
     html     = generate_attendance_report(members)
     date_str = datetime.now(IST).strftime("%Y-%m-%d")
-    return save_pdf_to_drive(f"WorkEye_Attendance_{date_str}.pdf", html)
+    return save_to_drive(f"WorkEye_Attendance_{date_str}.html", html)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -347,7 +346,7 @@ def generate_employee_report(members):
     )
 
     table = (f'<div class="table-wrap"><p class="section-title">All Employees — {date_str}</p>'
-             f'<table><thead><tr><th>#</th><th>Name</th><th>Email</th><th>Position</th>'
+             f'<table class="data-table"><thead><tr><th>#</th><th>Name</th><th>Email</th><th>Position</th>'
              f'<th>Department</th><th>Status</th><th>Devices</th><th>Productivity</th><th>Screen Time</th>'
              f'</tr></thead><tbody>{rows}</tbody></table></div>')
 
@@ -357,7 +356,7 @@ def generate_employee_report(members):
 def sync_employees(members):
     html     = generate_employee_report(members)
     date_str = datetime.now(IST).strftime("%Y-%m-%d")
-    return save_pdf_to_drive(f"WorkEye_Employee_{date_str}.pdf", html)
+    return save_to_drive(f"WorkEye_Employee_{date_str}.html", html)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
