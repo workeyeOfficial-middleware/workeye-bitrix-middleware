@@ -17,8 +17,16 @@ CRM:
 import os
 import base64
 import requests
+import io
 from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
+
+try:
+    from weasyprint import HTML as WeasyprintHTML
+    WEASYPRINT_AVAILABLE = True
+except ImportError:
+    WEASYPRINT_AVAILABLE = False
+    print("[Bitrix] WARNING: weasyprint not installed. Run: pip install weasyprint")
 
 load_dotenv()
 
@@ -53,13 +61,13 @@ def _call(method, payload=None, params=None):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def get_or_create_folder():
-    result = _call("disk.storage.getchildren", params={"id": SHARED_DRIVE_ID})
+    result = _call("disk.folder.getchildren", params={"id": SHARED_DRIVE_ID})
     for item in result.get("result", []):
         if item.get("NAME") == "WorkEye Reports" and item.get("TYPE") == "folder":
             print(f"[Bitrix] Found folder ID: {item['ID']}")
             return item["ID"]
     result = _call(
-        "disk.storage.addfolder",
+        "disk.folder.addsubfolder",
         params={"id": SHARED_DRIVE_ID},
         payload={"data": {"NAME": "WorkEye Reports"}},
     )
@@ -85,6 +93,41 @@ def save_to_drive(filename, html_content):
         return {"success": True, "file_id": file_id, "url": detail_url}
     else:
         print(f"[Bitrix] Upload failed: {result}")
+        return {"success": False, "error": str(result)}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HTML → PDF converter
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _html_to_pdf_bytes(html_content):
+    """Convert HTML string to PDF bytes using weasyprint."""
+    if not WEASYPRINT_AVAILABLE:
+        raise RuntimeError("weasyprint is not installed. Run: pip install weasyprint")
+    buf = io.BytesIO()
+    WeasyprintHTML(string=html_content).write_pdf(buf)
+    return buf.getvalue()
+
+
+def save_pdf_to_drive(filename, html_content):
+    """Convert HTML to PDF and upload to Bitrix24 Drive."""
+    folder_id = get_or_create_folder()
+    if not folder_id:
+        return {"success": False, "error": "Could not get/create folder"}
+    pdf_bytes = _html_to_pdf_bytes(html_content)
+    encoded   = base64.b64encode(pdf_bytes).decode("utf-8")
+    result    = _call(
+        "disk.folder.uploadfile",
+        payload={"data": {"NAME": filename}, "fileContent": encoded},
+        params={"id": folder_id},
+    )
+    file_id    = result.get("result", {}).get("ID")
+    detail_url = result.get("result", {}).get("DETAIL_URL", "")
+    if file_id:
+        print(f"[Bitrix] Uploaded PDF: {filename} (ID: {file_id})")
+        return {"success": True, "file_id": file_id, "url": detail_url}
+    else:
+        print(f"[Bitrix] PDF Upload failed: {result}")
         return {"success": False, "error": str(result)}
 
 
@@ -232,7 +275,7 @@ def generate_daily_report(stats_response):
 def sync_daily_report(stats_response):
     html     = generate_daily_report(stats_response)
     date_str = datetime.now(IST).strftime("%Y-%m-%d")
-    return save_to_drive(f"WorkEye_Daily_{date_str}.html", html)
+    return save_pdf_to_drive(f"WorkEye_Daily_{date_str}.pdf", html)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -280,7 +323,7 @@ def sync_attendance(attendance_data):
         members = attendance_data or []
     html     = generate_attendance_report(members)
     date_str = datetime.now(IST).strftime("%Y-%m-%d")
-    return save_to_drive(f"WorkEye_Attendance_{date_str}.html", html)
+    return save_pdf_to_drive(f"WorkEye_Attendance_{date_str}.pdf", html)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -317,7 +360,7 @@ def generate_employee_report(members):
 def sync_employees(members):
     html     = generate_employee_report(members)
     date_str = datetime.now(IST).strftime("%Y-%m-%d")
-    return save_to_drive(f"WorkEye_Employee_{date_str}.html", html)
+    return save_pdf_to_drive(f"WorkEye_Employee_{date_str}.pdf", html)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
