@@ -7,8 +7,6 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
-      - key: WEASYPRINT_FLAGS
-        value: "--no-sandbox"
     disk:
       name: screenshots-db
       mountPath: /data
