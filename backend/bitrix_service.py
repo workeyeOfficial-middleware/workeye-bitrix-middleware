@@ -108,27 +108,12 @@ def get_or_create_folder():
 
 def save_to_drive(filename, html_content):
     """
-    Upload an HTML file to Bitrix24 Shared Drive.
-    HTML files open natively in Bitrix viewer — no Google Docs needed.
-    Keeps last 7 versions per report type, auto-deletes older ones.
+    Upload an HTML file to the WorkEye Reports folder on Bitrix24 Shared Drive.
+    Deletes any existing file with the same name first (Bitrix rejects duplicates).
     """
     folder_id = get_or_create_folder()
     if not folder_id:
         return {"success": False, "error": "Could not get/create WorkEye Reports folder"}
-
-    # Keep last 7 versions per report type, delete older ones
-    prefix = filename.rsplit(" 20", 1)[0]  # e.g. "Dashboard Report"
-    KEEP = 7
-    children = _call("disk.folder.getchildren", {"id": folder_id})
-    old_files = sorted(
-        [item for item in children.get("result", [])
-         if item.get("TYPE") == "file" and item.get("NAME", "").startswith(prefix)],
-        key=lambda x: x.get("NAME", "")
-    )
-    while len(old_files) >= KEEP:
-        victim = old_files.pop(0)
-        _call("disk.file.delete", {"id": victim["ID"]})
-        print(f"[Bitrix] 🗑 Deleted old version: {victim['NAME']}")
 
     encoded = base64.b64encode(html_content.encode("utf-8")).decode("utf-8")
     result = _call("disk.folder.uploadfile", {
@@ -372,7 +357,7 @@ def generate_daily_report(stats_response):
 def sync_daily_report(stats_response):
     html     = generate_daily_report(stats_response)
     date_str = datetime.now(IST).strftime("%Y-%m-%d")
-    return save_to_drive(f"Dashboard Report {datetime.now(IST).strftime('%Y-%m-%d %H-%M')}.html", html)
+    return save_pdf_to_drive(f"Dashboard Report {datetime.now(IST).strftime('%Y-%m-%d %H-%M')}.pdf", html)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -420,7 +405,7 @@ def sync_attendance(attendance_data):
         members = attendance_data or []
     html     = generate_attendance_report(members)
     date_str = datetime.now(IST).strftime("%Y-%m-%d")
-    return save_to_drive(f"Attendance Report {datetime.now(IST).strftime('%Y-%m-%d %H-%M')}.html", html)
+    return save_pdf_to_drive(f"Attendance Report {datetime.now(IST).strftime('%Y-%m-%d %H-%M')}.pdf", html)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -457,7 +442,7 @@ def generate_employee_report(members):
 def sync_employees(members):
     html     = generate_employee_report(members)
     date_str = datetime.now(IST).strftime("%Y-%m-%d")
-    return save_to_drive(f"Employee Report {datetime.now(IST).strftime('%Y-%m-%d %H-%M')}.html", html)
+    return save_pdf_to_drive(f"Employee Report {datetime.now(IST).strftime('%Y-%m-%d %H-%M')}.pdf", html)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -630,4 +615,5 @@ def sync_screenshots(screenshots):
         f'<tbody>{rows}</tbody></table></div>'
     )
     html     = _html_page("Screenshots Log", date_str, now_str, body)
-    return save_to_drive(f"Screenshots Log {datetime.now(IST).strftime('%Y-%m-%d %H-%M')}.html", html)
+    filename = f"Screenshots Log {datetime.now(IST).strftime('%Y-%m-%d %H-%M')}.pdf"
+    return save_pdf_to_drive(filename, html)
