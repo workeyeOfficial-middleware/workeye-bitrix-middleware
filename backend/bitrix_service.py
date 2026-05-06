@@ -115,14 +115,6 @@ def save_to_drive(filename, html_content):
     if not folder_id:
         return {"success": False, "error": "Could not get/create WorkEye Reports folder"}
 
-    # Delete existing file with the same name if it exists
-    children = _call("disk.folder.getchildren", {"id": folder_id})
-    for item in children.get("result", []):
-        if item.get("NAME") == filename and item.get("TYPE") == "file":
-            _call("disk.file.delete", {"id": item["ID"]})
-            print(f"[Bitrix] Deleted old file: {filename} (ID: {item['ID']})")
-            break
-
     encoded = base64.b64encode(html_content.encode("utf-8")).decode("utf-8")
     result = _call("disk.folder.uploadfile", {
         "id":          folder_id,
@@ -165,20 +157,30 @@ def _html_to_pdf_bytes(html_content):
 def save_pdf_to_drive(filename, html_content):
     """
     Convert HTML → PDF and upload to Bitrix24 Drive.
-    Deletes any existing file with the same name first so Bitrix never rejects it.
-    filename should end with .pdf  e.g. 'Dashboard Report.pdf'
+    Keeps the last 7 versions per report type (by filename prefix).
+    Older ones are auto-deleted so Drive doesn't fill up.
+    filename format: "Dashboard Report 2026-05-06 16-30.pdf"
     """
     folder_id = get_or_create_folder()
     if not folder_id:
         return {"success": False, "error": "Could not get/create folder"}
 
-    # Delete existing file with same name
+    # Extract the report type prefix e.g. "Dashboard Report"
+    prefix = filename.rsplit(" 20", 1)[0]  # everything before the date
+    KEEP = 7  # keep last 7 versions per report type
+
+    # Find all existing files with the same prefix, sorted oldest first
     children = _call("disk.folder.getchildren", {"id": folder_id})
-    for item in children.get("result", []):
-        if item.get("NAME") == filename and item.get("TYPE") == "file":
-            _call("disk.file.delete", {"id": item["ID"]})
-            print(f"[Bitrix] Deleted old PDF: {filename} (ID: {item['ID']})")
-            break
+    old_files = sorted(
+        [item for item in children.get("result", [])
+         if item.get("TYPE") == "file" and item.get("NAME", "").startswith(prefix)],
+        key=lambda x: x.get("NAME", "")
+    )
+    # Delete oldest ones if we're at or above the limit
+    while len(old_files) >= KEEP:
+        victim = old_files.pop(0)
+        _call("disk.file.delete", {"id": victim["ID"]})
+        print(f"[Bitrix] 🗑 Deleted old version: {victim['NAME']}")
 
     pdf_bytes  = _html_to_pdf_bytes(html_content)
     encoded    = base64.b64encode(pdf_bytes).decode("utf-8")
@@ -352,7 +354,7 @@ def generate_daily_report(stats_response):
 def sync_daily_report(stats_response):
     html     = generate_daily_report(stats_response)
     date_str = datetime.now(IST).strftime("%Y-%m-%d")
-    return save_pdf_to_drive("Dashboard Report.pdf", html)
+    return save_pdf_to_drive(f"Dashboard Report {datetime.now(IST).strftime('%Y-%m-%d %H-%M')}.pdf", html)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -400,7 +402,7 @@ def sync_attendance(attendance_data):
         members = attendance_data or []
     html     = generate_attendance_report(members)
     date_str = datetime.now(IST).strftime("%Y-%m-%d")
-    return save_pdf_to_drive("Attendance Report.pdf", html)
+    return save_pdf_to_drive(f"Attendance Report {datetime.now(IST).strftime('%Y-%m-%d %H-%M')}.pdf", html)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -437,7 +439,7 @@ def generate_employee_report(members):
 def sync_employees(members):
     html     = generate_employee_report(members)
     date_str = datetime.now(IST).strftime("%Y-%m-%d")
-    return save_pdf_to_drive("Employee Report.pdf", html)
+    return save_pdf_to_drive(f"Employee Report {datetime.now(IST).strftime('%Y-%m-%d %H-%M')}.pdf", html)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -588,31 +590,27 @@ def run_all_reports(stats_response, attendance=None):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def sync_screenshots(screenshots):
-    date_str  = datetime.now(IST).strftime("%Y-%m-%d")
-    now_str   = datetime.now(IST).strftime("%Y-%m-%d %H:%M")
-    lines     = [f"WorkEye Screenshots Log", f"Date: {date_str}", f"Generated: {now_str} IST",
-                 f"Total: {len(screenshots)}", ""]
-    for i, s in enumerate(screenshots, 1):
-        ts   = s.get("timestamp", "")
-        name = s.get("member_name") or s.get("name", "—")
-        lines.append(f"{i}. {name} | {ts[:10]} {ts[11:19] if len(ts)>10 else '—'} | {s.get('image_url','—')}")
-    filename  = "Screenshots Log.txt"
-    encoded   = base64.b64encode("\n".join(lines).encode()).decode()
-    folder_id = get_or_create_folder()
-    if not folder_id:
-        return {"success": False, "error": "Could not get folder"}
-    # Delete existing file with same name first
-    children = _call("disk.folder.getchildren", {"id": folder_id})
-    for item in children.get("result", []):
-        if item.get("NAME") == filename and item.get("TYPE") == "file":
-            _call("disk.file.delete", {"id": item["ID"]})
-            print(f"[Bitrix] Deleted old screenshots file: {filename}")
-            break
-    result  = _call("disk.folder.uploadfile", {
-        "id": folder_id, "data": {"NAME": filename}, "fileContent": encoded,
-    })
-    res     = result.get("result") or {}
-    file_id = res.get("ID") if isinstance(res, dict) else None
-    if not file_id:
-        print(f"[Bitrix] Screenshots upload failed: {result.get('error', result)}")
-    return {"success": bool(file_id), "file_id": file_id, "error": result.get("error")}
+    date_str = datetime.now(IST).strftime("%Y-%m-%d")
+    now_str  = datetime.now(IST).strftime("%Y-%m-%d %H:%M")
+
+    rows = "".join(
+        f'<tr>'
+        f'<td style="color:#6b7280;font-size:12px">{i}</td>'
+        f'<td><strong>{s.get("member_name") or s.get("name","—")}</strong></td>'
+        f'<td>{(s.get("timestamp","")[:10]+" "+s.get("timestamp","")[11:19]) if len(s.get("timestamp",""))>10 else s.get("timestamp","—")}</td>'
+        f'<td style="word-break:break-all;font-size:11px"><a href="{s.get("image_url","—")}">{s.get("image_url","—")[:60]}{"…" if len(s.get("image_url",""))>60 else ""}</a></td>'
+        f'</tr>'
+        for i, s in enumerate(screenshots, 1)
+    )
+
+    body = (
+        f'<div class="kpi-row">'
+        f'<div class="kpi blue"><div class="val">{len(screenshots)}</div><div class="lbl">Total Screenshots</div></div>'
+        f'</div>'
+        f'<div class="table-wrap"><p class="section-title">Screenshots Log — {date_str}</p>'
+        f'<table><thead><tr><th>#</th><th>Employee</th><th>Timestamp</th><th>Image URL</th></tr></thead>'
+        f'<tbody>{rows}</tbody></table></div>'
+    )
+    html     = _html_page("Screenshots Log", date_str, now_str, body)
+    filename = f"Screenshots Log {datetime.now(IST).strftime('%Y-%m-%d %H-%M')}.pdf"
+    return save_pdf_to_drive(filename, html)
