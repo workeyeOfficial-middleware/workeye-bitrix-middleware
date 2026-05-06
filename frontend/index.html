@@ -1113,7 +1113,7 @@
       <!-- ══ End Activity Log Page ══ -->
 
             <div id="page-settings" class="page">
-        <div style="display:grid;grid-template-columns:300px 1fr;gap:20px;align-items:start">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
 
           <!-- ═══ LEFT: Current Settings sticky panel ═══ -->
           <div style="position:sticky;top:72px;background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)">
@@ -2405,26 +2405,26 @@ async function loadSettings(){
 
     // ─── OFFICE HOURS & INTERVALS ──────────────────────────
     if(ohBody)ohBody.innerHTML=`
-      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:16px;padding:28px 20px;text-align:center;box-shadow:4px 4px 10px var(--neu-shadow-dark),-4px -4px 10px var(--neu-shadow-light)">
-        <div style="width:48px;height:48px;margin:0 auto 14px;background:var(--surface);border-radius:14px;display:flex;align-items:center;justify-content:center;box-shadow:3px 3px 8px var(--neu-shadow-dark),-3px -3px 8px var(--neu-shadow-light)">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:16px 14px;text-align:center;box-shadow:4px 4px 10px var(--neu-shadow-dark),-4px -4px 10px var(--neu-shadow-light)">
+        <div style="width:36px;height:36px;margin:0 auto 10px;background:var(--surface);border-radius:10px;display:flex;align-items:center;justify-content:center;box-shadow:3px 3px 6px var(--neu-shadow-dark),-3px -3px 6px var(--neu-shadow-light)">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
         </div>
-        <div style="font-family:'DM Mono',monospace;font-size:46px;font-weight:800;color:var(--accent);line-height:1">${ssInt}</div>
-        <div style="font-size:10px;font-weight:700;color:var(--muted);margin-top:12px;text-transform:uppercase;letter-spacing:.8px">Screenshot Interval (min)</div>
+        <div style="font-family:'DM Mono',monospace;font-size:32px;font-weight:800;color:var(--accent);line-height:1">${ssInt}</div>
+        <div style="font-size:9px;font-weight:700;color:var(--muted);margin-top:8px;text-transform:uppercase;letter-spacing:.8px">Screenshot Interval (min)</div>
       </div>
-      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:16px;padding:28px 20px;text-align:center;box-shadow:4px 4px 10px var(--neu-shadow-dark),-4px -4px 10px var(--neu-shadow-light)">
-        <div style="width:48px;height:48px;margin:0 auto 14px;background:var(--surface);border-radius:14px;display:flex;align-items:center;justify-content:center;box-shadow:3px 3px 8px var(--neu-shadow-dark),-3px -3px 8px var(--neu-shadow-light)">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="1.8"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/></svg>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:16px 14px;text-align:center;box-shadow:4px 4px 10px var(--neu-shadow-dark),-4px -4px 10px var(--neu-shadow-light)">
+        <div style="width:36px;height:36px;margin:0 auto 10px;background:var(--surface);border-radius:10px;display:flex;align-items:center;justify-content:center;box-shadow:3px 3px 6px var(--neu-shadow-dark),-3px -3px 6px var(--neu-shadow-light)">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="1.8"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/></svg>
         </div>
-        <div style="font-family:'DM Mono',monospace;font-size:46px;font-weight:800;color:var(--amber);line-height:1">${idleInt}</div>
-        <div style="font-size:10px;font-weight:700;color:var(--muted);margin-top:12px;text-transform:uppercase;letter-spacing:.8px">Idle Timeout (min)</div>
+        <div style="font-family:'DM Mono',monospace;font-size:32px;font-weight:800;color:var(--amber);line-height:1">${idleInt}</div>
+        <div style="font-size:9px;font-weight:700;color:var(--muted);margin-top:8px;text-transform:uppercase;letter-spacing:.8px">Idle Timeout (min)</div>
       </div>
-      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:16px;padding:28px 20px;text-align:center;box-shadow:4px 4px 10px var(--neu-shadow-dark),-4px -4px 10px var(--neu-shadow-light)">
-        <div style="width:48px;height:48px;margin:0 auto 14px;background:var(--surface);border-radius:14px;display:flex;align-items:center;justify-content:center;box-shadow:3px 3px 8px var(--neu-shadow-dark),-3px -3px 8px var(--neu-shadow-light)">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:16px 14px;text-align:center;box-shadow:4px 4px 10px var(--neu-shadow-dark),-4px -4px 10px var(--neu-shadow-light)">
+        <div style="width:36px;height:36px;margin:0 auto 10px;background:var(--surface);border-radius:10px;display:flex;align-items:center;justify-content:center;box-shadow:3px 3px 6px var(--neu-shadow-dark),-3px -3px 6px var(--neu-shadow-light)">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         </div>
-        <div style="font-family:'DM Mono',monospace;font-size:22px;font-weight:800;color:var(--green);line-height:1.4">${fmtHour(startT)} –<br>${fmtHour(endT)}</div>
-        <div style="font-size:10px;font-weight:700;color:var(--muted);margin-top:12px;text-transform:uppercase;letter-spacing:.8px">Office Hours</div>
+        <div style="font-family:'DM Mono',monospace;font-size:16px;font-weight:800;color:var(--green);line-height:1.5">${fmtHour(startT)} –<br>${fmtHour(endT)}</div>
+        <div style="font-size:9px;font-weight:700;color:var(--muted);margin-top:8px;text-transform:uppercase;letter-spacing:.8px">Office Hours</div>
       </div>
     `;
 
