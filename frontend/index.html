@@ -1980,7 +1980,7 @@ function exportDashboardPDF(){
   // Always use a clean light theme for the PDF so it prints clearly
   const bg='#ffffff', text='#0f172a', muted='#64748b', surface='#f8fafc', border='#e2e8f0', accent='#5b5ef4';
 
-  // Build employee table rows — 7 clean columns with proper widths to avoid overflow
+  // Build employee table rows — 8 clean columns with proper widths to avoid overflow
   let empRows='';
   allMembers.forEach((m,i)=>{
     const rowBg=i%2===0?surface:bg;
@@ -1988,15 +1988,16 @@ function exportDashboardPDF(){
     const statusLabel=(m.status||'offline');
     empRows+=`
       <tr style="background:${rowBg};border-bottom:1px solid ${border}">
-        <td style="padding:8px 10px;font-size:11px;color:${muted}">${i+1}</td>
-        <td style="padding:8px 10px;font-size:12px;color:${text};font-weight:600;white-space:nowrap">${m.name||'—'}</td>
-        <td style="padding:8px 10px;font-size:11px;color:${muted};max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.email||'—'}</td>
-        <td style="padding:8px 10px;font-size:11px;color:${muted};white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis">${m.position||m.department||'—'}</td>
-        <td style="padding:8px 10px">
-          <span style="display:inline-block;background:${statusColor}22;color:${statusColor};padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap">${statusLabel}</span>
+        <td style="padding:8px 6px;font-size:11px;color:${muted};text-align:center">${i+1}</td>
+        <td style="padding:8px 8px;font-size:12px;color:${text};font-weight:600">${m.name||'—'}</td>
+        <td style="padding:8px 8px;font-size:10px;color:${muted};word-break:break-all">${m.email||'—'}</td>
+        <td style="padding:8px 8px;font-size:10px;color:${muted}">${m.position||'—'}</td>
+        <td style="padding:8px 8px;font-size:10px;color:${muted}">${m.department||'—'}</td>
+        <td style="padding:8px 8px">
+          <span style="display:inline-block;background:${statusColor}22;color:${statusColor};padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px">${statusLabel}</span>
         </td>
-        <td style="padding:8px 10px;font-size:11px;color:${text};text-align:right;white-space:nowrap">${fmtSec(m.screen_time)}</td>
-        <td style="padding:8px 10px;font-size:12px;color:${accent};font-weight:700;text-align:right;white-space:nowrap">${(m.productivity||0)}%</td>
+        <td style="padding:8px 8px;font-size:11px;color:${text};text-align:right;white-space:nowrap">${fmtSec(m.screen_time)}</td>
+        <td style="padding:8px 8px;font-size:12px;color:${accent};font-weight:700;text-align:right;white-space:nowrap">${(m.productivity||0)}%</td>
       </tr>`;
   });
 
@@ -2063,11 +2064,11 @@ ${allMembers.length ? `
 <div class="section-title">Employee Status Overview &nbsp;(${allMembers.length} employees)</div>
 <table>
   <colgroup>
-    <col style="width:30px"><col style="width:140px"><col style="width:175px"><col style="width:115px"><col style="width:75px"><col style="width:80px"><col style="width:70px">
+    <col style="width:24px"><col style="width:110px"><col style="width:155px"><col style="width:95px"><col style="width:90px"><col style="width:65px"><col style="width:75px"><col style="width:65px">
   </colgroup>
   <thead>
     <tr>
-      <th>#</th><th>Name</th><th>Email</th><th>Position / Dept</th><th>Status</th><th class="right">Screen Time</th><th class="right">Productivity</th>
+      <th style="text-align:center">#</th><th>Name</th><th>Email</th><th>Position</th><th>Department</th><th>Status</th><th class="right">Screen Time</th><th class="right">Productivity</th>
     </tr>
   </thead>
   <tbody>${empRows}</tbody>
