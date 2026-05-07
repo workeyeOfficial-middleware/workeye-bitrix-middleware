@@ -1976,58 +1976,112 @@ function exportDashboardPDF(){
   document.getElementById('downloadMenu').style.display='none';
   const today=new Date().toISOString().substring(0,10);
   const el=id=>document.getElementById(id);
-  const isDark=document.documentElement.getAttribute('data-theme')==='dark';
-  const bg=isDark?'#0b0e18':'#ffffff', text=isDark?'#f1f5f9':'#0f172a', muted=isDark?'#64748b':'#94a3b8', surface=isDark?'#141826':'#f8fafc', accent='#5b5ef4';
+
+  // Always use a clean light theme for the PDF so it prints clearly
+  const bg='#ffffff', text='#0f172a', muted='#64748b', surface='#f8fafc', border='#e2e8f0', accent='#5b5ef4';
+
+  // Build employee table rows — 7 clean columns with proper widths to avoid overflow
   let empRows='';
   allMembers.forEach((m,i)=>{
     const rowBg=i%2===0?surface:bg;
-    const statusColor=m.status==='active'?'#10b981':m.status==='idle'?'#f59e0b':'#ef4444';
-    empRows+=`<tr style="background:${rowBg}"><td style="padding:10px 14px;font-size:12px;color:${text};border-bottom:1px solid ${isDark?'#242b40':'#e4e8f0'}">${m.name||'—'}</td><td style="padding:10px 14px"><span style="background:${statusColor}20;color:${statusColor};padding:2px 9px;border-radius:5px;font-size:11px;font-weight:600">${m.status||'—'}</span></td><td style="padding:10px 14px;font-size:12px;color:${text};font-weight:600">${(m.productivity||0)}%</td><td style="padding:10px 14px;font-size:12px;color:${text}">${fmtSec(m.screen_time)}</td><td style="padding:10px 14px;font-size:12px;color:${muted}">${fmtSec(m.active_time||0)}</td></tr>`;
+    const statusColor=m.status==='active'?'#10b981':m.status==='idle'?'#f59e0b':'#64748b';
+    const statusLabel=(m.status||'offline');
+    empRows+=`
+      <tr style="background:${rowBg};border-bottom:1px solid ${border}">
+        <td style="padding:8px 10px;font-size:11px;color:${muted}">${i+1}</td>
+        <td style="padding:8px 10px;font-size:12px;color:${text};font-weight:600;white-space:nowrap">${m.name||'—'}</td>
+        <td style="padding:8px 10px;font-size:11px;color:${muted};max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.email||'—'}</td>
+        <td style="padding:8px 10px;font-size:11px;color:${muted};white-space:nowrap;max-width:120px;overflow:hidden;text-overflow:ellipsis">${m.position||m.department||'—'}</td>
+        <td style="padding:8px 10px">
+          <span style="display:inline-block;background:${statusColor}22;color:${statusColor};padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap">${statusLabel}</span>
+        </td>
+        <td style="padding:8px 10px;font-size:11px;color:${text};text-align:right;white-space:nowrap">${fmtSec(m.screen_time)}</td>
+        <td style="padding:8px 10px;font-size:12px;color:${accent};font-weight:700;text-align:right;white-space:nowrap">${(m.productivity||0)}%</td>
+      </tr>`;
   });
-  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>WorkEye Dashboard Report</title>
-  <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:${bg};color:${text};padding:40px}
-  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:36px;padding-bottom:20px;border-bottom:2px solid ${accent}}
-  .logo{display:flex;align-items:center;gap:12px}.logo-icon{width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,#5b5ef4,#a855f7);display:flex;align-items:center;justify-content:center;font-size:22px}
-  .logo-text{font-size:22px;font-weight:700;color:${text}}.logo-sub{font-size:11px;color:${muted};margin-top:2px}
-  .meta{text-align:right;font-size:11px;color:${muted}}.meta strong{color:${text};font-size:13px}
-  .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px}
-  .stat-card{background:${surface};border-radius:12px;padding:20px 22px;border:1px solid ${isDark?'#242b40':'#e4e8f0'}}
-  .stat-lbl{font-size:9px;font-weight:600;color:${muted};text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px}
-  .stat-val{font-size:36px;font-weight:200;color:${text};letter-spacing:-1px;line-height:1}
-  .stat-sub{font-size:11px;color:#10b981;margin-top:6px;font-weight:500}
-  .section-title{font-size:13px;font-weight:700;color:${text};margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid ${isDark?'#242b40':'#e4e8f0'}}
-  .small-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:28px}
-  .small-card{background:${surface};border-radius:10px;padding:12px 14px;border:1px solid ${isDark?'#242b40':'#e4e8f0'};text-align:center}
-  .small-val{font-size:20px;font-weight:300;color:${text};letter-spacing:-.5px}
-  .small-lbl{font-size:9px;color:${muted};margin-top:4px;text-transform:uppercase;letter-spacing:.6px}
-  table{width:100%;border-collapse:collapse}th{background:${surface};color:${muted};font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;padding:10px 14px;text-align:left;border-bottom:2px solid ${isDark?'#242b40':'#e4e8f0'}}
-  .footer{margin-top:28px;padding-top:16px;border-top:1px solid ${isDark?'#242b40':'#e4e8f0'};font-size:10px;color:${muted};text-align:center}
-  @media print{body{padding:20px}}</style></head><body>
-  <div class="header">
-    <div class="logo"><div class="logo-icon">👁</div><div><div class="logo-text">WorkEye Monitor</div><div class="logo-sub">Employee Monitoring Dashboard</div></div></div>
-    <div class="meta"><strong>Dashboard Report</strong><br>${today}<br>Generated at ${new Date().toLocaleTimeString()}</div>
+
+  // Summary stat values
+  const totalEmp = el('vTotal')?.textContent||'—';
+  const activeNow = el('vActive')?.textContent||'0';
+  const idleNow   = el('vIdle')?.textContent||'0';
+  const offlineNow= el('vOffline')?.textContent||'0';
+  const avgProd   = el('vProd')?.textContent||'0%';
+  const avgScreen = el('vScreenTime')?.textContent||'—';
+
+  const html=`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Daily Overview Report – ${today}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#fff;color:${text};font-size:12px;padding:28px 32px}
+  .header{display:flex;justify-content:space-between;align-items:center;padding-bottom:14px;border-bottom:2px solid ${accent};margin-bottom:20px}
+  .logo-row{display:flex;align-items:center;gap:10px}
+  .logo-icon{width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg,#5b5ef4,#a855f7);display:flex;align-items:center;justify-content:center;font-size:18px;color:#fff}
+  .logo-text{font-size:19px;font-weight:700;color:${text}}
+  .logo-sub{font-size:10px;color:${muted};margin-top:1px}
+  .report-meta{text-align:right;font-size:10px;color:${muted};line-height:1.7}
+  .report-meta strong{color:${text};font-size:13px;display:block}
+  .summary-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:20px}
+  .s-card{background:${surface};border:1px solid ${border};border-radius:9px;padding:12px 10px;text-align:center}
+  .s-val{font-size:24px;font-weight:300;line-height:1;letter-spacing:-0.5px}
+  .s-val.green{color:#10b981}.s-val.amber{color:#f59e0b}.s-val.red{color:#ef4444}.s-val.blue{color:${accent}}.s-val.default{color:${text}}
+  .s-lbl{font-size:8px;color:${muted};text-transform:uppercase;letter-spacing:.8px;margin-top:5px;font-weight:600}
+  .section-title{font-size:11px;font-weight:700;color:${text};text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid ${border}}
+  table{width:100%;border-collapse:collapse;table-layout:fixed}
+  thead tr{background:${surface}}
+  th{font-size:8px;font-weight:700;color:${muted};text-transform:uppercase;letter-spacing:.5px;padding:7px 10px;text-align:left;border-top:1px solid ${border};border-bottom:2px solid ${border};overflow:hidden}
+  th.right,td.right{text-align:right}
+  .footer{margin-top:20px;padding-top:10px;border-top:1px solid ${border};font-size:9px;color:${muted};text-align:center}
+  @media print{body{padding:16px 20px}tr{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo-row">
+    <div class="logo-icon">👁</div>
+    <div>
+      <div class="logo-text">WorkEye Monitor</div>
+      <div class="logo-sub">Employee Monitoring Dashboard</div>
+    </div>
   </div>
-  <div class="stats-grid">
-    <div class="stat-card"><div class="stat-lbl">Total Employees</div><div class="stat-val">${el('vTotal')?.textContent||'—'}</div><div class="stat-sub">↑ ${el('vChange')?.textContent||''}</div></div>
-    <div class="stat-card"><div class="stat-lbl">Active Rate</div><div class="stat-val">${el('vActiveRate')?.textContent||'—'}</div><div class="stat-sub">↑ ${el('vActiveChange')?.textContent||''}</div></div>
-    <div class="stat-card"><div class="stat-lbl">Avg Productivity</div><div class="stat-val">${el('vProd')?.textContent||'—'}</div><div class="stat-sub">↑ ${el('vProdChange')?.textContent||''}</div></div>
+  <div class="report-meta">
+    <strong>Daily Overview Report</strong>
+    ${today} &nbsp;·&nbsp; Generated ${new Date().toLocaleTimeString()}
   </div>
-  <div class="small-grid">
-    <div class="small-card"><div class="small-val">${el('vActive')?.textContent||'—'}</div><div class="small-lbl">Active Now</div></div>
-    <div class="small-card"><div class="small-val">${el('vScreenTime')?.textContent||'—'}</div><div class="small-lbl">Avg Screen</div></div>
-    <div class="small-card"><div class="small-val">${el('vTeamSize')?.textContent||'—'}</div><div class="small-lbl">Team Size</div></div>
-    <div class="small-card"><div class="small-val">${el('vIdle')?.textContent||'—'}</div><div class="small-lbl">Idle</div></div>
-    <div class="small-card"><div class="small-val">${el('vScreenshots')?.textContent||'—'}</div><div class="small-lbl">Screenshots</div></div>
-    <div class="small-card"><div class="small-val">${el('vOffline')?.textContent||'—'}</div><div class="small-lbl">Offline</div></div>
-  </div>
-  ${allMembers.length?`<div class="section-title">Team Members (${allMembers.length})</div><table><thead><tr><th>Name</th><th>Status</th><th>Productivity</th><th>Screen Time</th><th>Active Time</th></tr></thead><tbody>${empRows}</tbody></table>`:''}
-  <div class="footer">WorkEye Monitor · Report generated on ${new Date().toLocaleString()} · Confidential</div>
-  </body></html>`;
+</div>
+<div class="summary-grid">
+  <div class="s-card"><div class="s-val default">${totalEmp}</div><div class="s-lbl">Total Employees</div></div>
+  <div class="s-card"><div class="s-val green">${activeNow}</div><div class="s-lbl">Active Now</div></div>
+  <div class="s-card"><div class="s-val amber">${idleNow}</div><div class="s-lbl">Idle</div></div>
+  <div class="s-card"><div class="s-val red">${offlineNow}</div><div class="s-lbl">Offline</div></div>
+  <div class="s-card"><div class="s-val blue">${avgProd}</div><div class="s-lbl">Avg Productivity</div></div>
+  <div class="s-card"><div class="s-val default">${avgScreen}</div><div class="s-lbl">Avg Screen Time</div></div>
+</div>
+${allMembers.length ? `
+<div class="section-title">Employee Status Overview &nbsp;(${allMembers.length} employees)</div>
+<table>
+  <colgroup>
+    <col style="width:30px"><col style="width:140px"><col style="width:175px"><col style="width:115px"><col style="width:75px"><col style="width:80px"><col style="width:70px">
+  </colgroup>
+  <thead>
+    <tr>
+      <th>#</th><th>Name</th><th>Email</th><th>Position / Dept</th><th>Status</th><th class="right">Screen Time</th><th class="right">Productivity</th>
+    </tr>
+  </thead>
+  <tbody>${empRows}</tbody>
+</table>` : '<p style="color:'+muted+';font-size:12px;text-align:center;padding:20px">No employee data available</p>'}
+<div class="footer">WorkEye Monitor &nbsp;·&nbsp; Report generated ${new Date().toLocaleString()} &nbsp;·&nbsp; Confidential</div>
+</body>
+</html>`;
+
   const win=window.open('','_blank');
+  if(!win){toast('Please allow pop-ups to generate the PDF report.','err');return;}
   win.document.write(html);
   win.document.close();
-  setTimeout(()=>win.print(),600);
-  toast('✓ PDF report ready to print/save!','ok');
+  setTimeout(()=>win.print(),700);
+  toast('✓ PDF report ready — use Print → Save as PDF','ok');
 }
 
 
