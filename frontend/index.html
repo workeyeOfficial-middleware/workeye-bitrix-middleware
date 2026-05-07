@@ -1698,7 +1698,7 @@ async function loadBillingCard(){
   }catch(e){console.warn("[billing card]",e);}
 }
 async function apiFetch(p,extra={}){let r=await fetch(API+p+sessionParams(extra),{headers:HEADERS});if(r.status===401){const ok=await refreshToken();if(ok)r=await fetch(API+p+sessionParams(),{headers:HEADERS});else throw new Error("401: Your WorkEye plan may have expired. Please renew.")}if(!r.ok)throw new Error("HTTP "+r.status);return r.json()}
-async function apiPost(p,body=null){const _postOpts=(extra={})=>({method:"POST",headers:{...HEADERS,"Content-Type":"application/json"},...(body?{body:JSON.stringify(body)}:{}),...extra});let r=await fetch(API+p+sessionParams(),_postOpts());if(r.status===401){const ok=await refreshToken();if(ok)r=await fetch(API+p+sessionParams(),_postOpts());else throw new Error("401: Your WorkEye plan may have expired. Please renew.")}if(!r.ok){let errMsg="HTTP "+r.status;try{const errData=await r.clone().json();errMsg=errData.detail||errData.message||errData.error||errMsg;}catch(e2){try{const errTxt=await r.text();if(errTxt&&errTxt.length<300)errMsg=errTxt;}catch(e3){}}throw new Error(errMsg);}return r.json()}
+async function apiPost(p,body=null,extraParams={}){const _postOpts=(extra={})=>({method:"POST",headers:{...HEADERS,"Content-Type":"application/json"},...(body?{body:JSON.stringify(body)}:{}),...extra});let r=await fetch(API+p+sessionParams(extraParams),_postOpts());if(r.status===401){const ok=await refreshToken();if(ok)r=await fetch(API+p+sessionParams(extraParams),_postOpts());else throw new Error("401: Your WorkEye plan may have expired. Please renew.")}if(!r.ok){let errMsg="HTTP "+r.status;try{const errData=await r.clone().json();errMsg=errData.detail||errData.message||errData.error||errMsg;}catch(e2){try{const errTxt=await r.text();if(errTxt&&errTxt.length<300)errMsg=errTxt;}catch(e3){}}throw new Error(errMsg);}return r.json()}
 function updateDonut(id,pct){const circ=2*Math.PI*46,offset=circ-(pct/100)*circ,el=document.getElementById(id);if(el)el.style.strokeDashoffset=offset}
 async function loadStats(){try{const res=await apiFetch("/get-stats"),pl=res.data||res,s=pl.stats||pl,members=pl.members||[];console.log("WorkEye stats:", JSON.stringify(s));const total=s.total_members||members.length||0,active=s.active_now||0,idle=s.idle_now||0,offline=s.offline||0,prod=s.average_productivity||0,activeRate=total>0?Math.round((active/total)*100):0;animateCount(document.getElementById("vTotal"),total);animateCount(document.getElementById("vActiveRate"),activeRate,"%");animateCount(document.getElementById("vProd"),prod,"%");animateCount(document.getElementById("vActive"),active);animateCount(document.getElementById("vIdle"),idle);animateCount(document.getElementById("vOffline"),offline);animateCount(document.getElementById("vTeamSize"),total);const _istNow=new Date(new Date().getTime()+(5.5*60*60*1000));const today=_istNow.toISOString().slice(0,10);const _istYest=new Date(_istNow.getTime()-86400000);const yesterday=_istYest.toISOString().slice(0,10);// ── Change indicators ─────────────────────────────────────────────────────
 // Employee change: use ONLY the backend-computed value (from activity-trends API).
@@ -1781,9 +1781,9 @@ const syncPaths={dashboard:"/sync-dashboard",employees:"/sync-employees",attenda
 const syncLabels={dashboard:"Dashboard Stats",employees:"Employees",attendance:"Attendance"};
 async function syncOne(type,retryCount=0){
   const ts=new Date().toISOString().replace(/[:.]/g,"-").substring(0,16);
-  const path=syncPaths[type]+"&ts="+encodeURIComponent(ts);
+  const path=syncPaths[type];
   try{
-    const res=await apiPost(path),ok=!!res.success;
+    const res=await apiPost(path,null,{ts}),ok=!!res.success;
     const r=res.result||{};
     const fileUrl=r.detail_url||r.url||"";
     const dlUrl=r.download_url||"";
@@ -1808,9 +1808,9 @@ async function syncAll(){
   let ok=0;
   for(const t of types){
     const ts=new Date().toISOString().replace(/[:.]/g,"-").substring(0,16);
-    const path=syncPaths[t]+"&ts="+encodeURIComponent(ts);
+    const path=syncPaths[t];
     try{
-      const res=await apiPost(path);
+      const res=await apiPost(path,null,{ts});
       const s=!!res.success;
       if(s)ok++;
       const r2=res.result||{};
@@ -1823,7 +1823,7 @@ async function syncAll(){
         try{
           await new Promise(_r=>setTimeout(_r,2000));
           const ts2=new Date().toISOString().replace(/[:.]/g,"-").substring(0,16);
-          const res2=await apiPost(syncPaths[t]+"&ts="+encodeURIComponent(ts2));
+          const res2=await apiPost(syncPaths[t],null,{ts:ts2});
           const s2=!!res2.success;
           if(s2)ok++;
           const r3=res2.result||{};
