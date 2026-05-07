@@ -1612,7 +1612,7 @@ function doLogout(){clearSession();document.getElementById("mainApp").style.disp
 function showDashboard(){document.getElementById("loginPage").style.display="none";document.getElementById("mainApp").style.display="block";const name=SESSION.email?SESSION.email.split("@")[0]:"Admin";document.getElementById("sidebarName").textContent=name;document.getElementById("sidebarAvatar").textContent=(name||"A")[0].toUpperCase();loadAll();startAutoRefresh();startLiveTimer();requestNotifPermission()}
 document.addEventListener("keydown",e=>{if(e.key==="Enter"&&document.getElementById("loginPage").style.display!=="none")doLogin()});
 const pages=["dashboard","team","attendance","activity","settings","sync"];
-function showPage(name,el){pages.forEach(p=>{const pg=document.getElementById("page-"+p);if(pg)pg.style.display=p===name?"block":"none"});document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));if(el)el.classList.add("active");const titles={dashboard:"Dashboard",team:"Team",attendance:"Attendance",activity:"Activity Log",settings:"Settings",sync:"Sync to Bitrix24"},subs={dashboard:"Live employee monitoring",team:"All team members",attendance:"Check-in & check-out records",activity:"Monitor team activity and screen time",settings:"Company configuration",sync:"Push data to Bitrix24 Drive"};const pt=document.getElementById("pageTitle");pt.textContent=titles[name]||name;pt.style.color="var(--text)";document.getElementById("pageSubtitle").textContent=subs[name]||"";fixTitleColor();if(name==="team"){currentTeamFilter='all';renderTeamGrid(allMembers);}if(name==="attendance")loadAttendance();if(name==="settings")loadSettings();if(name==="activity")loadActivityLog()}
+function showPage(name,el){pages.forEach(p=>{const pg=document.getElementById("page-"+p);if(pg)pg.style.display=p===name?"block":"none"});document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));if(el)el.classList.add("active");const titles={dashboard:"Dashboard",team:"Team",attendance:"Attendance",activity:"Activity Log",settings:"Settings",sync:"Sync to Bitrix24"},subs={dashboard:"Live employee monitoring",team:"All team members",attendance:"Check-in & check-out records",activity:"Monitor team activity and screen time",settings:"Company configuration",sync:"Push data to Bitrix24 Drive"};const pt=document.getElementById("pageTitle");pt.textContent=titles[name]||name;pt.style.color="var(--text)";document.getElementById("pageSubtitle").textContent=subs[name]||"";fixTitleColor();if(name==="team"){currentTeamFilter='all';renderTeamGrid(allMembers);}if(name==="attendance")loadAttendance();if(name==="settings")loadSettings();if(name==="activity")loadActivityLog();if(name==="sync")renderSyncHistory();}
 let _tt;
 function toast(msg,type="ok"){const el=document.getElementById("toast");el.textContent=msg;el.className="show "+type;clearTimeout(_tt);_tt=setTimeout(()=>el.className="",4000)}
 const avatarColors=["#5b5ef4","#06b6d4","#f59e0b","#ef4444","#8b5cf6","#10b981","#f97316","#3b82f6","#ec4899"];
@@ -1764,7 +1764,8 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeModal();closeE
 function openEmpModal(member,i){const el=id=>document.getElementById(id);el("empModalAvatar").style.background=avatarColor(i);el("empModalAvatar").textContent=(member.name||"?")[0].toUpperCase();el("empModalName").textContent=member.name||"—";el("empModalPosition").textContent=member.position||"—";el("empModalStatus").innerHTML=statusBadge(member.status);el("empModalScreenTime").textContent=fmtSec(member.screen_time);el("empModalActiveTime").textContent=fmtSec(member.active_time||0);el("empModalIdleTime").textContent=fmtSec(member.idle_time||0);el("empModalProductivity").textContent=(member.productivity||0)+"%";el("empModalEmail").textContent=member.email||"—";el("empModalDept").textContent=member.department||"—";el("empModalLastActivity").textContent=member.last_activity||"—";el("empModalScreenshots").textContent=member.screenshots_count||"0";document.getElementById("empModal").classList.add("show")}
 function closeEmpModal(){document.getElementById("empModal").classList.remove("show")}
 // ── Sync History — persisted 30 days in localStorage ──────────────────────
-const SYNC_STORAGE_KEY="workeye_sync_history_v2";
+function getSyncStorageKey(){try{const params=new URLSearchParams(window.location.search);const domain=params.get("DOMAIN")||params.get("domain")||"default";return "workeye_sync_history_v2_"+domain.replace(/[^a-zA-Z0-9._-]/g,"_");}catch(x){return "workeye_sync_history_v2_default";}}
+const SYNC_STORAGE_KEY=getSyncStorageKey();
 const SYNC_RETENTION_MS=30*86400000;
 function _loadSyncHistory(){try{const raw=localStorage.getItem(SYNC_STORAGE_KEY);if(!raw)return[];const arr=JSON.parse(raw);const cutoff=Date.now()-SYNC_RETENTION_MS;return arr.filter(h=>(h.ts||0)>=cutoff);}catch(e){return[];}}
 function _saveSyncHistory(arr){try{localStorage.setItem(SYNC_STORAGE_KEY,JSON.stringify(arr));}catch(e){}}
@@ -1852,7 +1853,7 @@ function fixTitleColor() {
 }
 
 // Run on load and theme change
-document.addEventListener('DOMContentLoaded', fixTitleColor);
+document.addEventListener('DOMContentLoaded', function(){ fixTitleColor(); renderSyncHistory(); });
 const observer = new MutationObserver(fixTitleColor);
 observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
