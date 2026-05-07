@@ -1990,8 +1990,8 @@ function exportDashboardPDF(){
       <tr style="background:${rowBg};border-bottom:1px solid ${border}">
         <td style="padding:6px 4px;font-size:10px;color:${muted};text-align:center">${i+1}</td>
         <td style="padding:6px 5px;font-size:11px;color:${text};font-weight:600">${m.name||'—'}</td>
-        <td style="padding:6px 5px;font-size:9px;color:${muted};overflow-wrap:break-word">${m.email||'—'}</td>
-        <td style="padding:6px 5px;font-size:9px;color:${muted};overflow-wrap:break-word">${m.position||'—'}</td>
+        <td style="padding:6px 5px;font-size:9px;color:${muted};overflow-wrap:break-word" class="email-cell">${m.email||'—'}</td>
+        <td style="padding:6px 5px;font-size:9px;color:${muted};overflow-wrap:break-word" class="position-cell">${m.position||'—'}</td>
         <td style="padding:6px 5px;font-size:9px;color:${muted};overflow-wrap:break-word">${m.department||'—'}</td>
         <td style="padding:6px 5px">
           <span style="display:inline-block;background:${statusColor}22;color:${statusColor};padding:2px 5px;border-radius:4px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.3px">${statusLabel}</span>
@@ -2071,15 +2071,17 @@ tr{
 }
 
 .email-cell{
-  max-width:125px;
+  max-width:140px;
   overflow-wrap:break-word;
-  word-break:break-word;
+  word-break:break-all;
+  font-size:8px !important;
 }
 
 .position-cell{
-  max-width:95px;
+  max-width:100px;
   overflow-wrap:break-word;
   word-break:break-word;
+  font-size:8px !important;
 }
 
 .department-cell{
@@ -2118,14 +2120,14 @@ ${allMembers.length ? `
 <div class="section-title">Employee Status Overview &nbsp;(${allMembers.length} employees)</div>
 <table>
   <colgroup>
-  <col style="width:24px">
-  <col style="width:90px">
-  <col style="width:125px">
-  <col style="width:95px">
-  <col style="width:90px">
-  <col style="width:65px">
-  <col style="width:65px">
+  <col style="width:20px">
+  <col style="width:80px">
+  <col style="width:140px">
+  <col style="width:100px">
+  <col style="width:80px">
+  <col style="width:55px">
   <col style="width:60px">
+  <col style="width:55px">
 </colgroup>
   <thead>
     <tr>
