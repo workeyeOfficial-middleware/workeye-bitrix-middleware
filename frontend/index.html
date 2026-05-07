@@ -1779,8 +1779,67 @@ function exportSyncHistory(){if(!syncHistory.length){toast("No sync history to e
 // Screenshots removed from sync
 const syncPaths={dashboard:"/sync-dashboard",employees:"/sync-employees",attendance:"/sync-attendance"};
 const syncLabels={dashboard:"Dashboard Stats",employees:"Employees",attendance:"Attendance"};
-async function syncOne(type,retryCount=0){try{const res=await apiPost(syncPaths[type]),ok=!!res.success;const r=res.result||{};const fileUrl=r.detail_url||r.url||"";const dlUrl=r.download_url||"";addSyncHistory(syncLabels[type]||type,ok,ok?"File saved to Bitrix24":res.detail||"Unknown error",fileUrl,dlUrl);toast(ok?`\u2713 ${syncLabels[type]||type} synced to Bitrix24!`:`Failed: ${res.detail||"unknown"}`,ok?"ok":"err");}catch(e){const _is502=e.message&&(e.message.includes("502")||e.message.toLowerCase().includes("bad gateway")||e.message.toLowerCase().includes("upstream"));if(_is502&&retryCount<2){toast(`\u23f3 Server busy, retrying ${syncLabels[type]||type}\u2026`,"ok");await new Promise(_r=>setTimeout(_r,2500*(retryCount+1)));return syncOne(type,retryCount+1);}addSyncHistory(syncLabels[type]||type,false,e.message,"","");toast("\u274c Sync failed: "+e.message,"err");}}
-async function syncAll(){const btn=document.querySelector(".sync-all-btn");if(btn){btn.disabled=true;btn.textContent="Syncing\u2026";}const types=["dashboard","employees","attendance"];let ok=0;for(const t of types){try{const res=await apiPost(syncPaths[t]);const s=!!res.success;if(s)ok++;const r2=res.result||{};const fileUrl=r2.detail_url||r2.url||"";const dlUrl=r2.download_url||"";addSyncHistory(syncLabels[t],s,s?"File saved to Bitrix24":res.detail||"Error",fileUrl,dlUrl);}catch(e){const _is502=e.message&&(e.message.includes("502")||e.message.toLowerCase().includes("bad gateway"));if(_is502){try{await new Promise(_r=>setTimeout(_r,2000));const res2=await apiPost(syncPaths[t]);const s2=!!res2.success;if(s2)ok++;const r3=res2.result||{};addSyncHistory(syncLabels[t],s2,s2?"File saved to Bitrix24":res2.detail||"Retry error",r3.detail_url||"",r3.download_url||"");}catch(e2){addSyncHistory(syncLabels[t],false,"Retry failed: "+e2.message,"","");}}else{addSyncHistory(syncLabels[t],false,e.message,"","");}}}toast(ok===3?"\u2713 All 3 synced to Bitrix24!":"\u26a0 "+ok+"/3 syncs completed",ok===3?"ok":"err");if(btn){btn.disabled=false;btn.textContent="\u2b06 Sync Everything";}}
+async function syncOne(type,retryCount=0){
+  const ts=new Date().toISOString().replace(/[:.]/g,"-").substring(0,16);
+  const path=syncPaths[type]+"&ts="+encodeURIComponent(ts);
+  try{
+    const res=await apiPost(path),ok=!!res.success;
+    const r=res.result||{};
+    const fileUrl=r.detail_url||r.url||"";
+    const dlUrl=r.download_url||"";
+    addSyncHistory(syncLabels[type]||type,ok,ok?"File saved to Bitrix24":res.detail||"Unknown error",fileUrl,dlUrl);
+    toast(ok?`\u2713 ${syncLabels[type]||type} synced to Bitrix24!`:`Failed: ${res.detail||"unknown"}`,ok?"ok":"err");
+  }catch(e){
+    const _is502=e.message&&(e.message.includes("502")||e.message.toLowerCase().includes("bad gateway")||e.message.toLowerCase().includes("upstream"));
+    if(_is502&&retryCount<2){
+      toast(`\u23f3 Server busy, retrying ${syncLabels[type]||type}\u2026`,"ok");
+      await new Promise(_r=>setTimeout(_r,2500*(retryCount+1)));
+      return syncOne(type,retryCount+1);
+    }
+    addSyncHistory(syncLabels[type]||type,false,e.message,"","");
+    toast("\u274c Sync failed: "+e.message,"err");
+  }
+}
+
+async function syncAll(){
+  const btn=document.querySelector(".sync-all-btn");
+  if(btn){btn.disabled=true;btn.textContent="Syncing\u2026";}
+  const types=["dashboard","employees","attendance"];
+  let ok=0;
+  for(const t of types){
+    const ts=new Date().toISOString().replace(/[:.]/g,"-").substring(0,16);
+    const path=syncPaths[t]+"&ts="+encodeURIComponent(ts);
+    try{
+      const res=await apiPost(path);
+      const s=!!res.success;
+      if(s)ok++;
+      const r2=res.result||{};
+      const fileUrl=r2.detail_url||r2.url||"";
+      const dlUrl=r2.download_url||"";
+      addSyncHistory(syncLabels[t],s,s?"File saved to Bitrix24":res.detail||"Error",fileUrl,dlUrl);
+    }catch(e){
+      const _is502=e.message&&(e.message.includes("502")||e.message.toLowerCase().includes("bad gateway"));
+      if(_is502){
+        try{
+          await new Promise(_r=>setTimeout(_r,2000));
+          const ts2=new Date().toISOString().replace(/[:.]/g,"-").substring(0,16);
+          const res2=await apiPost(syncPaths[t]+"&ts="+encodeURIComponent(ts2));
+          const s2=!!res2.success;
+          if(s2)ok++;
+          const r3=res2.result||{};
+          addSyncHistory(syncLabels[t],s2,s2?"File saved to Bitrix24":res2.detail||"Retry error",r3.detail_url||"",r3.download_url||"");
+        }catch(e2){
+          addSyncHistory(syncLabels[t],false,"Retry failed: "+e2.message,"","");
+        }
+      }else{
+        addSyncHistory(syncLabels[t],false,e.message,"","");
+      }
+    }
+  }
+  toast(ok===3?"\u2713 All 3 synced to Bitrix24!":"\u26a0 "+ok+"/3 syncs completed",ok===3?"ok":"err");
+  if(btn){btn.disabled=false;btn.textContent="\u2b06 Sync Everything";}
+}
+
 function updateAlertCards(stats,members){const container=document.getElementById("alertCards");if(!container)return;const alerts=[],total=stats.total_members||0,active=stats.active_now||0,offline=stats.offline||0,prod=stats.average_productivity||0,idle=stats.idle_now||0;if(active===0&&total>0)alerts.push({bg:"#fee2e2",border:"#ef4444",icon:"\u26a0\ufe0f",text:`All ${total} employees are offline`,color:"#b91c1c"});if(idle>0)alerts.push({bg:"#fef9c3",border:"#f59e0b",icon:"😴",text:`${idle} employee${idle>1?"s are":" is"} idle`,color:"#854d0e"});if(prod<30&&total>0)alerts.push({bg:"#fee2e2",border:"#ef4444",icon:"📉",text:`Low productivity alert \u2014 average is ${prod}%`,color:"#b91c1c"});if(active>0)alerts.push({bg:"#dcfce7",border:"#10b981",icon:"\u2705",text:`${active} employee${active>1?"s are":" is"} actively working`,color:"#166534"});container.innerHTML=alerts.map(a=>`<div class="alert-card" style="background:${a.bg};border-left:3px solid ${a.border}"><span style="font-size:16px">${a.icon}</span><span style="font-size:12px;font-weight:500;color:${a.color}">${a.text}</span></div>`).join("")}
 function setServerStatus(online, reason){
   const el=document.getElementById("serverStatus");
