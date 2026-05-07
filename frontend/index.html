@@ -2132,7 +2132,7 @@ ${allMembers.length ? `
       <th style="text-align:center">#</th><th>Name</th><th>Email</th><th>Position</th><th>Department</th><th>Status</th><th class="right">Screen Time</th><th class="right">Productivity</th>
     </tr>
   </thead>
-  <td class="email-cell">${employee.email}</td>
+  <tbody>${empRows}</tbody>
 </table>` : '<p style="color:'+muted+';font-size:12px;text-align:center;padding:20px">No employee data available</p>'}
 <div class="footer">WorkEye Monitor &nbsp;·&nbsp; Report generated ${new Date().toLocaleString()} &nbsp;·&nbsp; Confidential</div>
 </body>
