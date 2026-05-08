@@ -1221,7 +1221,7 @@
         <div class="table-card" style="margin-bottom:16px">
           <div class="table-head">
             <div><div class="table-title">Sync to Bitrix24</div><div class="table-sub">Push data to your Bitrix24 Shared Drive</div></div>
-            <div class="tbl-actions"><button class="sync-all-btn" onclick="syncAll()">⬆ Sync Everything</button></div>
+            <div class="tbl-actions"><button class="sync-all-btn" id="syncAllBtn" onclick="syncAll()">⬆ Sync Everything</button></div>
           </div>
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-bottom:1px solid var(--border)">
             <div style="padding:20px;border-right:1px solid var(--border);cursor:pointer;transition:background .15s" onclick="syncOne('dashboard')" onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background='transparent'">
@@ -1819,7 +1819,7 @@ async function syncOne(type,retryCount=0){
 }
 
 async function syncAll(){
-  const btn=document.querySelector(".sync-all-btn");
+  const btn=document.getElementById("syncAllBtn");
   if(btn){btn.disabled=true;btn.textContent="Syncing\u2026";}
   const types=["dashboard","employees","attendance"];
   let ok=0;
