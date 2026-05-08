@@ -1137,7 +1137,7 @@
           <div style="display:flex;flex-direction:column;gap:14px">
 
             <!-- TOP ROW: Tracker Mode + Working Days -->
-            <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
 
               <!-- Tracker Mode -->
               <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)">
@@ -2635,26 +2635,26 @@ async function loadSettings(){
 
     // ─── TRACKER MODE ──────────────────────────────────────
     if(tmBody)tmBody.innerHTML=`
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-        <div style="padding:20px;border-radius:14px;cursor:default;
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div style="padding:16px;border-radius:14px;cursor:default;
           border:2px solid ${trackerMode==='pairing'?'var(--accent)':'var(--border)'};
           background:${trackerMode==='pairing'?'var(--surface2)':'transparent'};
           box-shadow:${trackerMode==='pairing'?'4px 4px 12px var(--neu-shadow-dark),-4px -4px 12px var(--neu-shadow-light)':'none'}">
-          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px">Pairing Mode</div>
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">Pairing Mode</div>
           <div style="font-size:12px;color:var(--muted);line-height:1.65">Employees enter a one-time pairing code, then the tracker remembers the device session.</div>
-          ${trackerMode==='pairing'?`<div style="margin-top:14px;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:5px"><span style="width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block"></span> ACTIVE</div>`:''}
+          ${trackerMode==='pairing'?`<div style="margin-top:10px;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:5px"><span style="width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block"></span> ACTIVE</div>`:''}
         </div>
-        <div style="padding:20px;border-radius:14px;cursor:default;
+        <div style="padding:16px;border-radius:14px;cursor:default;
           border:2px solid ${trackerMode==='bitrix'?'var(--accent)':'var(--border)'};
           background:${trackerMode==='bitrix'?'var(--surface2)':'transparent'};
           box-shadow:${trackerMode==='bitrix'?'4px 4px 12px var(--neu-shadow-dark),-4px -4px 12px var(--neu-shadow-light)':'none'}">
-          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px">Bitrix Mode</div>
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">Bitrix Mode</div>
           <div style="font-size:12px;color:var(--muted);line-height:1.65">The desktop app waits for Bitrix START and STOP events and never asks employees for a code.</div>
-          ${trackerMode==='bitrix'?`<div style="margin-top:14px;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:5px"><span style="width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block"></span> ACTIVE</div>`:''}
+          ${trackerMode==='bitrix'?`<div style="margin-top:10px;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:5px"><span style="width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block"></span> ACTIVE</div>`:''}
         </div>
       </div>
       ${webhookUrl&&trackerMode==='bitrix'?`
-        <div style="margin-top:16px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:inset 2px 2px 6px var(--neu-shadow-dark),inset -2px -2px 6px var(--neu-shadow-light)">
+        <div style="margin-top:12px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;box-shadow:inset 2px 2px 6px var(--neu-shadow-dark),inset -2px -2px 6px var(--neu-shadow-light)">
           <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;display:flex;align-items:center;gap:5px">
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
             Bitrix Webhook URL
