@@ -1,17 +1,12 @@
 """
-bitrix_service.py — HTML Reports + CRM Timeline Comments
-=========================================================
+bitrix_service.py — HTML Reports to Bitrix24 Drive
+===================================================
 Saves 3 polished HTML report files to Bitrix24 Shared Drive every day.
-Also posts a daily summary comment to the CRM timeline via REST API.
 
 Drive files (open directly in browser from Bitrix Drive):
   WorkEye Reports/WorkEye_Daily_YYYY-MM-DD.html       — all employees, status, hours, productivity
   WorkEye Reports/WorkEye_Attendance_YYYY-MM-DD.html  — punch-in/out times, hours worked
   WorkEye Reports/WorkEye_Employee_YYYY-MM-DD.html    — name, position, dept, productivity
-
-CRM:
-  crm.timeline.comment.add  — posts a text summary to every CRM contact that
-                               matches an employee email address.
 """
 
 import os
@@ -455,150 +450,12 @@ def sync_dashboard(stats_response):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CRM: find contact by email
-# ─────────────────────────────────────────────────────────────────────────────
-
-def _find_crm_contact_id(email):
-    result = _call("crm.contact.list", payload={
-        "filter": {"EMAIL": email},
-        "select": ["ID", "NAME"],
-    })
-    items = result.get("result", [])
-    return str(items[0]["ID"]) if items else None
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# CRM: post timeline comment on a single contact
-# ─────────────────────────────────────────────────────────────────────────────
-
-def post_crm_timeline_comment(entity_id, comment):
-    """
-    Add a comment to a CRM Contact's timeline.
-    Uses crm.timeline.comment.add — counts as a real Bitrix REST API call.
-
-    ENTITY_TYPE must be "CRM_CONTACT" (uppercase) for Bitrix REST API.
-    """
-    result = _call("crm.timeline.comment.add", payload={
-        "fields": {
-            "ENTITY_ID":   int(entity_id),
-            "ENTITY_TYPE": "CRM_CONTACT",   # must be uppercase for Bitrix REST
-            "COMMENT":     comment,
-        }
-    })
-    comment_id = result.get("result")
-    if comment_id:
-        print(f"[Bitrix CRM] ✅ Posted timeline comment ID {comment_id} on contact {entity_id}")
-        return {"success": True, "comment_id": comment_id}
-    else:
-        err = result.get("error_description") or result.get("error") or str(result)
-        print(f"[Bitrix CRM] ❌ Failed for contact {entity_id}: {err}")
-        return {"success": False, "error": err}
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# CRM: post daily summary comments for all matched employees
-# ─────────────────────────────────────────────────────────────────────────────
-
-def post_daily_crm_comments(stats_response, attendance=None):
-    """
-    For every employee in stats_response, look up their Bitrix CRM Contact
-    by email and post a daily productivity + attendance summary to their timeline.
-
-    attendance — optional list of attendance dicts (from ws.get_attendance).
-                 If provided, punch-in/out times and hours worked are included
-                 in the comment, making it a richer and more useful entry.
-    """
-    payload  = stats_response.get("data", stats_response)
-    members  = payload.get("members", [])
-    date_str = datetime.now(IST).strftime("%d %b %Y")   # e.g. "06 May 2026"
-
-    # Build a lookup map: email → attendance record (for O(1) access per member)
-    att_map = {}
-    if attendance:
-        att_list = attendance if isinstance(attendance, list) else (
-            attendance.get("members") or attendance.get("attendance") or []
-        )
-        for a in att_list:
-            email = a.get("email") or a.get("member_email") or ""
-            if email:
-                att_map[email.lower()] = a
-
-    posted = skipped = errors = 0
-
-    for m in members:
-        email = (m.get("email") or "").strip()
-        if not email:
-            skipped += 1
-            continue
-
-        # Find matching CRM contact by email
-        contact_id = _find_crm_contact_id(email)
-        if not contact_id:
-            print(f"[Bitrix CRM] No CRM contact for {email} — skipping")
-            skipped += 1
-            continue
-
-        # Core WorkEye fields
-        name     = m.get("name") or "—"
-        status   = (m.get("status") or "unknown").capitalize()
-        prod     = int(m.get("productivity") or 0)
-        screen   = _fmt_seconds(m.get("screen_time", 0))
-        position = m.get("position") or "Employee"
-        dept     = m.get("department") or "—"
-
-        # Status emoji
-        status_emoji = {"Active": "🟢", "Idle": "🟡", "Offline": "🔴"}.get(status, "⚪")
-
-        # Attendance block (punch-in/out)
-        att = att_map.get(email.lower())
-        if att:
-            punch_in  = _fmt_time(att.get("punch_in_time"))
-            punch_out = _fmt_time(att.get("punch_out_time"))
-            hours     = att.get("today_hours") or att.get("hours_worked") or "—"
-            att_block = (
-                f"🕐 Punch In     : {punch_in}\n"
-                f"🕕 Punch Out    : {punch_out}\n"
-                f"⏱ Hours Worked : {hours}h\n"
-            )
-        else:
-            att_block = "🕐 Attendance   : Not available\n"
-
-        # Productivity bar (text version)
-        filled = int(prod / 10)
-        bar    = "█" * filled + "░" * (10 - filled)
-
-        comment = (
-            f"📊 WorkEye Daily Report — {date_str}\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"👤 Employee    : {name}\n"
-            f"💼 Position    : {position} / {dept}\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"{status_emoji} Status        : {status}\n"
-            f"{att_block}"
-            f"🖥 Screen Time  : {screen}\n"
-            f"📈 Productivity : {prod}%  [{bar}]\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"Auto-generated by WorkEye × Bitrix24 integration."
-        )
-
-        r = post_crm_timeline_comment(contact_id, comment)
-        if r.get("success"):
-            posted += 1
-        else:
-            errors += 1
-
-    print(f"[Bitrix CRM] Comments done — posted={posted} skipped={skipped} errors={errors}")
-    return {"posted": posted, "skipped": skipped, "errors": errors}
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# All-in-one: 3 HTML reports + CRM comments (called by auto_reporter.py)
+# All-in-one: 3 HTML reports (called by auto_reporter.py)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def run_all_reports(stats_response, attendance=None):
     """
-    Generates and uploads all 3 HTML reports to Bitrix Drive,
-    then posts CRM timeline comments for matched employees.
+    Generates and uploads all 3 HTML reports to Bitrix Drive.
     Returns a summary dict.
     """
     results = {}
@@ -625,12 +482,6 @@ def run_all_reports(stats_response, attendance=None):
     except Exception as e:
         results["attendance"] = {"success": False, "error": str(e)}
         print(f"[reports] Attendance failed: {e}")
-
-    try:
-        results["crm_comments"] = post_daily_crm_comments(stats_response, attendance)
-    except Exception as e:
-        results["crm_comments"] = {"success": False, "error": str(e)}
-        print(f"[reports] CRM comments failed: {e}")
 
     return results
 
