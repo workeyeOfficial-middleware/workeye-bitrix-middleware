@@ -1136,64 +1136,81 @@
           <!-- ═══ RIGHT: View-only config — scrolls ═══ -->
           <div style="display:flex;flex-direction:column;gap:14px">
 
-            <!-- Tracker Mode -->
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)">
-              <div style="padding:16px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                <div>
-                  <div style="font-size:13px;font-weight:700;color:var(--text)">Tracker Mode</div>
-                  <div style="font-size:10px;color:var(--muted);margin-top:1px">How devices connect to WorkEye</div>
+            <!-- TOP ROW: Tracker Mode + Working Days -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+
+              <!-- Tracker Mode -->
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)">
+                <div style="padding:16px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  <div>
+                    <div style="font-size:13px;font-weight:700;color:var(--text)">Tracker Mode</div>
+                    <div style="font-size:10px;color:var(--muted);margin-top:1px">How devices connect to WorkEye</div>
+                  </div>
                 </div>
+                <div id="trackerModeBody" style="padding:16px"><div class="empty">Loading…</div></div>
               </div>
-              <div id="trackerModeBody" style="padding:16px"><div class="empty">Loading…</div></div>
+
+              <!-- Working Days -->
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)">
+                <div style="padding:16px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  <div>
+                    <div style="font-size:13px;font-weight:700;color:var(--text)">Working Days</div>
+                    <div style="font-size:10px;color:var(--muted);margin-top:1px">Days your team is active</div>
+                  </div>
+                </div>
+                <div id="workingDaysBody" style="padding:16px 18px"><div class="empty">Loading…</div></div>
+              </div>
+
             </div>
 
-            <!-- Screenshot Interval -->
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)">
-              <div style="padding:16px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-                <div>
-                  <div style="font-size:13px;font-weight:700;color:var(--text)">Screenshot Interval</div>
-                  <div style="font-size:10px;color:var(--muted);margin-top:1px">How often screenshots are captured (1–60 minutes)</div>
-                </div>
-              </div>
-              <div id="ssIntervalBody" style="padding:16px 18px"><div class="empty">Loading…</div></div>
-            </div>
-
-            <!-- Idle Timeout -->
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)">
-              <div style="padding:16px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                <div>
-                  <div style="font-size:13px;font-weight:700;color:var(--text)">Idle Timeout</div>
-                  <div style="font-size:10px;color:var(--muted);margin-top:1px">Time before marking user as idle (1–30 minutes)</div>
-                </div>
-              </div>
-              <div id="idleTimeoutBody" style="padding:16px 18px"><div class="empty">Loading…</div></div>
-            </div>
-
-            <!-- Office Hours -->
+            <!-- BOTTOM FULL WIDTH: Office Hours & Intervals -->
             <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)">
               <div style="padding:16px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 <div>
-                  <div style="font-size:13px;font-weight:700;color:var(--text)">Office Hours</div>
-                  <div style="font-size:10px;color:var(--muted);margin-top:1px">Active monitoring window</div>
+                  <div style="font-size:13px;font-weight:700;color:var(--text)">Office Hours & Intervals</div>
+                  <div style="font-size:10px;color:var(--muted);margin-top:1px">Monitoring schedule</div>
                 </div>
               </div>
-              <div id="officeHoursBody" style="padding:16px 18px"><div class="empty">Loading…</div></div>
-            </div>
+              <div style="padding:16px 18px;display:flex;flex-direction:column;gap:20px">
 
-            <!-- Working Days -->
-            <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)">
-              <div style="padding:16px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <!-- Screenshot Interval -->
                 <div>
-                  <div style="font-size:13px;font-weight:700;color:var(--text)">Working Days</div>
-                  <div style="font-size:10px;color:var(--muted);margin-top:1px">Select the days your team works</div>
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                    <div style="font-size:12px;font-weight:700;color:var(--text)">Screenshot Interval</div>
+                    <div style="font-size:10px;color:var(--muted);margin-left:2px">How often screenshots are captured (1–60 minutes)</div>
+                  </div>
+                  <div id="ssIntervalBody"><div class="empty">Loading…</div></div>
                 </div>
+
+                <div style="height:1px;background:var(--border)"></div>
+
+                <!-- Idle Timeout -->
+                <div>
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <div style="font-size:12px;font-weight:700;color:var(--text)">Idle Timeout</div>
+                    <div style="font-size:10px;color:var(--muted);margin-left:2px">Time before marking user as idle (1–30 minutes)</div>
+                  </div>
+                  <div id="idleTimeoutBody"><div class="empty">Loading…</div></div>
+                </div>
+
+                <div style="height:1px;background:var(--border)"></div>
+
+                <!-- Office Hours -->
+                <div>
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <div style="font-size:12px;font-weight:700;color:var(--text)">Office Hours</div>
+                    <div style="font-size:10px;color:var(--muted);margin-left:2px">Active monitoring window</div>
+                  </div>
+                  <div id="officeHoursBody"><div class="empty">Loading…</div></div>
+                </div>
+
               </div>
-              <div id="workingDaysBody" style="padding:16px 18px"><div class="empty">Loading…</div></div>
             </div>
 
           </div>
